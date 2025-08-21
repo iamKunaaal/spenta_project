@@ -1,0 +1,619 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Verification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: url('https://spentacorporation.com/wp-content/uploads/2024/08/Altavista-Homepage-banner.jpg') no-repeat center center/cover;
+            display: flex;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 150px 20px 100px;
+        }
+
+        .user-login-container {
+            background: white;
+            padding: 3rem 2.5rem;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+        }
+
+        .user-login-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.8rem;
+        }
+
+        .user-login-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 2.5rem;
+            line-height: 1.4;
+        }
+
+        /* Property Display Section - NEW */
+        .property-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #fbd44a;
+        }
+
+        .property-display h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .property-display p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .user-form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .user-form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .user-form-inline {
+            display: flex;
+            gap: 8px;
+        }
+
+        .user-form-inline input {
+            flex: 1;
+        }
+
+        .user-form-group input,
+        .user-form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: #fafafa;
+        }
+
+        .user-form-group input:focus,
+        .user-form-group select:focus {
+            border-color: #fbd44a;
+            background: white;
+        }
+
+        .user-form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .user-send-btn {
+            padding: 14px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #fbd44a;
+            color: #333;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            white-space: nowrap;
+        }
+
+        .user-send-btn:hover {
+            background: #f0c83a;
+        }
+
+        .user-send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .user-otp-message {
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        .user-otp-message.success {
+            color: green;
+        }
+
+        .user-otp-message.error {
+            color: red;
+        }
+
+        .user-submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 50px;
+            background: #fbd44a;
+            color: #333;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-submit-btn:hover {
+            background: #f0c83a;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(251, 212, 74, 0.4);
+        }
+
+        .user-submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .user-submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Hide property selection if auto-selected */
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 120px 20px 80px;
+            }
+
+            .user-login-container {
+                padding: 2rem 1.5rem;
+                margin: 0;
+                max-width: 100%;
+            }
+
+            .user-login-title {
+                font-size: 24px;
+            }
+        }
+
+        /* Header style */
+        header {
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1;
+            width: 100%;
+            padding: 25px 6%;
+        }
+
+        header img {
+            height: 100px;
+        }
+
+        nav {
+            padding: 15px 25px;
+            background: #fff;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            border-radius: 25px;
+            gap: 40px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: black;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            text-decoration: none;
+            color: #fbd44a;
+            font-weight: 500;
+        }
+
+        @media (max-width: 480px) {
+            header img {
+                height: 50px !important;
+            }
+
+            nav{
+                font-size: 15px;
+            }
+        }
+
+        /* Footer style */
+        footer {
+            background: white;
+            color: black;
+            padding: 40px 5% 20px;
+        }
+
+        .footer-top {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+
+        .footer-about {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .footer-about p {
+            font-size: 17px;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            line-height: 30px;
+        }
+
+        .footer-about img {
+            height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .social-icons a {
+            margin-right: 10px;
+        }
+
+        .social-icons img {
+            height: 30px;
+            margin-bottom: 10px;
+        }
+
+        .footer-nav {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .footer-nav h4 {
+            font-size: 23px;
+            margin-bottom: 20px;
+        }
+
+        .footer-nav ul {
+            list-style: none;
+            line-height: 40px;
+            font-size: 19px;
+        }
+
+        .footer-nav li {
+            margin: 5px 0;
+        }
+
+        .footer-nav a {
+            text-decoration: none;
+            color: black;
+        }
+
+        .footer-subscribe h4 {
+            font-size: 23px;
+            margin-bottom: 20px;
+        }
+
+        .footer-subscribe p {
+            font-size: 17px;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            line-height: 30px;
+        }
+
+        .footer-subscribe {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .subscribe-box {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .subscribe-box input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+        }
+
+        .subscribe-box button {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            font-size: 18px;
+            margin-top: 20px;
+            border-top: 2px solid #fbd44a;
+            padding-top: 40px;
+            padding-bottom: 30px;
+            gap: 40px;
+        }
+
+        .footer-bottom a {
+            margin-right: 10px;
+            color: black;
+            text-decoration: none;
+        }
+
+        .footer-bottom span {
+            right: 5%;
+            position: absolute;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
+        </div>
+        <nav>
+            <a href="homepage.html">Home</a>
+        </nav>
+    </header>
+    <main>
+        <div class="user-login-container">
+            <h1 class="user-login-title">Customer Verification</h1>
+            
+            <!-- Show selected property if auto-selected -->
+            {% if selected_property %}
+            <div class="property-display">
+                <h3>{{ selected_property.name }}</h3>
+                <p>{{ selected_property.location }}</p>
+            </div>
+            {% endif %}
+            
+            <p class="user-login-subtitle">Please enter your contact number and OTP to continue.</p>
+
+            <form id="userLoginForm">
+                <div class="user-form-group">
+                    <label for="contactNo">Contact No.</label>
+                    <div class="user-form-inline">
+                        <input type="tel" id="contactNo" name="phone_number" placeholder="Enter your contact number"
+                            pattern="[0-9]{10}" maxlength="10" required>
+                        <button type="button" class="user-send-btn" id="sendOtpBtn" onclick="sendOTP()">Send OTP</button>
+                    </div>
+                    <div id="otpMessage" class="user-otp-message"></div>
+                </div>
+
+                <div class="user-form-group">
+                    <label for="otp">OTP Verification</label>
+                    <input type="text" id="otp" name="otp" placeholder="Enter OTP" maxlength="6" required>
+                </div>
+
+                <!-- Hide property selection if auto-selected -->
+                <div class="user-form-group {% if selected_property %}hidden{% endif %}">
+                    <label for="propertyName">Select Property / Project Name</label>
+                    <select id="propertyName" name="property_code" {% if not selected_property %}required{% endif %}>
+                        <option value="" disabled selected>Select property or project</option>
+                        <option value="Alt">Altavista</option>
+                        <option value="Med">Spenta Medius</option>
+                        <option value="Star">Stardeous</option>
+                    </select>
+                </div>
+
+                <!-- Hidden input for auto-selected property -->
+                {% if selected_property %}
+                <input type="hidden" id="propertyName" name="property_code" value="{{ selected_property.code }}">
+                {% endif %}
+
+                <button type="submit" class="user-submit-btn" id="submitBtn">Submit</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-top">
+            <div class="footer-about">
+                <img src="{% static 'media/spenta grey.png' %}" alt="Spenta Logo">
+                <p>Spenta stands tall as one of Mumbai's premier real estate development companies, where tradition
+                    and a deep-rooted commitment to excellence converge.</p>
+                <div class="social-icons">
+                    <a href="#"><img src="https://img.icons8.com/ios-filled/20/000000/facebook--v1.png" /></a>
+                    <a href="#"><img src="https://img.icons8.com/ios-filled/20/000000/instagram-new.png" /></a>
+                    <a href="#"><img src="https://img.icons8.com/ios-filled/20/000000/linkedin.png" /></a>
+                </div>
+            </div>
+            <div class="footer-nav">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Projects</a></li>
+                    <li><a href="#">Team</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">Media</a></li>
+                    <li><a href="#">Schedule A Virtual Call</a></li>
+                </ul>
+            </div>
+            <div class="footer-subscribe">
+                <h4>Stay In Touch</h4>
+                <p>Promotions, new products and updates on offers directly to your inbox. And don't worry, we won't
+                    spam you.</p>
+                <div class="subscribe-box">
+                    <input type="email" placeholder="Enter Your Email">
+                    <button>SUBMIT</button>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms & Conditions</a>
+            <a href="#">Disclaimer</a>
+            <span>© 2025 Copyright</span>
+        </div>
+    </footer>
+    <script>
+        let generatedOTP = "";
+        let otpSent = false;
+        let countdown = 0;
+        
+        function sendOTP() {  
+            const contact = document.getElementById("contactNo").value;
+            const otpMessage = document.getElementById("otpMessage");
+            const sendBtn = document.getElementById("sendOtpBtn");
+        
+            // Validate phone number
+            if (!contact || contact.length !== 10 || !/^\d{10}$/.test(contact)) {
+                otpMessage.className = "user-otp-message error";
+                otpMessage.textContent = "Please enter a valid 10-digit contact number.";
+                return;
+            }
+        
+            // TEMPORARY: Generate OTP locally (skip server call)
+            generatedOTP = "123456"; // Fixed OTP for testing
+        
+            // Show success message
+            otpMessage.className = "user-otp-message success";
+            otpMessage.textContent = `OTP sent successfully! Your OTP is: ${generatedOTP}`;
+            otpSent = true;
+        
+            // Disable button temporarily
+            sendBtn.disabled = true;
+            countdown = 60;
+            updateCountdown();
+        }
+        
+        function updateCountdown() {
+            const sendBtn = document.getElementById("sendOtpBtn");
+            
+            if (countdown > 0) {
+                sendBtn.textContent = `Resend (${countdown})`;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                sendBtn.textContent = "Send OTP";
+                sendBtn.disabled = false;
+            }
+        }
+        
+        function handleVerificationSuccess(selectedProperty, phoneNumber) {
+            // Store verification data in localStorage
+            localStorage.setItem('selectedProperty', selectedProperty);
+            localStorage.setItem('userPhone', phoneNumber);
+            localStorage.setItem('verificationTimestamp', new Date().getTime().toString());
+            
+            // Show success message briefly
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #22c55e;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                font-weight: 600;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            `;
+            messageDiv.textContent = 'Verification successful! Redirecting to form...';
+            document.body.appendChild(messageDiv);
+            
+            // Redirect based on property selection
+            setTimeout(() => {
+                // UPDATED: Redirect to property-specific form URLs
+                const propertyUrls = {
+                    'Alt': '/altavista/customer-form/',
+                    'Med': '/spenta-medius/customer-form/',
+                    'Star': '/stardeous/customer-form/'
+                };
+                
+                const redirectUrl = propertyUrls[selectedProperty] || '/customer-form/';
+                window.location.href = redirectUrl;
+            }, 1000);
+        }
+        
+        document.getElementById('userLoginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const contact = document.getElementById('contactNo').value;
+            const enteredOTP = document.getElementById('otp').value;
+            
+            // Get property code - either from hidden input (auto-selected) or dropdown
+            const propertyCodeInput = document.querySelector('input[name="property_code"]');
+            const propertyCodeSelect = document.querySelector('select[name="property_code"]');
+            const propertyCode = propertyCodeInput ? propertyCodeInput.value : propertyCodeSelect.value;
+        
+            // Basic validation
+            if (!otpSent) {
+                alert("Please send OTP first.");
+                return;
+            }
+        
+            if (!enteredOTP || enteredOTP.length !== 6) {
+                alert("Please enter a valid 6-digit OTP.");
+                return;
+            }
+        
+            // TEMPORARY: Check fixed OTP
+            if (enteredOTP !== "123456") {
+                alert("Invalid OTP. Please enter: 123456");
+                return;
+            }
+        
+            if (!propertyCode) {
+                alert("Please select a property.");
+                return;
+            }
+        
+            // Call the success handler
+            handleVerificationSuccess(propertyCode, contact);
+        });
+        
+        // Auto-focus next field
+        document.getElementById('contactNo').addEventListener('input', function() {
+            if (this.value.length === 10) {
+                document.getElementById('sendOtpBtn').focus();
+            }
+        });
+        
+        document.getElementById('otp').addEventListener('input', function() {
+            if (this.value.length === 6) {
+                // Focus on property dropdown only if it's visible
+                const propertySelect = document.querySelector('select[name="property_code"]');
+                if (propertySelect && !propertySelect.closest('.user-form-group').classList.contains('hidden')) {
+                    propertySelect.focus();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

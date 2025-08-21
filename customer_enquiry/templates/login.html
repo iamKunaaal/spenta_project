@@ -1,0 +1,390 @@
+ {% comment %} <!DOCTYPE html>
+<html>
+<head>
+    <title>GRE Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    {% if messages %}
+      {% for message in messages %}
+        <p style="color: red;">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username:</label>
+        <input type="text" name="username" required><br><br>
+        <label>Password:</label>
+        <input type="password" name="password" required><br><br>
+        <button type="submit">Login</button>
+    </form>
+</body>
+</html>  {% endcomment %}
+
+{% load static %} 
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRE Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: url('https://spentacorporation.com/wp-content/uploads/2024/08/Altavista-Homepage-banner.jpg') no-repeat center center/cover;
+            display: flex;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 150px 20px 100px;
+        }
+
+        .login-container {
+            background: white;
+            padding: 3rem 2.5rem;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            font-weight: 300;
+            color: #666;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.8rem;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 2.5rem;
+            line-height: 1.4;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus {
+            border-color: #fbd44a;
+            background: white;
+        }
+
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+            position: relative;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 2.5rem 14px 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: #fafafa;
+        }
+
+        .input-group input:focus {
+            border-color: #fbd44a;
+            background: white;
+        }
+
+        .input-group input::placeholder {
+            color: #aaa;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 70%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+
+        .toggle-password svg {
+            width: 20px;
+            height: 20px;
+            stroke: #333333;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .toggle-password:hover svg {
+            stroke: #fad348;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 50px;
+            background: #fbd44a;
+            color: #333;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .submit-btn:hover {
+            background: #f0c83a;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(251, 212, 74, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Django Messages Styling */
+        .django-messages {
+            margin-bottom: 1.5rem;
+        }
+
+        .django-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .django-message.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+
+        .django-message.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 120px 20px 80px;
+            }
+
+            .login-container {
+                padding: 2rem 1.5rem;
+                margin: 0;
+                max-width: 100%;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+        }
+
+        {% comment %} header style {% endcomment %}
+
+        header {
+          position: absolute;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          z-index: 1;
+          width: 100%;
+          padding: 25px 6%;
+      }
+
+      header img {
+          height: 100px;
+      }
+
+      
+
+      @media (max-width: 480px) {
+          header img {
+              height: 50px !important;
+          }
+
+         
+      }
+
+    </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+        <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
+    </div>
+    <nav>
+        {% comment %} <a href="homepage.html">Home</a> {% endcomment %}
+    </nav>
+</header>
+
+    <main>
+        <div class="login-container">
+            <a href="/" class="close-btn">×</a>
+
+            <h1 class="login-title">Log in</h1>
+            
+
+            <!-- Django Messages -->
+            {% if messages %}
+                <div class="django-messages">
+                    {% for message in messages %}
+                        <div class="django-message {{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Django Form -->
+            <form id="loginForm" method="POST">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" 
+                           id="username" 
+                           name="username" 
+                           placeholder="Enter your username"
+                           value="{{ request.POST.username|default:'' }}" 
+                           required>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           placeholder="Password" 
+                           required>
+                    <button type="button" class="toggle-password" onclick="togglePassword()">
+                        <!-- Eye Open SVG -->
+                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+                </div>
+
+                <button type="submit" class="submit-btn">Submit</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div id="footer"></div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                // Eye Off SVG
+                eyeIcon.innerHTML = `
+                    <path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7
+                             a21.59 21.59 0 014.62-5.68"/>
+                    <path d="M1 1l22 22"/>
+                    <path d="M9.88 9.88a3 3 0 004.24 4.24"/>
+                `;
+            } else {
+                passwordInput.type = 'password';
+                // Eye Open SVG
+                eyeIcon.innerHTML = `
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                `;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
+
+
+

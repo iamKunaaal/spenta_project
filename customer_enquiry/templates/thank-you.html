@@ -1,0 +1,278 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - Spenta</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montesserat', sans-serif;
+            background: url('https://spentacorporation.com/wp-content/uploads/2024/08/Altavista-Homepage-banner.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* City skyline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+            z-index: -1;
+        }
+
+        /* Yellow accent squares */
+        .accent-square {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 4px;
+        }
+
+        .accent-square.top-left {
+            top: 16px;
+            left: 300px;
+            z-index: 999;
+        }
+
+        .accent-square.bottom-right {
+            bottom: 16px;
+            right: 300px;
+            z-index: 999;
+        }
+
+        /* Main container */
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .ty-logo img {
+            height: 90px;
+        }
+
+        /* Thank you section */
+        h1 {
+            font-size: 30px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        /* Steps */
+        .steps-section {
+            border-left: 3px solid #FFD700;
+            padding-left: 20px;
+        }
+
+        .steps-section h3 {
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px 0;
+        }
+
+        /* 
+        .step-icon {
+            width: 20px;
+            height: 20px;
+            background: #FFD700;
+            border-radius: 3px;
+            margin-right: 15px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        } */
+
+        .step-text {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Buttons */
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 25px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #FFD700;
+            color: #333;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #666;
+            border: 2px solid #ddd;
+        }
+
+        /* Contact info */
+        .contact-info {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .contact-info h4 {
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .contact-info p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 3px;
+        }
+
+        @media (max-width: 1024px){
+            .accent-square.top-left, .accent-square.bottom-right{
+                display: none;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            .button-section {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .accent-square.top-left {
+                top: 20px;
+                left: 20px;
+            }
+
+            .accent-square.bottom-right {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Accent squares -->
+    <div class="accent-square top-left"></div>
+    <div class="accent-square bottom-right"></div>
+
+    <div class="container">
+        <!-- Logo -->
+        <div class="ty-logo">
+            <img src="{% static 'media/spenta grey.png' %}" alt="Spenta Logo">
+        </div>
+
+        <!-- Thank you message -->
+        <h1>Thank You!</h1>
+        <p class="description">
+            Your enquiry has been successfully submitted. Our team will review your information and get back to you
+            shortly with property details that match your requirements.
+        </p>
+
+        <!-- Steps -->
+        <div class="steps-section">
+            <h3>What happens next?</h3>
+
+            <div class="step">
+                <div class="step-icon"></div>
+                <div class="step-text">Our property consultant will review your requirements</div>
+            </div>
+
+            <div class="step">
+                <div class="step-icon"></div>
+                <div class="step-text">We'll match you with suitable properties in your budget range</div>
+            </div>
+
+            <div class="step">
+                <div class="step-icon"></div>
+                <div class="step-text">You'll receive a call within 24 hours to discuss options</div>
+            </div>
+
+            <div class="step">
+                <div class="step-icon"></div>
+                <div class="step-text">We'll schedule a property visit at your convenience</div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="button-section">
+            <button class="btn btn-primary">Submit Another Enquiry</button>
+            <button class="btn btn-secondary">Back to Homepage</button>
+        </div>
+
+        <!-- Contact info -->
+        <div class="contact-info">
+            <h4>Need immediate assistance?</h4>
+            <p>Call us at: +91 9876543210</p>
+            <p>Email: info@spentaproperties.com</p>
+            <p>Office Hours: Monday - Saturday, 9:00 AM - 7:00 PM</p>
+        </div>
+    </div>
+</body>
+
+</html>

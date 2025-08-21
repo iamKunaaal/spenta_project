@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GRE Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .dashboard-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .filters-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .action-buttons-top {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .assessment-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+        
+        .assessment-complete {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .assessment-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .property-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .phone-number {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .filters-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons-top {
+                flex-direction: column;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h2 style="margin: 0 0 20px 0;">All Leads Dashboard</h2>
+        
+        <!-- Filters -->
+        <div class="filters-container">
+            <div class="filter-group">
+                <label for="searchInput">Search</label>
+                <input type="text" id="searchInput" placeholder="Search by name, email, phone, form number...">
+            </div>
+            
+            <div class="filter-group">
+                <label for="propertyFilter">Property Filter</label>
+                <select id="propertyFilter">
+                    <option value="">All Properties</option>
+                    <option value="Alt">Altavista</option>
+                    <option value="Med">Spenta Medius</option>
+                    <option value="Sta">Stardeous</option>
+                    <option value="CIF">Default Property</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="dateFrom">Date From</label>
+                <input type="date" id="dateFrom">
+            </div>
+            
+            <div class="filter-group">
+                <label for="dateTo">Date To</label>
+                <input type="date" id="dateTo">
+            </div>
+            
+            <div class="filter-group">
+                <label for="assessmentFilter">Assessment Status</label>
+                <select id="assessmentFilter">
+                    <option value="">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="bookingFilter">Booking Status</label>
+                <select id="bookingFilter">
+                    <option value="">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-top">
+            <button class="btn btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
+            <button class="btn btn-success" onclick="exportToExcel()">📊 Export to Excel</button>
+            <button class="btn btn-secondary" onclick="clearFilters()">🔄 Clear Filters</button>
+            <button class="btn btn-info" onclick="refreshData()">♻️ Refresh</button>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-number" id="totalLeads">{{ customers|length }}</div>
+            <div class="stat-label">Total Leads</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="filteredLeads">{{ customers|length }}</div>
+            <div class="stat-label">Filtered Results</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="completedAssessments">
+                {% for customer in customers %}
+                    {% if customer.sales_assessment %}1{% endif %}
+                {% empty %}0{% endfor %}
+            </div>
+            <div class="stat-label">Assessments Done</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="completedBookings">
+                {% for customer in customers %}
+                    {% if customer.booking_applications.exists %}1{% endif %}
+                {% empty %}0{% endfor %}
+            </div>
+            <div class="stat-label">Bookings Done</div>
+        </div>
+    </div>
+    
+    <!-- Loading Indicator -->
+    <div class="loading" id="loadingIndicator">
+        <p>Loading...</p>
+    </div>
+    
+    <!-- Table -->
+    <div class="table-container">
+        <table id="leadsTable">
+            <thead>
+                <tr>
+                    <th>Form Number</th>
+                    <th>Full Name</th>
+                    <th>Property</th>
+                    <th>Phone Number</th>
+                    <th>City</th>
+                    <th>Lead Source(s)</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="leadsTableBody">
+                {% for customer in customers %}
+                <tr data-property="{{ customer.form_number|slice:':3' }}" 
+                    data-date="{{ customer.created_at|date:'Y-m-d' }}"
+                    data-assessment="{% if customer.sales_assessment %}completed{% else %}pending{% endif %}"
+                    data-booking="{% if customer.booking_applications.exists %}completed{% else %}pending{% endif %}"
+                    data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}">
+                    
+                    <td>
+                        <span class="property-tag">{{ customer.form_number|slice:':3' }}</span>
+                        {{ customer.form_number }}
+                    </td>
+                    <td>
+                        <strong>{{ customer.get_full_name }}</strong>
+                        <br><small style="color: #666;">{{ customer.email }}</small>
+                    </td>
+                    <td>
+                        {% with property_code=customer.form_number|slice:':3' %}
+                        {% if property_code == 'Alt' %}Altavista
+                        {% elif property_code == 'Med' %}Spenta Medius  
+                        {% elif property_code == 'Sta' %}Stardeous
+                        {% elif property_code == 'CIF' %}Default Property
+                        {% else %}{{ property_code }}
+                        {% endif %}
+                    {% endwith %}
+                    </td>
+                    <td>
+                        <span class="phone-number">{{ customer.phone_number|default:'Not Provided' }}</span>
+                    </td>
+                    <td>{{ customer.city }}</td>
+                    <td>
+                        {% for source in customer.sources.all %}
+                            {{ source.get_source_type_display }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
+                    <td class="action-buttons">
+                        <!-- Edit Customer Button -->
+                        <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-primary">
+                            Edit
+                        </a>
+                        
+                        <!-- Internal Assessment Button -->
+                        <a href="{% url 'customer_enquiry:internal_sales_assessment' customer.pk %}" class="btn btn-success">
+                            Assessment
+                            {% if customer.sales_assessment %}
+                                <span class="assessment-status assessment-complete">✓</span>
+                            {% else %}
+                                <span class="assessment-status assessment-pending">⚠</span>
+                            {% endif %}
+                        </a>
+            
+                        <!-- Booking Form Button -->
+                        <a href="{% url 'customer_enquiry:booking_form' customer.pk %}" class="btn btn-warning">
+                            Booking
+                            {% if customer.booking_applications.exists %}
+                                <span class="assessment-status assessment-complete">✓</span>
+                            {% else %}
+                                <span class="assessment-status assessment-pending">⚠</span>
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="no-results">No leads found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Global variables
+        let allRows = [];
+        let filteredRows = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Store all table rows for filtering
+            allRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            filteredRows = [...allRows];
+            
+            // Set default date range (last 30 days)
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            
+            document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('dateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+            
+            // Add event listeners for real-time search
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('propertyFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateFrom').addEventListener('change', applyFilters);
+            document.getElementById('dateTo').addEventListener('change', applyFilters);
+            document.getElementById('assessmentFilter').addEventListener('change', applyFilters);
+            document.getElementById('bookingFilter').addEventListener('change', applyFilters);
+        });
+        
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+            
+            filteredRows = allRows.filter(row => {
+                // Skip empty rows
+                if (row.cells.length < 8) return false;
+                
+                const searchData = row.dataset.search || '';
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                
+                // Search filter
+                if (searchTerm && !searchData.includes(searchTerm)) {
+                    return false;
+                }
+                
+                // Property filter
+                if (propertyFilter && property !== propertyFilter) {
+                    return false;
+                }
+                
+                // Date filter
+                if (dateFrom && date < dateFrom) {
+                    return false;
+                }
+                if (dateTo && date > dateTo) {
+                    return false;
+                }
+                
+                // Assessment filter
+                if (assessmentFilter && assessment !== assessmentFilter) {
+                    return false;
+                }
+                
+                // Booking filter
+                if (bookingFilter && booking !== bookingFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Update table display
+            updateTableDisplay();
+            updateStatistics();
+        }
+        
+        function updateTableDisplay() {
+            const tbody = document.getElementById('leadsTableBody');
+            
+            // Hide all rows
+            allRows.forEach(row => {
+                row.style.display = 'none';
+            });
+            
+            // Show filtered rows
+            if (filteredRows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="no-results">No leads found matching your criteria.</td></tr>';
+            } else {
+                // Remove no-results message if it exists
+                const noResultsRow = tbody.querySelector('.no-results');
+                if (noResultsRow && noResultsRow.parentElement) {
+                    noResultsRow.parentElement.remove();
+                }
+                
+                filteredRows.forEach(row => {
+                    row.style.display = '';
+                });
+            }
+        }
+        
+        function updateStatistics() {
+            document.getElementById('filteredLeads').textContent = filteredRows.length;
+            
+            let completedAssessments = 0;
+            let completedBookings = 0;
+            
+            filteredRows.forEach(row => {
+                if (row.dataset.assessment === 'completed') completedAssessments++;
+                if (row.dataset.booking === 'completed') completedBookings++;
+            });
+            
+            document.getElementById('completedAssessments').textContent = completedAssessments;
+            document.getElementById('completedBookings').textContent = completedBookings;
+        }
+        
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('propertyFilter').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('assessmentFilter').value = '';
+            document.getElementById('bookingFilter').value = '';
+            
+            filteredRows = [...allRows];
+            updateTableDisplay();
+            updateStatistics();
+        }
+        
+        function refreshData() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            window.location.reload();
+        }
+        
+        function exportToExcel() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+            
+            // Get current filters
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('search', searchTerm);
+            formData.append('property', propertyFilter);
+            formData.append('date_from', dateFrom);
+            formData.append('date_to', dateTo);
+            formData.append('assessment', assessmentFilter);
+            formData.append('booking', bookingFilter);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            // Send request to export endpoint
+            fetch('/export-leads/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Export failed');
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Generate filename with timestamp
+                const now = new Date();
+                const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+                const propertyName = propertyFilter ? `_${propertyFilter}` : '_All';
+                a.download = `leads_export${propertyName}_${timestamp}.xlsx`;
+                
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                loadingIndicator.style.display = 'none';
+                alert('Export completed successfully!');
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                loadingIndicator.style.display = 'none';
+                alert('Export failed. Please try again.');
+            });
+        }
+        
+        // Auto-apply filters on page load
+        window.addEventListener('load', function() {
+            applyFilters();
+        });
+    </script>
+    
+    <!-- CSRF Token for AJAX requests -->
+    {% csrf_token %}
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Sales Assessment - {{ customer.get_full_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header h2 {
+            color: #dc3545;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .customer-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .form-section h3 {
+            color: #dc3545;
+            margin-bottom: 20px;
+            font-size: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dc3545;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row.single {
+            grid-template-columns: 1fr;
+        }
+
+        .form-row.triple {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #dc3545;
+            box-shadow: 0 0 5px rgba(220,53,69,0.3);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item,
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="checkbox"],
+        input[type="radio"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .conditional-section {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #ffe6e6;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .conditional-section.show {
+            display: block;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 30px auto;
+            min-width: 200px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220,53,69,0.4);
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row.triple {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h2>FOR INTERNAL USE ONLY</h2>
+            <h1>Sales Assessment Form</h1>
+        </div>
+
+        <div class="customer-info">
+            <strong>Customer:</strong> {{ customer.get_full_name }} ({{ customer.form_number }})<br>
+            <strong>Email:</strong> {{ customer.email }}<br>
+            <strong>Configuration Interest:</strong> {{ customer.get_configuration_display }}<br>
+            <strong>Budget:</strong> {{ customer.get_budget_display }}
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- TO BE FILLED BY GRE -->
+            <div class="form-section">
+                <h3>TO BE FILLED BY GRE:</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sourcingManager">Sourcing Manager:</label>
+                        <input type="text" id="sourcingManager" name="sourcing_manager" value="{{ assessment.sourcing_manager|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="salesManager">Sales Manager:</label>
+                        <input type="text" id="salesManager" name="sales_manager" value="{{ assessment.sales_manager|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Customer Gender:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="male" name="customer_gender" value="male" {% if assessment.customer_gender == 'male' %}checked{% endif %}>
+                                <label for="male">Male</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="female" name="customer_gender" value="female" {% if assessment.customer_gender == 'female' %}checked{% endif %}>
+                                <label for="female">Female</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="family" name="customer_gender" value="family" {% if assessment.customer_gender == 'family' %}checked{% endif %}>
+                                <label for="family">Family</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Facilitated by Pre-Sales:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="preSalesYes" name="facilitated_by_pre_sales" value="true" {% if assessment.facilitated_by_pre_sales %}checked{% endif %}>
+                                <label for="preSalesYes">Yes</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="preSalesNo" name="facilitated_by_pre_sales" value="false" {% if not assessment.facilitated_by_pre_sales %}checked{% endif %}>
+                                <label for="preSalesNo">No</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="executiveName">Executive Name:</label>
+                        <input type="text" id="executiveName" name="executive_name" value="{{ assessment.executive_name|default:'' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TO BE FILLED BY SALES MANAGER -->
+            <div class="form-section">
+                <h3>TO BE FILLED BY SALES MANAGER:</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Lead Classification:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="leadOpen" name="lead_classification" value="open" {% if assessment.lead_classification == 'open' %}checked{% endif %}>
+                                <label for="leadOpen">Open</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="leadClosed" name="lead_classification" value="closed" {% if assessment.lead_classification == 'closed' %}checked{% endif %}>
+                                <label for="leadClosed">Closed</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Classification (appears only if Open selected) -->
+                <div class="conditional-section" id="customerClassificationSection">
+                    <label>Customer Classification:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="radio" id="nth" name="customer_classification" value="nth" {% if assessment.customer_classification == 'nth' %}checked{% endif %}>
+                            <label for="nth">NTH</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="warm" name="customer_classification" value="warm" {% if assessment.customer_classification == 'warm' %}checked{% endif %}>
+                            <label for="warm">Warm</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="cold" name="customer_classification" value="cold" {% if assessment.customer_classification == 'cold' %}checked{% endif %}>
+                            <label for="cold">Cold</label>
+                        </div>
+                    </div>
+                    <div class="note">This options pops only if "Open" selected</div>
+                </div>
+
+                <!-- Reason for Closed (appears only if Closed selected) -->
+                <div class="conditional-section" id="reasonClosedSection">
+                    <label>Reason for Closed:</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="radio" id="lowBudget" name="reason_for_closed" value="low_budget" {% if assessment.reason_for_closed == 'low_budget' %}checked{% endif %}>
+                            <label for="lowBudget">Low Budget</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="readyBuyers" name="reason_for_closed" value="ready_buyers" {% if assessment.reason_for_closed == 'ready_buyers' %}checked{% endif %}>
+                            <label for="readyBuyers">Ready Buyers</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="productRelated" name="reason_for_closed" value="product_related" {% if assessment.reason_for_closed == 'product_related' %}checked{% endif %}>
+                            <label for="productRelated">Product related</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="loanRelated" name="reason_for_closed" value="loan_related" {% if assessment.reason_for_closed == 'loan_related' %}checked{% endif %}>
+                            <label for="loanRelated">Loan related</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="vasttu" name="reason_for_closed" value="vasttu" {% if assessment.reason_for_closed == 'vasttu' %}checked{% endif %}>
+                            <label for="vasttu">Vasttu</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="locationRelated" name="reason_for_closed" value="location_related" {% if assessment.reason_for_closed == 'location_related' %}checked{% endif %}>
+                            <label for="locationRelated">Location related</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="lackInventory" name="reason_for_closed" value="lack_of_inventory" {% if assessment.reason_for_closed == 'lack_of_inventory' %}checked{% endif %}>
+                            <label for="lackInventory">Lack of inventory</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="radio" id="othersReason" name="reason_for_closed" value="others" {% if assessment.reason_for_closed == 'others' %}checked{% endif %}>
+                            <label for="othersReason">Others</label>
+                        </div>
+                    </div>
+                    <div class="note">This options pops only if "Closed" selected</div>
+                </div>
+            </div>
+
+            <!-- Customer's Current Residence -->
+            <div class="form-section">
+                <h3>Customer's Current Residence:</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Configuration:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="current1bhk" name="current_residence_config" value="1bhk" {% if assessment.current_residence_config == '1bhk' %}checked{% endif %}>
+                                <label for="current1bhk">1 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="current2bhk" name="current_residence_config" value="2bhk" {% if assessment.current_residence_config == '2bhk' %}checked{% endif %}>
+                                <label for="current2bhk">2 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="current3bhk" name="current_residence_config" value="3bhk" {% if assessment.current_residence_config == '3bhk' %}checked{% endif %}>
+                                <label for="current3bhk">3 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="current4bhk" name="current_residence_config" value="4bhk" {% if assessment.current_residence_config == '4bhk' %}checked{% endif %}>
+                                <label for="current4bhk">4 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="currentPlot" name="current_residence_config" value="plot" {% if assessment.current_residence_config == 'plot' %}checked{% endif %}>
+                                <label for="currentPlot">Plot</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ownership:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="owned" name="current_residence_ownership" value="owned" {% if assessment.current_residence_ownership == 'owned' %}checked{% endif %}>
+                                <label for="owned">Owned</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="selfOwned" name="current_residence_ownership" value="self_owned" {% if assessment.current_residence_ownership == 'self_owned' %}checked{% endif %}>
+                                <label for="selfOwned">Self-Owned</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="rented" name="current_residence_ownership" value="rented" {% if assessment.current_residence_ownership == 'rented' %}checked{% endif %}>
+                                <label for="rented">Rented</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label>Family Size:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="family2" name="family_size" value="2" {% if assessment.family_size == '2' %}checked{% endif %}>
+                                <label for="family2">2</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="family3" name="family_size" value="3" {% if assessment.family_size == '3' %}checked{% endif %}>
+                                <label for="family3">3</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="family4" name="family_size" value="4" {% if assessment.family_size == '4' %}checked{% endif %}>
+                                <label for="family4">4</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="family5" name="family_size" value="5" {% if assessment.family_size == '5' %}checked{% endif %}>
+                                <label for="family5">5</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="family6" name="family_size" value="6" {% if assessment.family_size == '6' %}checked{% endif %}>
+                                <label for="family6">6</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="familyMore" name="family_size" value=">6" {% if assessment.family_size == '>6' %}checked{% endif %}>
+                                <label for="familyMore">>6</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer's Desired Requirement -->
+            <div class="form-section">
+                <h3>Customer's Desired Requirement:</h3>
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="desiredArea">Area of flat customer is looking for:</label>
+                        <input type="text" id="desiredArea" name="desired_flat_area" value="{{ assessment.desired_flat_area|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Source Of Funding:</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="selfFunding" name="source_of_funding" value="self_funding" {% if assessment.source_of_funding == 'self_funding' %}checked{% endif %}>
+                                <label for="selfFunding">Self-Funding</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="currentPropertySale" name="source_of_funding" value="current_property_sale" {% if assessment.source_of_funding == 'current_property_sale' %}checked{% endif %}>
+                                <label for="currentPropertySale">Current Property Sale</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="loan" name="source_of_funding" value="loan" {% if assessment.source_of_funding == 'loan' %}checked{% endif %}>
+                                <label for="loan">Loan</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ethnicity:</label>
+                        <select name="ethnicity">
+                            <option value="">Select Ethnicity</option>
+                            <option value="marwadi" {% if assessment.ethnicity == 'marwadi' %}selected{% endif %}>Marwadi</option>
+                            <option value="gujarati" {% if assessment.ethnicity == 'gujarati' %}selected{% endif %}>Gujarati</option>
+                            <option value="maharashtrian" {% if assessment.ethnicity == 'maharashtrian' %}selected{% endif %}>Maharashtrian</option>
+                            <option value="bengali" {% if assessment.ethnicity == 'bengali' %}selected{% endif %}>Bengali</option>
+                            <option value="christian" {% if assessment.ethnicity == 'christian' %}selected{% endif %}>Christian</option>
+                            <option value="muslim" {% if assessment.ethnicity == 'muslim' %}selected{% endif %}>Muslim</option>
+                            <option value="parsi" {% if assessment.ethnicity == 'parsi' %}selected{% endif %}>Parsi</option>
+                            <option value="jain" {% if assessment.ethnicity == 'jain' %}selected{% endif %}>Jain</option>
+                            <option value="sindhi" {% if assessment.ethnicity == 'sindhi' %}selected{% endif %}>Sindhi</option>
+                            <option value="others" {% if assessment.ethnicity == 'others' %}selected{% endif %}>Others</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="form-section">
+                <h3>Additional Information:</h3>
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="otherProjects">Other Projects Considered By The Customer:</label>
+                        <textarea id="otherProjects" name="other_projects_considered" rows="4">{{ assessment.other_projects_considered|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="salesRemarks">Sales Manager Remarks About Customer:</label>
+                        <textarea id="salesRemarks" name="sales_manager_remarks" rows="4">{{ assessment.sales_manager_remarks|default:'' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Save Assessment</button>
+        </form>
+    </div>
+
+    <script>
+        // Show/hide conditional sections based on lead classification
+        const openRadio = document.getElementById('leadOpen');
+        const closedRadio = document.getElementById('leadClosed');
+        const customerClassificationSection = document.getElementById('customerClassificationSection');
+        const reasonClosedSection = document.getElementById('reasonClosedSection');
+
+        function toggleSections() {
+            if (openRadio.checked) {
+                customerClassificationSection.classList.add('show');
+                reasonClosedSection.classList.remove('show');
+            } else if (closedRadio.checked) {
+                customerClassificationSection.classList.remove('show');
+                reasonClosedSection.classList.add('show');
+            } else {
+                customerClassificationSection.classList.remove('show');
+                reasonClosedSection.classList.remove('show');
+            }
+        }
+
+        // Initial setup based on existing values
+        toggleSections();
+
+        // Event listeners
+        openRadio.addEventListener('change', toggleSections);
+        closedRadio.addEventListener('change', toggleSections);
+    </script>
+</body>
+</html>
