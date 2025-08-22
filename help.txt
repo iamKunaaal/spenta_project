@@ -1,0 +1,12 @@
+# 1. Make your code changes
+# 2. Check what changed
+git status
+
+# 3. Add changes
+git add .
+
+# 4. Commit changes
+git commit -m "Description of what you changed"
+
+# 5. Push to GitHub
+git push origin main
