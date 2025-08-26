@@ -7,18 +7,22 @@ urlpatterns = [
     # Main verification page (home page)
     path('', views.customer_verification_view, name='verification'),
     
-    # Property-specific verification URLs - NEW ADDITION
+    # Property-specific verification URLs - UPDATED WITH ALL 5 PROPERTIES
     path('altavista/', views.property_verification_view, {'property_code': 'Alt'}, name='altavista_verification'),
-    path('spenta-medius/', views.property_verification_view, {'property_code': 'Med'}, name='medius_verification'),
-    path('stardeous/', views.property_verification_view, {'property_code': 'Star'}, name='stardeous_verification'),
+    path('ornata/', views.property_verification_view, {'property_code': 'Orn'}, name='ornata_verification'),  # NEW
+    path('medius/', views.property_verification_view, {'property_code': 'Med'}, name='medius_verification'),  # UPDATED
+    path('spenta-stardeous/', views.property_verification_view, {'property_code': 'Star'}, name='stardeous_verification'),  # UPDATED
+    path('spenta-anthea/', views.property_verification_view, {'property_code': 'Ant'}, name='anthea_verification'),  # NEW
     
     # Customer form page (requires verification)
     path('customer-form/', views.index, name='customer_form'),
     
-    # Property-specific customer form URLs - NEW ADDITION
+    # Property-specific customer form URLs - UPDATED WITH ALL 5 PROPERTIES
     path('altavista/customer-form/', views.property_customer_form, {'property_code': 'Alt'}, name='altavista_form'),
-    path('spenta-medius/customer-form/', views.property_customer_form, {'property_code': 'Med'}, name='medius_form'),
-    path('stardeous/customer-form/', views.property_customer_form, {'property_code': 'Star'}, name='stardeous_form'),
+    path('ornata/customer-form/', views.property_customer_form, {'property_code': 'Orn'}, name='ornata_form'),  # NEW
+    path('medius/customer-form/', views.property_customer_form, {'property_code': 'Med'}, name='medius_form'),  # UPDATED
+    path('spenta-stardeous/customer-form/', views.property_customer_form, {'property_code': 'Star'}, name='stardeous_form'),  # UPDATED
+    path('spenta-anthea/customer-form/', views.property_customer_form, {'property_code': 'Ant'}, name='anthea_form'),  # NEW
     
     # Keep your existing URLs exactly as they were working
     path('verification/', views.customer_verification_view, name='customer_verification'),

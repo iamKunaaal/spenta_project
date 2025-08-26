@@ -21,18 +21,74 @@ from django.views.decorators.csrf import csrf_exempt
 import io
 from django.db import models
 from django.db.models import Q
+from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.urls import reverse_lazy
+from django.contrib.auth.views import PasswordResetView
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-def index(request):
-    """Display the customer form"""
-    return render(request, 'customer_enquiry.html')
+# Updated property mapping - removed 'CIF' and added new properties
+PROPERTY_MAPPING = {
+    'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
+    'Orn': {'name': 'Ornata', 'location': 'Mumbai'},
+    'Med': {'name': 'Medius', 'location': 'Mumbai'},
+    'Star': {'name': 'Spenta Stardeous', 'location': 'Mumbai'},
+    'Ant': {'name': 'Spenta Anthea', 'location': 'Mumbai'},
+}
+
+def index(request, property_code=None):
+    """
+    Display the customer form - Updated to use the new property mapping
+    """
+    # Get property from URL parameter if provided
+    if property_code:
+        # Handle property-specific form - Updated with new properties
+        if property_code in PROPERTY_MAPPING:
+            selected_property = {
+                'code': property_code,
+                'name': PROPERTY_MAPPING[property_code]['name'],
+                'location': PROPERTY_MAPPING[property_code]['location']
+            }
+        else:
+            selected_property = None
+    else:
+        selected_property = None
+    
+    # Get property from GET parameter (from verification page)
+    get_property = request.GET.get('property')
+    if get_property and not selected_property:
+        if get_property in PROPERTY_MAPPING:
+            selected_property = {
+                'code': get_property,
+                'name': PROPERTY_MAPPING[get_property]['name'],
+                'location': PROPERTY_MAPPING[get_property]['location']
+            }
+    
+    context = {
+        'selected_property': selected_property,
+        'property_code': property_code or get_property,
+    }
+    
+    # Use the new template name that matches your current working form
+    return render(request, 'customer_enquiry.html', context)
 
 def thank_you(request):
-    """Display thank you page"""
+    """Display thank you page - NO AUTH CHECK"""
     # Get customer data from session if available
     customer_data = request.session.get('customer_data', None)
-    context = {'customer_data': customer_data}
+    
+    context = {
+        'customer_data': customer_data,
+        'form_number': customer_data.get('form_number', 'N/A') if customer_data else 'N/A',
+        'customer_name': customer_data.get('customer_name', 'Customer') if customer_data else 'Customer',
+        'property_name': customer_data.get('property_name', 'Property') if customer_data else 'Property'
+    }
     
     # Clear session data after use
     if 'customer_data' in request.session:
@@ -42,10 +98,9 @@ def thank_you(request):
 
 
 
-
 @require_http_methods(["POST"])
 def customer_submit_view(request):
-    """Handle customer form submission with property support and phone number"""
+    """Handle customer form submission with property support, phone number, sex, and marital status"""
     try:
         with transaction.atomic():
             # Extract and validate data
@@ -63,21 +118,24 @@ def customer_submit_view(request):
                     messages.error(request, error_msg)
                     return HttpResponse('Property required', status=400)
             
-            # Property mapping
+            # Updated property mapping - removed Default Property
             property_mapping = {
                 'Alt': 'Altavista',
-                'Med': 'Spenta Medius', 
-                'Star': 'Stardeous'
+                'Orn': 'Ornata',
+                'Med': 'Medius', 
+                'Star': 'Spenta Stardeous',
+                'Ant': 'Spenta Anthea'
             }
             
             property_name = property_mapping.get(property_code, property_code)
             
-            # Check required fields
+            # Check required fields - UPDATED: Added sex and marital_status, removed date_of_birth and residential_address
             required_fields = [
-                'first_name', 'last_name', 'email', 'date_of_birth',
-                'residential_address', 'city', 'locality', 'pincode',
+                'first_name', 'last_name', 'email',
+                'city', 'locality', 'pincode',
                 'nationality', 'employment_type', 'configuration',
-                'budget', 'construction_status', 'purpose_of_buying'
+                'budget', 'construction_status', 'purpose_of_buying',
+                'sex', 'marital_status'  # ADDED: New required fields
             ]
             
             missing_fields = [field for field in required_fields if not data.get(field)]
@@ -106,12 +164,43 @@ def customer_submit_view(request):
                 else:
                     return HttpResponse('Invalid phone number', status=400)
             
+            # Validate sex and marital_status choices
+            valid_sex_choices = ['male', 'female', 'other']
+            valid_marital_choices = ['single', 'married', 'divorced', 'widowed', 'other']
+            
+            sex = data.get('sex', '')
+            marital_status = data.get('marital_status', '')
+            
+            if sex not in valid_sex_choices:
+                error_msg = 'Please select a valid sex option'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': error_msg})
+                else:
+                    return HttpResponse('Invalid sex selection', status=400)
+            
+            if marital_status not in valid_marital_choices:
+                error_msg = 'Please select a valid marital status option'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': error_msg})
+                else:
+                    return HttpResponse('Invalid marital status selection', status=400)
+            
             # Generate form number based on property
             import time
             timestamp = str(int(time.time()))[-5:]  # Last 5 digits of timestamp
             form_number = f"{property_code}-{timestamp}"
             
-            # Create customer
+            # Handle optional date_of_birth field
+            date_of_birth = data.get('date_of_birth', '').strip()
+            if not date_of_birth:
+                # If no date provided, use a default date or handle appropriately
+                # Option 1: Use today's date (not recommended)
+                # date_of_birth = datetime.now().date()
+                
+                # Option 2: Use a placeholder date (better for now)
+                date_of_birth = '1900-01-01'  # Placeholder date
+                
+            # Create customer - UPDATED: Added sex and marital_status fields, made date_of_birth and residential_address optional
             customer = Customer.objects.create(
                 form_number=form_number,
                 form_date=data.get('form_date', datetime.now().date()),
@@ -119,9 +208,11 @@ def customer_submit_view(request):
                 middle_name=data.get('middle_name', ''),
                 last_name=data.get('last_name'),
                 email=data.get('email'),
-                phone_number=phone_number if phone_number else None,  # ADDED: Phone number
-                date_of_birth=data.get('date_of_birth'),
-                residential_address=data.get('residential_address'),
+                phone_number=phone_number if phone_number else None,
+                sex=sex,  # ADDED: Sex field
+                marital_status=marital_status,  # ADDED: Marital status field
+                date_of_birth=date_of_birth,  # Handle empty dates
+                residential_address=data.get('residential_address', ''),  # OPTIONAL - empty string if not provided
                 city=data.get('city'),
                 locality=data.get('locality'),
                 pincode=pincode,
@@ -217,13 +308,6 @@ def logout_view(request):
     logout(request)
     return redirect('customer_enquiry:login')
 
-
-# @login_required
-# def dashboard(request):
-#     customers = Customer.objects.select_related('sales_assessment').prefetch_related('sources').order_by('-created_at')
-#     return render(request, 'dashboard.html', {'customers': customers})
-
-
 @login_required
 def dashboard(request):
     """Enhanced dashboard with filtering capabilities"""
@@ -270,9 +354,6 @@ def dashboard(request):
         customers = customers.filter(booking_applications__isnull=True)
     
     return render(request, 'dashboard.html', {'customers': customers})
-
-
-
 
 @login_required
 @csrf_exempt
@@ -325,13 +406,27 @@ def export_leads(request):
         # Prepare data for Excel
         data = []
         for customer in customers:
-            # Get property name
+            # Get property name - Updated with new properties
             property_code = customer.form_number[:3] if customer.form_number else ''
+            # Handle different property code lengths
+            if customer.form_number:
+                if customer.form_number.startswith('Star'):
+                    property_code = 'Star'
+                elif customer.form_number.startswith('Ant'):
+                    property_code = 'Ant'
+                elif customer.form_number.startswith('Orn'):
+                    property_code = 'Orn'
+                elif customer.form_number.startswith('Med'):
+                    property_code = 'Med'
+                elif customer.form_number.startswith('Alt'):
+                    property_code = 'Alt'
+            
             property_names = {
                 'Alt': 'Altavista',
-                'Med': 'Spenta Medius',
-                'Star': 'Stardeous',
-                'CIF': 'Default Property'
+                'Orn': 'Ornata',
+                'Med': 'Medius',
+                'Star': 'Spenta Stardeous',
+                'Ant': 'Spenta Anthea'
             }
             property_name = property_names.get(property_code, property_code)
             
@@ -362,7 +457,8 @@ def export_leads(request):
                 'Company Name': customer.company_name or '',
                 'Designation': customer.designation or '',
                 'Industry': customer.industry or '',
-                # REMOVED: Configuration and Budget fields
+                'Configuration': customer.configuration,
+                'Budget': customer.budget,
                 'Construction Status': customer.get_construction_status_display(),
                 'Purpose of Buying': customer.get_purpose_of_buying_display(),
                 'Lead Sources': sources,
@@ -416,13 +512,8 @@ def export_leads(request):
     
     return HttpResponse('Method not allowed', status=405)
 
-
-
-
-
-@login_required
 def edit_customer(request, pk):
-    """Edit customer with phone number support"""
+    """Edit customer with phone number, sex, and marital status support"""
     customer = get_object_or_404(Customer, pk=pk)
 
     if request.method == 'POST':
@@ -441,8 +532,37 @@ def edit_customer(request, pk):
                     return redirect('customer_enquiry:edit_customer', pk=pk)
                 customer.phone_number = phone_number if phone_number else None
                 
-                customer.date_of_birth = request.POST.get('date_of_birth')
-                customer.residential_address = request.POST.get('residential_address')
+                # ADDED: Sex and Marital Status handling
+                sex = request.POST.get('sex')
+                marital_status = request.POST.get('marital_status')
+                
+                if sex:
+                    valid_sex_choices = ['male', 'female', 'other']
+                    if sex in valid_sex_choices:
+                        customer.sex = sex
+                    else:
+                        messages.error(request, 'Please select a valid sex option')
+                        return redirect('customer_enquiry:edit_customer', pk=pk)
+                
+                if marital_status:
+                    valid_marital_choices = ['single', 'married', 'divorced', 'widowed', 'other']
+                    if marital_status in valid_marital_choices:
+                        customer.marital_status = marital_status
+                    else:
+                        messages.error(request, 'Please select a valid marital status option')
+                        return redirect('customer_enquiry:edit_customer', pk=pk)
+                
+                # Handle optional date_of_birth field in edit
+                date_of_birth = request.POST.get('date_of_birth', '').strip()
+                if not date_of_birth:
+                    # If no date provided, keep existing value or use placeholder
+                    if customer.date_of_birth:
+                        date_of_birth = customer.date_of_birth  # Keep existing value
+                    else:
+                        date_of_birth = '1900-01-01'  # Placeholder date
+                
+                customer.date_of_birth = date_of_birth  # Handle empty dates
+                customer.residential_address = request.POST.get('residential_address', '')  # OPTIONAL - empty string if not provided
                 customer.city = request.POST.get('city')
                 customer.locality = request.POST.get('locality')
                 customer.pincode = request.POST.get('pincode')
@@ -535,7 +655,6 @@ def edit_customer(request, pk):
         
         return render(request, 'edit_customer.html', context)
 
-
 @login_required
 def internal_sales_assessment(request, customer_id):
     """Create or edit internal sales assessment for a customer"""
@@ -597,7 +716,6 @@ def internal_sales_assessment(request, customer_id):
     
     return render(request, 'internal_sales_assessment.html', context)
 
-
 # BOOKING FORM VIEWS
 @login_required
 def booking_form_view(request, customer_id):
@@ -620,7 +738,6 @@ def booking_form_view(request, customer_id):
     elif request.method == 'POST':
         # Form submission handle karo
         return handle_booking_submission(request, customer)
-
 
 def prepare_prefilled_data(customer):
     """
@@ -653,7 +770,6 @@ def prepare_prefilled_data(customer):
     
     return prefilled_data
 
-
 def get_title_from_customer(customer):
     """
     Customer name se title guess karo (basic logic)
@@ -663,7 +779,6 @@ def get_title_from_customer(customer):
     if first_name.endswith('a') or first_name in ['priya', 'rani', 'devi']:
         return 'Ms'
     return 'Mr'
-
 
 def map_nationality_to_residential_status(nationality):
     """
@@ -677,7 +792,6 @@ def map_nationality_to_residential_status(nationality):
     }
     return mapping.get(nationality, 'indian')
 
-
 def map_employment_type(employment_type):
     """
     Customer employment type ko booking form employment type mein convert karo
@@ -690,7 +804,6 @@ def map_employment_type(employment_type):
         'homemaker': 'salaried'  # Default
     }
     return mapping.get(employment_type, 'salaried')
-
 
 def get_state_from_city(city):
     """
@@ -709,7 +822,6 @@ def get_state_from_city(city):
     }
     
     return city_state_mapping.get(city.lower(), 'Maharashtra')  # Default
-
 
 def handle_booking_submission(request, customer):
     """
@@ -796,7 +908,6 @@ def handle_booking_submission(request, customer):
             messages.error(request, f'Error creating booking: {str(e)}')
             return redirect('customer_enquiry:booking_form', customer_id=customer.id)
 
-
 def create_applicants(request, booking_app):
     """
     Multiple applicants create karo
@@ -854,7 +965,6 @@ def create_applicants(request, booking_app):
                 logger.error(f"Error creating applicant {i}: {str(e)}")
                 continue
 
-
 def create_channel_partner(request, booking_app):
     """
     Channel partner create karo (if details provided)
@@ -874,7 +984,6 @@ def create_channel_partner(request, booking_app):
         except Exception as e:
             logger.error(f"Error creating channel partner: {str(e)}")
 
-
 def generate_booking_pdf(request, booking_app):
     """
     PDF generate karo aur download karo - Basic implementation
@@ -889,16 +998,9 @@ def generate_booking_pdf(request, booking_app):
         'redirect_url': reverse('customer_enquiry:dashboard')
     })
 
-
-
-
-
-
-
-
 def user_login_view(request):
     """
-    User login page with OTP verification and property selection
+    User login page with OTP verification and property selection - Updated with new properties
     """
     if request.method == 'GET':
         return render(request, 'customer-verification.html')
@@ -932,8 +1034,8 @@ def user_login_view(request):
             messages.error(request, 'Invalid OTP. Please try again.')
             return render(request, 'customer-verification.html')
         
-        # Validate property code
-        valid_properties = ['Alt', 'Med', 'Star']
+        # Validate property code - Updated with new properties
+        valid_properties = ['Alt', 'Orn', 'Med', 'Star', 'Ant']
         if property_code not in valid_properties:
             messages.error(request, 'Please select a valid property.')
             return render(request, 'customer-verification.html')
@@ -950,7 +1052,6 @@ def user_login_view(request):
         # Success - redirect to property-specific form
         messages.success(request, 'Login successful!')
         return redirect('customer_enquiry:property_form', property_code=property_code)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -992,67 +1093,57 @@ def send_otp_view(request):
             'message': 'Failed to send OTP'
         })
 
-
-def logout_view(request):
+def property_verification_view(request, property_code):
     """
-    Logout user and clear session
+    Property-specific verification page with auto-selected property - Updated with new properties
     """
-    # Clear all session data
-    request.session.flush()
-    messages.success(request, 'Logged out successfully!')
-    return redirect('customer_enquiry:user_login')
-
-
-
-
-def index(request, property_code=None):
-    """
-    Display the customer form - Updated to use the new template name
-    """
-    # Get property from URL parameter if provided
-    if property_code:
-        # Handle property-specific form
-        property_mapping = {
-            'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
-            'Med': {'name': 'Spenta Medius', 'location': 'Mumbai'},
-            'Star': {'name': 'Stardeous', 'location': 'Mumbai'}
-        }
-        
-        if property_code in property_mapping:
-            selected_property = {
-                'code': property_code,
-                'name': property_mapping[property_code]['name'],
-                'location': property_mapping[property_code]['location']
-            }
-        else:
-            selected_property = None
-    else:
-        selected_property = None
+    # Updated property mapping
+    if property_code not in PROPERTY_MAPPING:
+        # Invalid property code, redirect to main verification
+        return redirect('customer_enquiry:verification')
     
-    # Get property from GET parameter (from verification page)
-    get_property = request.GET.get('property')
-    if get_property and not selected_property:
-        property_mapping = {
-            'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
-            'Med': {'name': 'Spenta Medius', 'location': 'Mumbai'},
-            'Star': {'name': 'Stardeous', 'location': 'Mumbai'}
-        }
-        
-        if get_property in property_mapping:
-            selected_property = {
-                'code': get_property,
-                'name': property_mapping[get_property]['name'],
-                'location': property_mapping[get_property]['location']
-            }
+    selected_property = {
+        'code': property_code,
+        'name': PROPERTY_MAPPING[property_code]['name'],
+        'location': PROPERTY_MAPPING[property_code]['location']
+    }
     
     context = {
         'selected_property': selected_property,
-        'property_code': property_code or get_property,
+        'property_code': property_code,
+        'auto_selected': True  # Flag to indicate auto-selection
     }
     
-    # Use the new template name that matches your current working form
+    return render(request, 'customer-verification.html', context)
+
+def property_customer_form(request, property_code):
+    """
+    Property-specific customer form with auto-selected property - Updated with new properties
+    """
+    # Updated property mapping
+    if property_code not in PROPERTY_MAPPING:
+        # Invalid property code, redirect to main form
+        return redirect('customer_enquiry:customer_form')
+    
+    selected_property = {
+        'code': property_code,
+        'name': PROPERTY_MAPPING[property_code]['name'],
+        'location': PROPERTY_MAPPING[property_code]['location']
+    }
+    
+    context = {
+        'selected_property': selected_property,
+        'property_code': property_code,
+        'auto_selected': True  # Flag to indicate auto-selection
+    }
+    
     return render(request, 'customer_enquiry.html', context)
 
+def customer_verification_view(request):
+    """
+    Customer verification page (temporary implementation)
+    """
+    return render(request, 'customer-verification.html')
 
 # Decorator to check user authentication
 def login_required_custom(view_func):
@@ -1065,98 +1156,3 @@ def login_required_custom(view_func):
             return redirect('customer_enquiry:user_login')
         return view_func(request, *args, **kwargs)
     return wrapper
-
-
-# Apply decorator to your existing views
-# @login_required_custom
-def thank_you(request):
-    """Display thank you page - NO AUTH CHECK"""
-    # Get customer data from session if available
-    customer_data = request.session.get('customer_data', None)
-    
-    context = {
-        'customer_data': customer_data,
-        'form_number': customer_data.get('form_number', 'N/A') if customer_data else 'N/A',
-        'customer_name': customer_data.get('customer_name', 'Customer') if customer_data else 'Customer',
-        'property_name': customer_data.get('property_name', 'Property') if customer_data else 'Property'
-    }
-    
-    # Clear session data after use
-    if 'customer_data' in request.session:
-        del request.session['customer_data']
-    
-    return render(request, 'thank-you.html', context)
-
-
-
-def customer_verification_view(request):
-    """
-    Customer verification page (temporary implementation)
-    """
-    return render(request, 'customer-verification.html')    
-
-
-
-
-
-
-
-
-def property_verification_view(request, property_code):
-    """
-    Property-specific verification page with auto-selected property
-    """
-    # Property mapping
-    property_mapping = {
-        'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
-        'Med': {'name': 'Spenta Medius', 'location': 'Mumbai'},
-        'Star': {'name': 'Stardeous', 'location': 'Mumbai'}
-    }
-    
-    if property_code not in property_mapping:
-        # Invalid property code, redirect to main verification
-        return redirect('customer_enquiry:verification')
-    
-    selected_property = {
-        'code': property_code,
-        'name': property_mapping[property_code]['name'],
-        'location': property_mapping[property_code]['location']
-    }
-    
-    context = {
-        'selected_property': selected_property,
-        'property_code': property_code,
-        'auto_selected': True  # Flag to indicate auto-selection
-    }
-    
-    return render(request, 'customer-verification.html', context)
-
-
-def property_customer_form(request, property_code):
-    """
-    Property-specific customer form with auto-selected property
-    """
-    # Property mapping
-    property_mapping = {
-        'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
-        'Med': {'name': 'Spenta Medius', 'location': 'Mumbai'},
-        'Star': {'name': 'Stardeous', 'location': 'Mumbai'}
-    }
-    
-    if property_code not in property_mapping:
-        # Invalid property code, redirect to main form
-        return redirect('customer_enquiry:customer_form')
-    
-    selected_property = {
-        'code': property_code,
-        'name': property_mapping[property_code]['name'],
-        'location': property_mapping[property_code]['location']
-    }
-    
-    context = {
-        'selected_property': selected_property,
-        'property_code': property_code,
-        'auto_selected': True  # Flag to indicate auto-selection
-    }
-    
-    return render(request, 'customer_enquiry.html', context)

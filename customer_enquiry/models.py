@@ -3,150 +3,6 @@ from django.core.validators import RegexValidator, EmailValidator
 from django.utils import timezone
 
 
-# class Customer(models.Model):
-#     """
-#     Main customer information model that stores all form data
-#     """
-    
-#     # Nationality Choices
-#     NATIONALITY_CHOICES = [
-#         ('indian', 'Indian'),
-#         ('nri', 'NRI'),
-#         ('pio', 'PIO'),
-#         ('oci', 'OCI'),
-#     ]
-    
-#     # Employment Type Choices
-#     EMPLOYMENT_CHOICES = [
-#         ('salaried', 'Salaried'),
-#         ('business', 'Business'),
-#         ('professional', 'Professional'),
-#         ('retired', 'Retired'),
-#         ('homemaker', 'Homemaker'),
-#     ]
-    
-#     # Configuration Choices
-#     CONFIGURATION_CHOICES = [
-#         ('2bhk', '2 BHK'),
-#         ('3bhk', '3 BHK'),
-#         ('4bhk', '4 BHK'),
-#     ]
-    
-#     # Budget Choices
-#     BUDGET_CHOICES = [
-#         ('3.5-4.00cr', '3.5 - 4.00 Cr.'),
-#         ('4.5-5.00cr', '4.5 - 5.00 Cr.'),
-#         ('6.00-7.00cr', '6.00 - 7.00 Cr.'),
-#     ]
-    
-#     # Construction Status Choices
-#     CONSTRUCTION_STATUS_CHOICES = [
-#         ('under_construction', 'Under Construction (>1 yr)'),
-#         ('near_completion', 'Near Completion (<1 yr)'),
-#         ('ready_possession', 'Ready Possession'),
-#     ]
-    
-#     # Purpose of Buying Choices
-#     PURPOSE_CHOICES = [
-#         ('personal_use', 'Personal Use'),
-#         ('investment', 'Investment'),
-#         ('second_home', 'Second Home'),
-#         ('gift', 'Gift'),
-#     ]
-    
-#     # Form Meta Information
-#     form_number = models.CharField(
-#         max_length=20, 
-#         unique=True,
-#         help_text="Auto-generated form number"
-#     )
-#     form_date = models.DateField(default=timezone.now)
-    
-#     # Personal Details
-#     first_name = models.CharField(max_length=100)
-#     middle_name = models.CharField(max_length=100, blank=True)
-#     last_name = models.CharField(max_length=100)
-#     email = models.EmailField(validators=[EmailValidator()])
-#     date_of_birth = models.DateField()
-#     residential_address = models.TextField()
-#     city = models.CharField(max_length=100)
-#     locality = models.CharField(max_length=100)
-    
-#     # Pincode with validation
-#     pincode = models.CharField(
-#         max_length=6,
-#         validators=[RegexValidator(
-#             regex=r'^\d{6}$',
-#             message='Pincode must be 6 digits'
-#         )]
-#     )
-    
-#     nationality = models.CharField(
-#         max_length=10,
-#         choices=NATIONALITY_CHOICES
-#     )
-    
-#     # Employment Details
-#     employment_type = models.CharField(
-#         max_length=15,
-#         choices=EMPLOYMENT_CHOICES
-#     )
-#     company_name = models.CharField(max_length=200, blank=True)
-#     designation = models.CharField(max_length=100, blank=True)
-#     industry = models.CharField(max_length=100, blank=True)
-    
-#     # Customer Requirements
-#     configuration = models.CharField(
-#         max_length=10,
-#         choices=CONFIGURATION_CHOICES
-#     )
-#     budget = models.CharField(
-#         max_length=15,
-#         choices=BUDGET_CHOICES
-#     )
-#     construction_status = models.CharField(
-#         max_length=20,
-#         choices=CONSTRUCTION_STATUS_CHOICES
-#     )
-#     purpose_of_buying = models.CharField(
-#         max_length=15,
-#         choices=PURPOSE_CHOICES
-#     )
-    
-#     # Source Details
-#     source_details = models.TextField(
-#         blank=True,
-#         help_text="Additional details for Newspaper Ad, Social Media, Exhibition, or Property Portal"
-#     )
-    
-#     # Timestamps
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-    
-#     class Meta:
-#         db_table = 'customers'
-#         ordering = ['-created_at']
-#         verbose_name = 'Customer'
-#         verbose_name_plural = 'Customers'
-    
-#     def __str__(self):
-#         return f"{self.first_name} {self.last_name} - {self.form_number}"
-    
-#     def get_full_name(self):
-#         """Return the customer's full name"""
-#         if self.middle_name:
-#             return f"{self.first_name} {self.middle_name} {self.last_name}"
-#         return f"{self.first_name} {self.last_name}"
-    
-#     def get_complete_address(self):
-#         """Return complete formatted address"""
-#         return f"{self.residential_address}, {self.locality}, {self.city} - {self.pincode}"
-
-
-
-
-
-
 class Customer(models.Model):
     """
     Main customer information model that stores all form data
@@ -160,27 +16,52 @@ class Customer(models.Model):
         ('oci', 'OCI'),
     ]
     
-    # Employment Type Choices
+    # Employment Type Choices - UPDATED: Added "Other" option
     EMPLOYMENT_CHOICES = [
         ('salaried', 'Salaried'),
         ('business', 'Business'),
         ('professional', 'Professional'),
         ('retired', 'Retired'),
         ('homemaker', 'Homemaker'),
+        ('other', 'Other'),  # NEW OPTION ADDED
     ]
     
-    # Configuration Choices
+    # NEW: Sex/Gender Choices
+    SEX_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
+    
+    # NEW: Marital Status Choices
+    MARITAL_STATUS_CHOICES = [
+        ('single', 'Single'),
+        ('married', 'Married'),
+        ('divorced', 'Divorced'),
+        ('widowed', 'Widowed'),
+        ('other', 'Other'),
+    ]
+    
+    # Configuration Choices - UPDATED: Added more BHK options, Duplex, and Other
     CONFIGURATION_CHOICES = [
+        ('1bhk', '1 BHK'),
+        ('1.5bhk', '1.5 BHK'),
         ('2bhk', '2 BHK'),
+        ('2.5bhk', '2.5 BHK'),
         ('3bhk', '3 BHK'),
+        ('3.5bhk', '3.5 BHK'),
         ('4bhk', '4 BHK'),
+        ('duplex', 'Duplex'),
+        ('other_config', 'Other'),
     ]
     
-    # Budget Choices
+    # Budget Choices - COMPLETELY UPDATED with new ranges
     BUDGET_CHOICES = [
-        ('3.5-4.00cr', '3.5 - 4.00 Cr.'),
-        ('4.5-5.00cr', '4.5 - 5.00 Cr.'),
-        ('6.00-7.00cr', '6.00 - 7.00 Cr.'),
+        ('less_than_1cr', 'Less than 1 Cr.'),
+        ('1cr_to_2cr', '1 Cr. to 2 Cr.'),
+        ('2cr_to_4cr', '2 Cr. to 4 Cr.'),
+        ('4cr_to_6cr', '4 Cr. to 6 Cr.'),
+        ('more_than_6cr', 'More than 6 Cr.'),
     ]
     
     # Construction Status Choices
@@ -224,6 +105,22 @@ class Customer(models.Model):
         help_text="10-digit phone number"
     )
     
+    # NEW: Sex/Gender field
+    sex = models.CharField(
+        max_length=10,
+        choices=SEX_CHOICES,
+        blank=True,
+        help_text="Gender/Sex of the customer"
+    )
+    
+    # NEW: Marital Status field
+    marital_status = models.CharField(
+        max_length=15,
+        choices=MARITAL_STATUS_CHOICES,
+        blank=True,
+        help_text="Marital status of the customer"
+    )
+    
     date_of_birth = models.DateField()
     residential_address = models.TextField()
     city = models.CharField(max_length=100)
@@ -254,11 +151,11 @@ class Customer(models.Model):
     
     # Customer Requirements
     configuration = models.CharField(
-        max_length=10,
+        max_length=15,  # Increased length to accommodate new options
         choices=CONFIGURATION_CHOICES
     )
     budget = models.CharField(
-        max_length=15,
+        max_length=20,  # Increased length for new budget ranges
         choices=BUDGET_CHOICES
     )
     construction_status = models.CharField(
@@ -307,11 +204,6 @@ class Customer(models.Model):
             if len(phone) == 10:
                 return f"{phone[:3]}-{phone[3:6]}-{phone[6:]}"
         return self.phone_number or "Not Provided"
-
-
-
-
-
 
 
 class CustomerSource(models.Model):
@@ -457,8 +349,6 @@ class CustomerManager(models.Manager):
 Customer.add_to_class('objects', CustomerManager())
 
 
-
-
 class InternalSalesAssessment(models.Model):
     """
     Internal sales team assessment form for existing customers
@@ -581,12 +471,6 @@ class InternalSalesAssessment(models.Model):
         return f"Sales Assessment - {self.customer.get_full_name()}"
 
 
-
-# Booking form model
-
-
-# Ye models.py file mein add karo - existing models ke saath
-
 class BookingApplication(models.Model):
     """
     Main booking application model
@@ -698,14 +582,14 @@ class BookingApplicant(models.Model):
     applicant_order = models.IntegerField()  # 1, 2, 3, 4
     
     # Personal details
-    title = models.CharField(max_length=5, choices=TITLE_CHOICES, blank=True)
-    first_name = models.CharField(max_length=100, blank=True)
-    middle_name = models.CharField(max_length=100, blank=True)
-    last_name = models.CharField(max_length=100, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    marital_status = models.CharField(max_length=15, choices=MARITAL_STATUS_CHOICES, blank=True)
-    anniversary_date = models.DateField(null=True, blank=True)
-    sex = models.CharField(max_length=10, choices=SEX_CHOICES, blank=True)
+    title = models.CharField(max_length=5, choices=TITLE_CHOICES, blank=True, null=True)
+    first_name = models.CharField(max_length=100)  # Required - remove blank=True
+    middle_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100)  # Required - remove blank=True
+    date_of_birth = models.DateField(null=True, blank=True)  # Optional - this is correct
+    marital_status = models.CharField(max_length=15, choices=MARITAL_STATUS_CHOICES)  # Required
+    anniversary_date = models.DateField(null=True, blank=True)  # Optional - this is correct
+    sex = models.CharField(max_length=10, choices=SEX_CHOICES)  # Required
     
     # Documents
     pan_no = models.CharField(max_length=10, blank=True)

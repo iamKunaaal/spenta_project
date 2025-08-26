@@ -1,3 +1,7 @@
+{% comment %} Edit Customer Information {% endcomment %}
+
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,6 +216,12 @@
             .container {
                 padding: 20px;
             }
+
+            .radio-group,
+            .checkbox-group {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -272,6 +282,52 @@
                     </div>
                     <div class="form-group">
                         <!-- Empty space to maintain layout -->
+                    </div>
+                </div>
+
+                <!-- NEW: Sex and Marital Status -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sex <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="male" name="sex" value="male" {% if customer.sex == 'male' %}checked{% endif %} required>
+                                <label for="male">Male</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="female" name="sex" value="female" {% if customer.sex == 'female' %}checked{% endif %}>
+                                <label for="female">Female</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="other_sex" name="sex" value="other" {% if customer.sex == 'other' %}checked{% endif %}>
+                                <label for="other_sex">Other</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Marital Status <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="single" name="marital_status" value="single" {% if customer.marital_status == 'single' %}checked{% endif %} required>
+                                <label for="single">Single</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="married" name="marital_status" value="married" {% if customer.marital_status == 'married' %}checked{% endif %}>
+                                <label for="married">Married</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="divorced" name="marital_status" value="divorced" {% if customer.marital_status == 'divorced' %}checked{% endif %}>
+                                <label for="divorced">Divorced</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="widowed" name="marital_status" value="widowed" {% if customer.marital_status == 'widowed' %}checked{% endif %}>
+                                <label for="widowed">Widowed</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="other_marital" name="marital_status" value="other" {% if customer.marital_status == 'other' %}checked{% endif %}>
+                                <label for="other_marital">Other</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -356,15 +412,15 @@
                                 <input type="radio" id="homemaker" name="employment_type" value="homemaker" {% if customer.employment_type == 'homemaker' %}checked{% endif %}>
                                 <label for="homemaker">Homemaker</label>
                             </div>
+                            <div class="radio-item">
+                                <input type="radio" id="other_employment" name="employment_type" value="other" {% if customer.employment_type == 'other' %}checked{% endif %}>
+                                <label for="other_employment">Other</label>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="companyName">Company Name</label>
-                        <input type="text" id="companyName" name="company_name" value="{{ customer.company_name }}">
-                    </div>
                     <div class="form-group">
                         <label for="designation">Designation</label>
                         <input type="text" id="designation" name="designation" value="{{ customer.designation }}">
@@ -388,16 +444,40 @@
                         <label>Configuration <span class="required">*</span></label>
                         <div class="radio-group">
                             <div class="radio-item">
-                                <input type="radio" id="2bhk" name="configuration" value="2bhk" {% if customer.configuration == '2bhk' %}checked{% endif %} required>
+                                <input type="radio" id="1bhk" name="configuration" value="1bhk" {% if customer.configuration == '1bhk' %}checked{% endif %} required>
+                                <label for="1bhk">1 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="1.5bhk" name="configuration" value="1.5bhk" {% if customer.configuration == '1.5bhk' %}checked{% endif %}>
+                                <label for="1.5bhk">1.5 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="2bhk" name="configuration" value="2bhk" {% if customer.configuration == '2bhk' %}checked{% endif %}>
                                 <label for="2bhk">2 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="2.5bhk" name="configuration" value="2.5bhk" {% if customer.configuration == '2.5bhk' %}checked{% endif %}>
+                                <label for="2.5bhk">2.5 BHK</label>
                             </div>
                             <div class="radio-item">
                                 <input type="radio" id="3bhk" name="configuration" value="3bhk" {% if customer.configuration == '3bhk' %}checked{% endif %}>
                                 <label for="3bhk">3 BHK</label>
                             </div>
                             <div class="radio-item">
+                                <input type="radio" id="3.5bhk" name="configuration" value="3.5bhk" {% if customer.configuration == '3.5bhk' %}checked{% endif %}>
+                                <label for="3.5bhk">3.5 BHK</label>
+                            </div>
+                            <div class="radio-item">
                                 <input type="radio" id="4bhk" name="configuration" value="4bhk" {% if customer.configuration == '4bhk' %}checked{% endif %}>
                                 <label for="4bhk">4 BHK</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="duplex" name="configuration" value="duplex" {% if customer.configuration == 'duplex' %}checked{% endif %}>
+                                <label for="duplex">Duplex</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="other_config" name="configuration" value="other_config" {% if customer.configuration == 'other_config' %}checked{% endif %}>
+                                <label for="other_config">Other</label>
                             </div>
                         </div>
                     </div>
@@ -405,16 +485,24 @@
                         <label>Budget <span class="required">*</span></label>
                         <div class="radio-group">
                             <div class="radio-item">
-                                <input type="radio" id="budget1" name="budget" value="3.5-4.00cr" {% if customer.budget == '3.5-4.00cr' %}checked{% endif %} required>
-                                <label for="budget1">3.5 - 4.00 Cr.</label>
+                                <input type="radio" id="less_than_1cr" name="budget" value="less_than_1cr" {% if customer.budget == 'less_than_1cr' %}checked{% endif %} required>
+                                <label for="less_than_1cr">Less than 1 Cr.</label>
                             </div>
                             <div class="radio-item">
-                                <input type="radio" id="budget2" name="budget" value="4.5-5.00cr" {% if customer.budget == '4.5-5.00cr' %}checked{% endif %}>
-                                <label for="budget2">4.5 - 5.00 Cr.</label>
+                                <input type="radio" id="1cr_to_2cr" name="budget" value="1cr_to_2cr" {% if customer.budget == '1cr_to_2cr' %}checked{% endif %}>
+                                <label for="1cr_to_2cr">1 Cr. to 2 Cr.</label>
                             </div>
                             <div class="radio-item">
-                                <input type="radio" id="budget3" name="budget" value="6.00-7.00cr" {% if customer.budget == '6.00-7.00cr' %}checked{% endif %}>
-                                <label for="budget3">6.00 - 7.00 Cr.</label>
+                                <input type="radio" id="2cr_to_4cr" name="budget" value="2cr_to_4cr" {% if customer.budget == '2cr_to_4cr' %}checked{% endif %}>
+                                <label for="2cr_to_4cr">2 Cr. to 4 Cr.</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="4cr_to_6cr" name="budget" value="4cr_to_6cr" {% if customer.budget == '4cr_to_6cr' %}checked{% endif %}>
+                                <label for="4cr_to_6cr">4 Cr. to 6 Cr.</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="more_than_6cr" name="budget" value="more_than_6cr" {% if customer.budget == 'more_than_6cr' %}checked{% endif %}>
+                                <label for="more_than_6cr">More than 6 Cr.</label>
                             </div>
                         </div>
                     </div>
@@ -616,6 +704,11 @@
 
         // Validate mobile number
         document.getElementById('partnerMobile').addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+        });
+
+        // Validate phone number
+        document.getElementById('phoneNumber').addEventListener('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
         });
     </script>

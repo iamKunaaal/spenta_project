@@ -1,3 +1,5 @@
+{% comment %} Customer Enquiry Form {% endcomment %}
+
 {% load static %}
 
 <!DOCTYPE html>
@@ -333,6 +335,11 @@
             column-gap: 18px;
         }
 
+        .radio-group.cols-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            column-gap: 12px;
+        }
+
         .radio-group.cols-4 {
             grid-template-columns: repeat(4, 1fr);
             column-gap: 12px;
@@ -562,6 +569,7 @@
             }
 
             .radio-group.cols-2,
+            .radio-group.cols-3,
             .radio-group.cols-4,
             .checkbox-group {
                 grid-template-columns: 1fr;
@@ -696,6 +704,7 @@
             .grid.cols-2,
             .addr-2,
             .radio-group.cols-2,
+            .radio-group.cols-3,
             .radio-group.cols-4,
             .checkbox-group {
                 grid-template-columns: 1fr !important;
@@ -846,15 +855,15 @@
                 <div class="steps-wrap" id="stepList">
                     <div class="step active" data-step="1">
                         <div class="badge">1</div>
-                        <div class="label">Customer Details</div>
+                        <div class="label">Personal Details</div>
                     </div>
                     <div class="step" data-step="2">
                         <div class="badge">2</div>
-                        <div class="label">Customer's Employment Details</div>
+                        <div class="label">Employment Details</div>
                     </div>
                     <div class="step" data-step="3">
                         <div class="badge">3</div>
-                        <div class="label">Customer's Requirements</div>
+                        <div class="label">Unit Requirements</div>
                     </div>
                     <div class="step" data-step="4">
                         <div class="badge">4</div>
@@ -877,7 +886,7 @@
                     
                     <!-- Step 1: Customer Details -->
                     <div class="section active" data-step="1">
-                        <h3>Customer Details</h3>
+                        <h3>Personal Details</h3>
 
                         <!-- Name Fields -->
                         <div class="grid cols-3">
@@ -895,15 +904,15 @@
                             </div>
                         </div>
 
-                        <!-- Email, Date of Birth, Phone -->
+                        <!-- Email, Date of Birth -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
                                 <label for="email" class="required">Email</label>
                                 <input class="field" type="email" id="email" name="email" required>
                             </div>
                             <div>
-                                <label for="dob" class="required">Date of Birth</label>
-                                <input class="field" type="date" id="dob" name="date_of_birth" required>
+                                <label for="dob">Date of Birth</label>
+                                <input class="field" type="date" id="dob" name="date_of_birth">
                             </div>
                         </div>
 
@@ -918,9 +927,31 @@
                             </div>
                         </div>
 
+                        <!-- NEW: Sex and Marital Status -->
+                        <div class="grid cols-2" style="margin-top:14px">
+                            <div>
+                                <label class="required">Sex</label>
+                                <div class="radio-group cols-3">
+                                    <label><input type="radio" name="sex" value="male" required /> Male</label>
+                                    <label><input type="radio" name="sex" value="female" /> Female</label>
+                                    <label><input type="radio" name="sex" value="other" /> Other</label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="required">Marital Status</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="marital_status" value="single" required /> Single</label>
+                                    <label><input type="radio" name="marital_status" value="married" /> Married</label>
+                                    <label><input type="radio" name="marital_status" value="divorced" /> Divorced</label>
+                                    <label><input type="radio" name="marital_status" value="widowed" /> Widowed</label>
+                                    <label><input type="radio" name="marital_status" value="other" /> Other</label>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Address -->
-                        <label class="required" style="margin-top:14px">Residential Address</label>
-                        <textarea class="field" id="address" name="residential_address" rows="3" required></textarea>
+                        <label style="margin-top:14px">Residential Address</label>
+                        <textarea class="field" id="address" name="residential_address" rows="3"></textarea>
 
                         <!-- City, Locality -->
                         <div class="grid cols-2" style="margin-top:12px">
@@ -961,15 +992,16 @@
 
                     <!-- Step 2: Employment Details -->
                     <div class="section" data-step="2">
-                        <h3>Customer's Employment Details</h3>
+                        <h3>Employment Details</h3>
 
                         <label class="required">Employment Type</label>
-                        <div class="radio-group cols-2">
+                        <div class="radio-group cols-3">
                             <label><input type="radio" name="employment_type" value="salaried" required /> Salaried</label>
                             <label><input type="radio" name="employment_type" value="business" /> Business</label>
                             <label><input type="radio" name="employment_type" value="professional" /> Professional</label>
                             <label><input type="radio" name="employment_type" value="retired" /> Retired</label>
                             <label><input type="radio" name="employment_type" value="homemaker" /> Homemaker</label>
+                            <label><input type="radio" name="employment_type" value="other" /> Other</label>
                         </div>
 
                         <div class="grid cols-2" style="margin-top:16px">
@@ -989,24 +1021,32 @@
 
                     <!-- Step 3: Customer Requirements -->
                     <div class="section" data-step="3">
-                        <h3>Customer's Requirements</h3>
+                        <h3>Unit Requirements</h3>
                         <small style="color: #007bff;">Customized according to the project selected</small>
 
                         <div class="grid cols-2" style="margin-top:16px">
                             <div>
                                 <label class="required">Configuration</label>
                                 <div class="radio-group">
-                                    <label><input type="radio" name="configuration" value="2bhk" required /> 2 BHK</label>
+                                    <label><input type="radio" name="configuration" value="1bhk" required /> 1 BHK</label>
+                                    <label><input type="radio" name="configuration" value="1.5bhk" /> 1.5 BHK</label>
+                                    <label><input type="radio" name="configuration" value="2bhk" /> 2 BHK</label>
+                                    <label><input type="radio" name="configuration" value="2.5bhk" /> 2.5 BHK</label>
                                     <label><input type="radio" name="configuration" value="3bhk" /> 3 BHK</label>
+                                    <label><input type="radio" name="configuration" value="3.5bhk" /> 3.5 BHK</label>
                                     <label><input type="radio" name="configuration" value="4bhk" /> 4 BHK</label>
+                                    <label><input type="radio" name="configuration" value="duplex" /> Duplex</label>
+                                    <label><input type="radio" name="configuration" value="other_config" /> Other</label>
                                 </div>
                             </div>
                             <div>
                                 <label class="required">Budget</label>
                                 <div class="radio-group">
-                                    <label><input type="radio" name="budget" value="3.5-4.00cr" required /> 3.5 - 4.00 Cr.</label>
-                                    <label><input type="radio" name="budget" value="4.5-5.00cr" /> 4.5 - 5.00 Cr.</label>
-                                    <label><input type="radio" name="budget" value="6.00-7.00cr" /> 6.00 - 7.00 Cr.</label>
+                                    <label><input type="radio" name="budget" value="less_than_1cr" required /> Less than 1 Cr.</label>
+                                    <label><input type="radio" name="budget" value="1cr_to_2cr" /> 1 Cr. to 2 Cr.</label>
+                                    <label><input type="radio" name="budget" value="2cr_to_4cr" /> 2 Cr. to 4 Cr.</label>
+                                    <label><input type="radio" name="budget" value="4cr_to_6cr" /> 4 Cr. to 6 Cr.</label>
+                                    <label><input type="radio" name="budget" value="more_than_6cr" /> More than 6 Cr.</label>
                                 </div>
                             </div>
                         </div>
@@ -1131,8 +1171,10 @@
                 // Show property banner
                 const propertyNames = {
                     'Alt': 'Altavista',
-                    'Med': 'Spenta Medius',
-                    'Star': 'Stardeous'
+                    'Orn': 'Ornata',
+                    'Med': 'Medius',
+                    'Star': 'Spenta Stardeous',
+                    'Ant': 'Spenta Anthea'
                 };
                 
                 document.getElementById('propertyName').textContent = propertyNames[selectedProperty] || selectedProperty;

@@ -226,9 +226,10 @@
                 <select id="propertyFilter">
                     <option value="">All Properties</option>
                     <option value="Alt">Altavista</option>
-                    <option value="Med">Spenta Medius</option>
-                    <option value="Sta">Stardeous</option>
-                    <option value="CIF">Default Property</option>
+                    <option value="Orn">Ornata</option>
+                    <option value="Med">Medius</option>
+                    <option value="Star">Spenta Stardeous</option>
+                    <option value="Ant">Spenta Anthea</option>
                 </select>
             </div>
             
@@ -320,29 +321,24 @@
             </thead>
             <tbody id="leadsTableBody">
                 {% for customer in customers %}
-                <tr data-property="{{ customer.form_number|slice:':3' }}" 
+                <tr data-property="" 
                     data-date="{{ customer.created_at|date:'Y-m-d' }}"
                     data-assessment="{% if customer.sales_assessment %}completed{% else %}pending{% endif %}"
                     data-booking="{% if customer.booking_applications.exists %}completed{% else %}pending{% endif %}"
-                    data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}">
+                    data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}"
+                    data-form-number="{{ customer.form_number }}"
+                    style="display: table-row;">
                     
                     <td>
-                        <span class="property-tag">{{ customer.form_number|slice:':3' }}</span>
+                        <span class="property-tag property-tag-js">{{ customer.form_number|slice:':3' }}</span>
                         {{ customer.form_number }}
                     </td>
                     <td>
                         <strong>{{ customer.get_full_name }}</strong>
                         <br><small style="color: #666;">{{ customer.email }}</small>
                     </td>
-                    <td>
-                        {% with property_code=customer.form_number|slice:':3' %}
-                        {% if property_code == 'Alt' %}Altavista
-                        {% elif property_code == 'Med' %}Spenta Medius  
-                        {% elif property_code == 'Sta' %}Stardeous
-                        {% elif property_code == 'CIF' %}Default Property
-                        {% else %}{{ property_code }}
-                        {% endif %}
-                    {% endwith %}
+                    <td class="property-name-js">
+                        Loading...
                     </td>
                     <td>
                         <span class="phone-number">{{ customer.phone_number|default:'Not Provided' }}</span>
@@ -395,17 +391,54 @@
         let allRows = [];
         let filteredRows = [];
         
+        // Property mapping function
+        function getPropertyFromFormNumber(formNumber) {
+            if (!formNumber) return { code: '', name: 'Unknown' };
+            
+            if (formNumber.startsWith('Star')) {
+                return { code: 'Star', name: 'Spenta Stardeous' };
+            } else if (formNumber.startsWith('Ant')) {
+                return { code: 'Ant', name: 'Spenta Anthea' };
+            } else if (formNumber.startsWith('Orn')) {
+                return { code: 'Orn', name: 'Ornata' };
+            } else if (formNumber.startsWith('Med')) {
+                return { code: 'Med', name: 'Medius' };
+            } else if (formNumber.startsWith('Alt')) {
+                return { code: 'Alt', name: 'Altavista' };
+            } else {
+                return { code: formNumber.substring(0, 3), name: 'Unknown Property' };
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // Store all table rows for filtering
+            // Store all table rows for filtering and populate property data
             allRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            
+            // Populate property information using JavaScript
+            allRows.forEach((row, index) => {
+                const formNumber = row.dataset.formNumber;
+                
+                if (formNumber) {
+                    const property = getPropertyFromFormNumber(formNumber);
+                    
+                    // Set data attribute for filtering
+                    row.dataset.property = property.code;
+                    
+                    // Update property tag
+                    const propertyTag = row.querySelector('.property-tag-js');
+                    if (propertyTag) {
+                        propertyTag.textContent = property.code;
+                    }
+                    
+                    // Update property name
+                    const propertyName = row.querySelector('.property-name-js');
+                    if (propertyName) {
+                        propertyName.textContent = property.name;
+                    }
+                }
+            });
+            
             filteredRows = [...allRows];
-            
-            // Set default date range (last 30 days)
-            const today = new Date();
-            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-            
-            document.getElementById('dateTo').value = today.toISOString().split('T')[0];
-            document.getElementById('dateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
             
             // Add event listeners for real-time search
             document.getElementById('searchInput').addEventListener('input', applyFilters);
@@ -414,6 +447,10 @@
             document.getElementById('dateTo').addEventListener('change', applyFilters);
             document.getElementById('assessmentFilter').addEventListener('change', applyFilters);
             document.getElementById('bookingFilter').addEventListener('change', applyFilters);
+            
+            // Show all rows initially
+            updateTableDisplay();
+            updateStatistics();
         });
         
         function applyFilters() {
@@ -425,8 +462,8 @@
             const bookingFilter = document.getElementById('bookingFilter').value;
             
             filteredRows = allRows.filter(row => {
-                // Skip empty rows
-                if (row.cells.length < 8) return false;
+                // Skip empty rows or no-results rows
+                if (row.cells.length < 8 || row.querySelector('.no-results')) return false;
                 
                 const searchData = row.dataset.search || '';
                 const property = row.dataset.property || '';
@@ -473,23 +510,26 @@
         function updateTableDisplay() {
             const tbody = document.getElementById('leadsTableBody');
             
-            // Hide all rows
+            // Show all original rows first
             allRows.forEach(row => {
-                row.style.display = 'none';
+                // Skip no-results rows
+                if (!row.querySelector('.no-results')) {
+                    row.style.display = 'none';
+                }
             });
+            
+            // Remove any existing no-results message
+            const existingNoResults = tbody.querySelector('.no-results');
+            if (existingNoResults && existingNoResults.parentElement) {
+                existingNoResults.parentElement.remove();
+            }
             
             // Show filtered rows
             if (filteredRows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="no-results">No leads found matching your criteria.</td></tr>';
+                tbody.innerHTML += '<tr><td colspan="8" class="no-results">No leads found matching your criteria.</td></tr>';
             } else {
-                // Remove no-results message if it exists
-                const noResultsRow = tbody.querySelector('.no-results');
-                if (noResultsRow && noResultsRow.parentElement) {
-                    noResultsRow.parentElement.remove();
-                }
-                
                 filteredRows.forEach(row => {
-                    row.style.display = '';
+                    row.style.display = 'table-row';
                 });
             }
         }
@@ -586,11 +626,6 @@
                 alert('Export failed. Please try again.');
             });
         }
-        
-        // Auto-apply filters on page load
-        window.addEventListener('load', function() {
-            applyFilters();
-        });
     </script>
     
     <!-- CSRF Token for AJAX requests -->
