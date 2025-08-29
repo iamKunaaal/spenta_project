@@ -377,80 +377,103 @@ class InternalSalesAssessment(models.Model):
     
     # TO BE FILLED BY SALES MANAGER Section
     LEAD_CLASSIFICATION_CHOICES = [
-        ('open', 'Open'),
-        ('closed', 'Closed'),
+        ('hot', 'Hot'),
+        ('warm', 'Warm'),
+        ('cold', 'Cold'),
+        ('lost', 'Lost'),
     ]
     lead_classification = models.CharField(max_length=10, choices=LEAD_CLASSIFICATION_CHOICES, blank=True)
     
-    # Customer Classification (shows only if Open)
-    CUSTOMER_CLASSIFICATION_CHOICES = [
-        ('nth', 'NTH'),
-        ('warm', 'Warm'),
-        ('cold', 'Cold'),
+    # Reason for Lost (shows only if Lost is selected)
+    REASON_FOR_LOST_CHOICES = [
+        ('construction_issue', 'Construction Issue'),
+        ('project_issue', 'Project Issue'),
+        ('developer_history', 'Developer History'),
+        ('budget_issue', 'Budget Issue'),
+        ('google_reviews', 'Google Reviews'),
+        ('not_responding', 'Not Responding'),
+        ('booked_with_competition', 'Booked with competition'),
+        ('pricing_issue', 'Pricing issue'),
+        ('rtmi', 'RTMI'),
+        ('csop', 'CSOP'),
+        ('possession_timeline', 'Possession Timeline'),
+        ('no_reason_given', 'No Reason Given'),
+        ('casual_buyer', 'Casual Buyer'),
+        ('postponed_decision', 'Postponed The Decision'),
+        ('needs_time', 'Needs Time'),
+        ('wrong_number', 'Wrong number'),
+        ('inventory_issue', 'Inventory issue'),
+        ('serial_vdnb', 'Serial VDNB'),
+        ('view_issue', 'View issue'),
+        ('plan_dropped', 'Plan Dropped'),
+        ('configuration_issue', 'Configuration Issue'),
+        ('not_interested', 'Not Interested'),
+        ('location_issue', 'Location issue'),
+        ('vastu_issue', 'Vastu Issue'),
+        ('looking_for_commercial', 'Looking For Commercial'),
+        ('channel_partner', 'Channel Partner'),
+        ('competition', 'Competition'),
     ]
-    customer_classification = models.CharField(max_length=10, choices=CUSTOMER_CLASSIFICATION_CHOICES, blank=True)
+    reason_for_lost = models.CharField(max_length=30, choices=REASON_FOR_LOST_CHOICES, blank=True)
     
-    # Reason for Closed (shows only if Closed)
-    REASON_CLOSED_CHOICES = [
-        ('low_budget', 'Low Budget'),
-        ('ready_buyers', 'Ready Buyers'),
-        ('product_related', 'Product related'),
-        ('loan_related', 'Loan related'),
-        ('vasttu', 'Vasttu'),
-        ('location_related', 'Location related'),
-        ('lack_of_inventory', 'Lack of inventory'),
-        ('others', 'Others'),
-    ]
-    reason_for_closed = models.CharField(max_length=20, choices=REASON_CLOSED_CHOICES, blank=True)
+    # Keep old fields for backward compatibility (can be removed in future migration)
+    customer_classification = models.CharField(max_length=10, blank=True)  # Legacy field
+    reason_for_closed = models.CharField(max_length=20, blank=True)  # Legacy field
     
     # Customer's Current Residence
     CURRENT_RESIDENCE_CONFIG_CHOICES = [
         ('1bhk', '1 BHK'),
+        ('1.5bhk', '1.5 BHK'),
         ('2bhk', '2 BHK'),
+        ('2.5bhk', '2.5 BHK'),
         ('3bhk', '3 BHK'),
+        ('3.5bhk', '3.5 BHK'),
         ('4bhk', '4 BHK'),
-        ('plot', 'Plot'),
+        ('duplex', 'Duplex'),
+        ('other', 'Other'),
     ]
     current_residence_config = models.CharField(max_length=10, choices=CURRENT_RESIDENCE_CONFIG_CHOICES, blank=True)
     
     OWNERSHIP_CHOICES = [
-        ('owned', 'Owned'),
+        ('family_owned', 'Family Owned'),
         ('self_owned', 'Self-Owned'),
         ('rented', 'Rented'),
+        ('pagdi', 'Pagdi'),
     ]
     current_residence_ownership = models.CharField(max_length=15, choices=OWNERSHIP_CHOICES, blank=True)
     
+    # NEW: Plot field
+    plot = models.CharField(max_length=200, blank=True, help_text="Plot details")
+    
     FAMILY_SIZE_CHOICES = [
+        ('1', '1'),
         ('2', '2'),
         ('3', '3'),
         ('4', '4'),
         ('5', '5'),
         ('6', '6'),
-        ('>6', '>6'),
+        ('6+', '>6'),
     ]
     family_size = models.CharField(max_length=5, choices=FAMILY_SIZE_CHOICES, blank=True)
     
     # Customer's Desired Requirement
-    desired_flat_area = models.CharField(max_length=100, blank=True, help_text="Area of flat customer is looking for")
+    # NEW: Updated field name to match template
+    area_looking = models.TextField(blank=True, help_text="Type/Area of flat customer is looking for")
+    
+    # Keep old field for backward compatibility
+    desired_flat_area = models.CharField(max_length=100, blank=True, help_text="Area of flat customer is looking for (Legacy)")
     
     FUNDING_SOURCE_CHOICES = [
-        ('self_funding', 'Self-Funding'),
-        ('current_property_sale', 'Current Property Sale'),
+        ('self-funding', 'Self-Funding'),
+        ('current-property-sale', 'Current Property Sale'),
         ('loan', 'Loan'),
     ]
     source_of_funding = models.CharField(max_length=25, choices=FUNDING_SOURCE_CHOICES, blank=True)
     
     ETHNICITY_CHOICES = [
-        ('marwadi', 'Marwadi'),
-        ('gujarati', 'Gujarati'),
+        ('hindu', 'Hindu'),
         ('maharashtrian', 'Maharashtrian'),
-        ('bengali', 'Bengali'),
-        ('christian', 'Christian'),
-        ('muslim', 'Muslim'),
-        ('parsi', 'Parsi'),
-        ('jain', 'Jain'),
-        ('sindhi', 'Sindhi'),
-        ('others', 'Others'),
+        ('other', 'Other'),
     ]
     ethnicity = models.CharField(max_length=15, choices=ETHNICITY_CHOICES, blank=True)
     

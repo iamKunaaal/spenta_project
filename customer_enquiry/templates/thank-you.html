@@ -1,4 +1,5 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -48,14 +49,14 @@
         }
 
         .accent-square.top-left {
-            top: 16px;
-            left: 300px;
+            top: 136px;
+            left: 450px;
             z-index: 999;
         }
 
         .accent-square.bottom-right {
-            bottom: 16px;
-            right: 300px;
+            bottom: 126px;
+            right: 450px;
             z-index: 999;
         }
 
@@ -65,7 +66,7 @@
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 40px;
-            max-width: 800px;
+            max-width: 500px;
             width: 100%;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             position: relative;
@@ -178,8 +179,10 @@
             margin-bottom: 3px;
         }
 
-        @media (max-width: 1024px){
-            .accent-square.top-left, .accent-square.bottom-right{
+        @media (max-width: 1024px) {
+
+            .accent-square.top-left,
+            .accent-square.bottom-right {
                 display: none;
             }
         }
@@ -230,12 +233,12 @@
         <!-- Thank you message -->
         <h1>Thank You!</h1>
         <p class="description">
-            Your enquiry has been successfully submitted. Our team will review your information and get back to you
-            shortly with property details that match your requirements.
+            Your Enquiry has been submitted successfully. Our sales representative will assist
+            you shortly.
         </p>
 
         <!-- Steps -->
-        <div class="steps-section">
+        <!-- <div class="steps-section">
             <h3>What happens next?</h3>
 
             <div class="step">
@@ -257,13 +260,13 @@
                 <div class="step-icon"></div>
                 <div class="step-text">We'll schedule a property visit at your convenience</div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Buttons -->
-        <div class="button-section">
+        <!-- <div class="button-section">
             <button class="btn btn-primary">Submit Another Enquiry</button>
             <button class="btn btn-secondary">Back to Homepage</button>
-        </div>
+        </div> -->
 
         <!-- Contact info -->
         <div class="contact-info">

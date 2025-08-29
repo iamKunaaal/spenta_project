@@ -2,7 +2,7 @@
 
 {% load static %}
 
-<!DOCTYPE html>
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -712,5 +712,553 @@
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
         });
     </script>
+</body>
+</html> {% endcomment %}
+
+
+
+
+
+{% comment %} View Customer Information - Read Only {% endcomment %}
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Customer Information</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* View-only notice */
+        .view-notice {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .form-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row.single {
+            grid-template-columns: 1fr;
+        }
+
+        .form-row.triple {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #dc3545;
+        }
+
+        /* All inputs are read-only styled */
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        select,
+        textarea {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            background-color: #f8f9fa !important;
+            color: #495057;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        textarea {
+            resize: none;
+            min-height: 80px;
+        }
+
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item,
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Disabled checkboxes and radio buttons */
+        input[type="checkbox"],
+        input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+        }
+
+        .pincode-input {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pincode-input input {
+            width: 40px;
+            text-align: center;
+            background-color: #f8f9fa !important;
+            pointer-events: none;
+        }
+
+        .conditional-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .conditional-section h4 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        /* Value display styling */
+        .value-display {
+            background: #fff;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 14px;
+            color: #495057;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+        }
+
+        .value-display.empty {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .selected-option {
+            color: #007bff;
+            font-weight: 500;
+        }
+
+        .tag {
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row.triple {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+
+            .radio-group,
+            .checkbox-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>View Customer Information</h1>
+            <p>Customer details - Form #{{ customer.form_number }}</p>
+        </div>
+
+        <!-- View-only notice -->
+        <div class="view-notice">
+            This is a read-only view of customer information. No changes can be made.
+        </div>
+
+        <!-- Customer Details -->
+        <div class="form-section">
+            <h3>Customer Details</h3>
+            <div class="form-row triple">
+                <div class="form-group">
+                    <label>First Name <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.first_name }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Middle Name</label>
+                    <div class="value-display {% if not customer.middle_name %}empty{% endif %}">
+                        {{ customer.middle_name|default:"Not provided" }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Last Name <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.last_name }}</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Email <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.email }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <div class="value-display {% if not customer.date_of_birth %}empty{% endif %}">
+                        {% if customer.date_of_birth %}
+                            {{ customer.date_of_birth|date:"F d, Y" }}
+                        {% else %}
+                            Not provided
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <div class="value-display {% if not customer.phone_number %}empty{% endif %}">
+                        {{ customer.phone_number|default:"Not provided" }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <!-- Empty space to maintain layout -->
+                </div>
+            </div>
+
+            <!-- Sex and Marital Status -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Sex <span class="required">*</span></label>
+                    <div class="value-display">
+                        {% if customer.sex == 'male' %}
+                            <span class="selected-option">Male</span>
+                        {% elif customer.sex == 'female' %}
+                            <span class="selected-option">Female</span>
+                        {% elif customer.sex == 'other' %}
+                            <span class="selected-option">Other</span>
+                        {% else %}
+                            <span class="empty">Not specified</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Marital Status <span class="required">*</span></label>
+                    <div class="value-display">
+                        {% if customer.marital_status == 'single' %}
+                            <span class="selected-option">Single</span>
+                        {% elif customer.marital_status == 'married' %}
+                            <span class="selected-option">Married</span>
+                        {% elif customer.marital_status == 'divorced' %}
+                            <span class="selected-option">Divorced</span>
+                        {% elif customer.marital_status == 'widowed' %}
+                            <span class="selected-option">Widowed</span>
+                        {% elif customer.marital_status == 'other' %}
+                            <span class="selected-option">Other</span>
+                        {% else %}
+                            <span class="empty">Not specified</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>Residential Address</label>
+                    <div class="value-display {% if not customer.residential_address %}empty{% endif %}" style="min-height: 80px; align-items: flex-start; padding-top: 12px;">
+                        {{ customer.residential_address|default:"Not provided" }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.city }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Locality <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.locality }}</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pincode <span class="required">*</span></label>
+                    <div class="value-display">{{ customer.pincode }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Nationality <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_nationality_display }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employment Details -->
+        <div class="form-section">
+            <h3>Customer's Employment Details</h3>
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>Employment Type <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_employment_type_display }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <div class="value-display {% if not customer.company_name %}empty{% endif %}">
+                        {{ customer.company_name|default:"Not provided" }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Designation</label>
+                    <div class="value-display {% if not customer.designation %}empty{% endif %}">
+                        {{ customer.designation|default:"Not provided" }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>Industry</label>
+                    <div class="value-display {% if not customer.industry %}empty{% endif %}">
+                        {{ customer.industry|default:"Not provided" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Requirements -->
+        <div class="form-section">
+            <h3>Customer's Requirements</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Configuration <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_configuration_display }}</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Budget <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_budget_display }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Construction Status <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_construction_status_display }}</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Purpose of Buying <span class="required">*</span></label>
+                    <div class="value-display">
+                        <span class="selected-option">{{ customer.get_purpose_of_buying_display }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Source of Visit -->
+        <div class="form-section">
+            <h3>Source of Visit</h3>
+            <div class="form-group">
+                <label>How did you hear about us?</label>
+                <div class="value-display" style="min-height: 60px; flex-wrap: wrap; align-items: flex-start; padding-top: 12px;">
+                    {% if customer.sources.all %}
+                        {% for source in customer.sources.all %}
+                            <span class="tag">{{ source.get_source_type_display }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="empty">No sources specified</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row single" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Source Details</label>
+                    <div class="value-display {% if not customer.source_details %}empty{% endif %}" style="min-height: 60px; align-items: flex-start; padding-top: 12px;">
+                        {{ customer.source_details|default:"No additional details provided" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channel Partner Section (if exists) -->
+        {% if channel_partner %}
+        <div class="conditional-section">
+            <h4>Channel Partner Details</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <div class="value-display">{{ channel_partner.company_name }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Channel Partner Name</label>
+                    <div class="value-display">{{ channel_partner.partner_name }}</div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Mobile No.</label>
+                    <div class="value-display">{{ channel_partner.mobile_number }}</div>
+                </div>
+                <div class="form-group">
+                    <label>RERA No.</label>
+                    <div class="value-display">{{ channel_partner.rera_number }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Referral Section (if exists) -->
+        {% if referral %}
+        <div class="conditional-section">
+            <h4>Referral Details</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Name</label>
+                    <div class="value-display">{{ referral.referral_name }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <div class="value-display">{{ referral.project_name }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Customer Created Date -->
+        <div class="form-section">
+            <h3>Form Information</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Form Number</label>
+                    <div class="value-display">{{ customer.form_number }}</div>
+                </div>
+                <div class="form-group">
+                    <label>Date Created</label>
+                    <div class="value-display">{{ customer.created_at|date:"F d, Y - g:i A" }}</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </body>
 </html>

@@ -70,9 +70,13 @@ def index(request, property_code=None):
                 'location': PROPERTY_MAPPING[get_property]['location']
             }
     
+    # Get verified phone number from session
+    verified_phone = request.session.get('user_phone')
+    
     context = {
         'selected_property': selected_property,
         'property_code': property_code or get_property,
+        'verified_phone': verified_phone,
     }
     
     # Use the new template name that matches your current working form
@@ -512,148 +516,185 @@ def export_leads(request):
     
     return HttpResponse('Method not allowed', status=405)
 
+
 def edit_customer(request, pk):
-    """Edit customer with phone number, sex, and marital status support"""
+    """View customer information - display only, no editing allowed"""
     customer = get_object_or_404(Customer, pk=pk)
 
+    # Only allow GET requests - no form submission/editing
     if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                # Update main customer fields
-                customer.first_name = request.POST.get('first_name')
-                customer.middle_name = request.POST.get('middle_name', '')
-                customer.last_name = request.POST.get('last_name')
-                customer.email = request.POST.get('email')
-                
-                # ADDED: Phone number handling
-                phone_number = request.POST.get('phone_number', '').strip()
-                if phone_number and (len(phone_number) != 10 or not phone_number.isdigit()):
-                    messages.error(request, 'Please enter a valid 10-digit phone number')
-                    return redirect('customer_enquiry:edit_customer', pk=pk)
-                customer.phone_number = phone_number if phone_number else None
-                
-                # ADDED: Sex and Marital Status handling
-                sex = request.POST.get('sex')
-                marital_status = request.POST.get('marital_status')
-                
-                if sex:
-                    valid_sex_choices = ['male', 'female', 'other']
-                    if sex in valid_sex_choices:
-                        customer.sex = sex
-                    else:
-                        messages.error(request, 'Please select a valid sex option')
-                        return redirect('customer_enquiry:edit_customer', pk=pk)
-                
-                if marital_status:
-                    valid_marital_choices = ['single', 'married', 'divorced', 'widowed', 'other']
-                    if marital_status in valid_marital_choices:
-                        customer.marital_status = marital_status
-                    else:
-                        messages.error(request, 'Please select a valid marital status option')
-                        return redirect('customer_enquiry:edit_customer', pk=pk)
-                
-                # Handle optional date_of_birth field in edit
-                date_of_birth = request.POST.get('date_of_birth', '').strip()
-                if not date_of_birth:
-                    # If no date provided, keep existing value or use placeholder
-                    if customer.date_of_birth:
-                        date_of_birth = customer.date_of_birth  # Keep existing value
-                    else:
-                        date_of_birth = '1900-01-01'  # Placeholder date
-                
-                customer.date_of_birth = date_of_birth  # Handle empty dates
-                customer.residential_address = request.POST.get('residential_address', '')  # OPTIONAL - empty string if not provided
-                customer.city = request.POST.get('city')
-                customer.locality = request.POST.get('locality')
-                customer.pincode = request.POST.get('pincode')
-                customer.nationality = request.POST.get('nationality')
-                customer.employment_type = request.POST.get('employment_type')
-                customer.company_name = request.POST.get('company_name', '')
-                customer.designation = request.POST.get('designation', '')
-                customer.industry = request.POST.get('industry', '')
-                customer.configuration = request.POST.get('configuration')
-                customer.budget = request.POST.get('budget')
-                customer.construction_status = request.POST.get('construction_status')
-                customer.purpose_of_buying = request.POST.get('purpose_of_buying')
-                customer.source_details = request.POST.get('source_details', '')
+        # Redirect back to view mode if someone tries to submit
+        messages.info(request, 'This form is view-only. Customer information cannot be edited.')
+        return redirect('customer_enquiry:edit_customer', pk=pk)
 
-                # Validate pincode
-                pincode = request.POST.get('pincode', '')
-                if len(pincode) != 6 or not pincode.isdigit():
-                    messages.error(request, 'Please enter a valid 6-digit pincode')
-                    return redirect('customer_enquiry:edit_customer', pk=pk)
+    # GET request - prepare context for template (view-only)
+    # Get current sources
+    current_sources = list(customer.sources.values_list('source_type', flat=True))
+    
+    # Get channel partner if exists
+    try:
+        channel_partner = customer.channel_partner
+    except ChannelPartner.DoesNotExist:
+        channel_partner = None
+    
+    # Get referral if exists
+    try:
+        referral = customer.referral
+    except Referral.DoesNotExist:
+        referral = None
 
-                customer.save()
+    context = {
+        'customer': customer,
+        'current_sources': current_sources,
+        'channel_partner': channel_partner,
+        'referral': referral,
+        'view_only': True,  # Flag to indicate this is view-only mode
+    }
+    
+    return render(request, 'edit_customer.html', context)
 
-                # Update Sources (existing code)
-                customer.sources.all().delete()
-                sources = request.POST.getlist('sources')
-                for source in sources:
-                    CustomerSource.objects.create(
-                        customer=customer,
-                        source_type=source
-                    )
+# def edit_customer(request, pk):
+#     """Edit customer with phone number, sex, and marital status support"""
+#     customer = get_object_or_404(Customer, pk=pk)
 
-                # Update Channel Partner (existing code)
-                if hasattr(customer, 'channel_partner'):
-                    customer.channel_partner.delete()
+#     if request.method == 'POST':
+#         try:
+#             with transaction.atomic():
+#                 # Update main customer fields
+#                 customer.first_name = request.POST.get('first_name')
+#                 customer.middle_name = request.POST.get('middle_name', '')
+#                 customer.last_name = request.POST.get('last_name')
+#                 customer.email = request.POST.get('email')
                 
-                if 'channel_partner' in sources:
-                    partner_data = {
-                        'company_name': request.POST.get('partner_company_name', ''),
-                        'partner_name': request.POST.get('partner_name', ''),
-                        'mobile_number': request.POST.get('partner_mobile', ''),
-                        'rera_number': request.POST.get('partner_rera', '')
-                    }
+#                 # ADDED: Phone number handling
+#                 phone_number = request.POST.get('phone_number', '').strip()
+#                 if phone_number and (len(phone_number) != 10 or not phone_number.isdigit()):
+#                     messages.error(request, 'Please enter a valid 10-digit phone number')
+#                     return redirect('customer_enquiry:edit_customer', pk=pk)
+#                 customer.phone_number = phone_number if phone_number else None
+                
+#                 # ADDED: Sex and Marital Status handling
+#                 sex = request.POST.get('sex')
+#                 marital_status = request.POST.get('marital_status')
+                
+#                 if sex:
+#                     valid_sex_choices = ['male', 'female', 'other']
+#                     if sex in valid_sex_choices:
+#                         customer.sex = sex
+#                     else:
+#                         messages.error(request, 'Please select a valid sex option')
+#                         return redirect('customer_enquiry:edit_customer', pk=pk)
+                
+#                 if marital_status:
+#                     valid_marital_choices = ['single', 'married', 'divorced', 'widowed', 'other']
+#                     if marital_status in valid_marital_choices:
+#                         customer.marital_status = marital_status
+#                     else:
+#                         messages.error(request, 'Please select a valid marital status option')
+#                         return redirect('customer_enquiry:edit_customer', pk=pk)
+                
+#                 # Handle optional date_of_birth field in edit
+#                 date_of_birth = request.POST.get('date_of_birth', '').strip()
+#                 if not date_of_birth:
+#                     # If no date provided, keep existing value or use placeholder
+#                     if customer.date_of_birth:
+#                         date_of_birth = customer.date_of_birth  # Keep existing value
+#                     else:
+#                         date_of_birth = '1900-01-01'  # Placeholder date
+                
+#                 customer.date_of_birth = date_of_birth  # Handle empty dates
+#                 customer.residential_address = request.POST.get('residential_address', '')  # OPTIONAL - empty string if not provided
+#                 customer.city = request.POST.get('city')
+#                 customer.locality = request.POST.get('locality')
+#                 customer.pincode = request.POST.get('pincode')
+#                 customer.nationality = request.POST.get('nationality')
+#                 customer.employment_type = request.POST.get('employment_type')
+#                 customer.company_name = request.POST.get('company_name', '')
+#                 customer.designation = request.POST.get('designation', '')
+#                 customer.industry = request.POST.get('industry', '')
+#                 customer.configuration = request.POST.get('configuration')
+#                 customer.budget = request.POST.get('budget')
+#                 customer.construction_status = request.POST.get('construction_status')
+#                 customer.purpose_of_buying = request.POST.get('purpose_of_buying')
+#                 customer.source_details = request.POST.get('source_details', '')
+
+#                 # Validate pincode
+#                 pincode = request.POST.get('pincode', '')
+#                 if len(pincode) != 6 or not pincode.isdigit():
+#                     messages.error(request, 'Please enter a valid 6-digit pincode')
+#                     return redirect('customer_enquiry:edit_customer', pk=pk)
+
+#                 customer.save()
+
+#                 # Update Sources (existing code)
+#                 customer.sources.all().delete()
+#                 sources = request.POST.getlist('sources')
+#                 for source in sources:
+#                     CustomerSource.objects.create(
+#                         customer=customer,
+#                         source_type=source
+#                     )
+
+#                 # Update Channel Partner (existing code)
+#                 if hasattr(customer, 'channel_partner'):
+#                     customer.channel_partner.delete()
+                
+#                 if 'channel_partner' in sources:
+#                     partner_data = {
+#                         'company_name': request.POST.get('partner_company_name', ''),
+#                         'partner_name': request.POST.get('partner_name', ''),
+#                         'mobile_number': request.POST.get('partner_mobile', ''),
+#                         'rera_number': request.POST.get('partner_rera', '')
+#                     }
                     
-                    if all(partner_data.values()):
-                        ChannelPartner.objects.create(customer=customer, **partner_data)
+#                     if all(partner_data.values()):
+#                         ChannelPartner.objects.create(customer=customer, **partner_data)
 
-                # Update Referral (existing code)
-                if hasattr(customer, 'referral'):
-                    customer.referral.delete()
+#                 # Update Referral (existing code)
+#                 if hasattr(customer, 'referral'):
+#                     customer.referral.delete()
                 
-                if 'referral' in sources:
-                    referral_data = {
-                        'referral_name': request.POST.get('referral_name', ''),
-                        'project_name': request.POST.get('referral_project', '')
-                    }
+#                 if 'referral' in sources:
+#                     referral_data = {
+#                         'referral_name': request.POST.get('referral_name', ''),
+#                         'project_name': request.POST.get('referral_project', '')
+#                     }
                     
-                    if all(referral_data.values()):
-                        Referral.objects.create(customer=customer, **referral_data)
+#                     if all(referral_data.values()):
+#                         Referral.objects.create(customer=customer, **referral_data)
 
-                messages.success(request, 'Customer information updated successfully!')
-                return redirect('customer_enquiry:dashboard')
+#                 messages.success(request, 'Customer information updated successfully!')
+#                 return redirect('customer_enquiry:dashboard')
 
-        except Exception as e:
-            messages.error(request, f'An error occurred: {str(e)}')
-            return redirect('customer_enquiry:edit_customer', pk=pk)
+#         except Exception as e:
+#             messages.error(request, f'An error occurred: {str(e)}')
+#             return redirect('customer_enquiry:edit_customer', pk=pk)
 
-    # GET request - prepare context for template
-    else:
-        # Get current sources
-        current_sources = list(customer.sources.values_list('source_type', flat=True))
+#     # GET request - prepare context for template
+#     else:
+#         # Get current sources
+#         current_sources = list(customer.sources.values_list('source_type', flat=True))
         
-        # Get channel partner if exists
-        try:
-            channel_partner = customer.channel_partner
-        except ChannelPartner.DoesNotExist:
-            channel_partner = None
+#         # Get channel partner if exists
+#         try:
+#             channel_partner = customer.channel_partner
+#         except ChannelPartner.DoesNotExist:
+#             channel_partner = None
         
-        # Get referral if exists
-        try:
-            referral = customer.referral
-        except Referral.DoesNotExist:
-            referral = None
+#         # Get referral if exists
+#         try:
+#             referral = customer.referral
+#         except Referral.DoesNotExist:
+#             referral = None
 
-        context = {
-            'customer': customer,
-            'current_sources': current_sources,
-            'channel_partner': channel_partner,
-            'referral': referral,
-        }
+#         context = {
+#             'customer': customer,
+#             'current_sources': current_sources,
+#             'channel_partner': channel_partner,
+#             'referral': referral,
+#         }
         
-        return render(request, 'edit_customer.html', context)
+#         return render(request, 'edit_customer.html', context)
 
 @login_required
 def internal_sales_assessment(request, customer_id):
@@ -665,6 +706,65 @@ def internal_sales_assessment(request, customer_id):
         assessment = customer.sales_assessment
     except InternalSalesAssessment.DoesNotExist:
         assessment = None
+        
+    # If creating new assessment, auto-populate from customer data
+    if not assessment:
+        # Create a new assessment instance with auto-populated data
+        assessment = InternalSalesAssessment()
+        assessment.customer = customer
+        
+        # Auto-populate fields from customer enquiry data
+        print(f"Auto-populating assessment for customer: {customer.get_full_name()}")
+        
+        # 1. Map customer gender to assessment format
+        if customer.sex:
+            if customer.sex == 'male':
+                assessment.customer_gender = 'male'
+            elif customer.sex == 'female':
+                assessment.customer_gender = 'female'
+            else:
+                assessment.customer_gender = 'family'  # Default for other cases
+            print(f"Mapped gender: {customer.sex} -> {assessment.customer_gender}")
+            
+        # 2. Map current residence configuration (if they mentioned current living situation)
+        # For now, we'll use their desired configuration as a starting point
+        if customer.configuration:
+            assessment.current_residence_config = customer.configuration
+            print(f"Mapped configuration: {customer.configuration}")
+            
+        # 3. Auto-populate area looking based on customer's requirements
+        area_description = []
+        if customer.configuration:
+            area_description.append(f"Looking for {customer.get_configuration_display()}")
+        if customer.budget:
+            area_description.append(f"Budget: {customer.get_budget_display()}")
+        if customer.construction_status:
+            area_description.append(f"Status: {customer.get_construction_status_display()}")
+        
+        assessment.area_looking = ". ".join(area_description) if area_description else "Customer requirements to be discussed"
+        print(f"Generated area_looking: {assessment.area_looking}")
+            
+        # 4. Set default ethnicity based on nationality
+        if customer.nationality == 'indian':
+            assessment.ethnicity = 'hindu'  # Default assumption, can be changed by user
+        else:
+            assessment.ethnicity = 'other'
+        print(f"Mapped ethnicity based on nationality {customer.nationality}: {assessment.ethnicity}")
+        
+        # 5. Set default family size (can be inferred from marital status)
+        if customer.marital_status == 'married':
+            assessment.family_size = '2'  # Default for married couples
+        elif customer.marital_status == 'single':
+            assessment.family_size = '1'  # Default for single
+        else:
+            assessment.family_size = '2'  # Default assumption
+        print(f"Mapped family size based on marital status {customer.marital_status}: {assessment.family_size}")
+        
+        # 6. Set default lead classification as 'warm' for new assessments
+        assessment.lead_classification = 'warm'
+        print(f"Set default lead classification: {assessment.lead_classification}")
+        
+        print("Auto-population completed")
 
     if request.method == 'POST':
         try:
@@ -677,21 +777,34 @@ def internal_sales_assessment(request, customer_id):
                     # Create new
                     assessment_obj = InternalSalesAssessment(customer=customer)
 
-                # Update fields
+                # Update fields - GRE Section
                 assessment_obj.sourcing_manager = request.POST.get('sourcing_manager', '')
                 assessment_obj.sales_manager = request.POST.get('sales_manager', '')
                 assessment_obj.customer_gender = request.POST.get('customer_gender', '')
                 assessment_obj.facilitated_by_pre_sales = request.POST.get('facilitated_by_pre_sales', 'false') == 'true'
                 assessment_obj.executive_name = request.POST.get('executive_name', '')
+                
+                # Sales Manager Section - Updated fields
                 assessment_obj.lead_classification = request.POST.get('lead_classification', '')
+                assessment_obj.reason_for_lost = request.POST.get('reason_for_lost', '')
+                
+                # Legacy fields (for backward compatibility)
                 assessment_obj.customer_classification = request.POST.get('customer_classification', '')
                 assessment_obj.reason_for_closed = request.POST.get('reason_for_closed', '')
+                
+                # Current Residence Section
                 assessment_obj.current_residence_config = request.POST.get('current_residence_config', '')
                 assessment_obj.current_residence_ownership = request.POST.get('current_residence_ownership', '')
+                assessment_obj.plot = request.POST.get('plot', '')
                 assessment_obj.family_size = request.POST.get('family_size', '')
-                assessment_obj.desired_flat_area = request.POST.get('desired_flat_area', '')
+                
+                # Customer's Desired Requirement Section
+                assessment_obj.area_looking = request.POST.get('area_looking', '')
+                assessment_obj.desired_flat_area = request.POST.get('desired_flat_area', '')  # Legacy
                 assessment_obj.source_of_funding = request.POST.get('source_of_funding', '')
                 assessment_obj.ethnicity = request.POST.get('ethnicity', '')
+                
+                # Additional Information Section
                 assessment_obj.other_projects_considered = request.POST.get('other_projects_considered', '')
                 assessment_obj.sales_manager_remarks = request.POST.get('sales_manager_remarks', '')
 
@@ -1131,10 +1244,14 @@ def property_customer_form(request, property_code):
         'location': PROPERTY_MAPPING[property_code]['location']
     }
     
+    # Get verified phone number from session
+    verified_phone = request.session.get('user_phone')
+    
     context = {
         'selected_property': selected_property,
         'property_code': property_code,
-        'auto_selected': True  # Flag to indicate auto-selection
+        'auto_selected': True,  # Flag to indicate auto-selection
+        'verified_phone': verified_phone,
     }
     
     return render(request, 'customer_enquiry.html', context)
