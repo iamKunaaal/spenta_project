@@ -16,8 +16,7 @@
             --border: #e6e7ea;
             --brand: #f6d55c;
             --brand-d: #e4be34;
-            --header-d: #525862;
-            --header-l: #f3f4f6;
+            --header-d: #333333;
         }
 
         * {
@@ -41,13 +40,14 @@
 
         /* Property Banner */
         .property-banner {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #333333;
             color: white;
             padding: 20px;
             text-align: center;
             margin-bottom: 0;
             border-radius: 0;
             display: none;
+            margin-bottom: 1px;
         }
         
         .property-banner h2 {
@@ -64,7 +64,7 @@
         .header {
             position: relative;
             padding: 24px 36px;
-            background: linear-gradient(135deg, #9ca3af 0%, #a6abb3 50%, #f3f4f6 100%);
+            background: #333333;
             color: #374151;
             overflow: hidden;
         }
@@ -85,6 +85,7 @@
 
         .header-text {
             flex: 1;
+            text-align: center;
         }
 
         .title {
@@ -150,13 +151,18 @@
             z-index: 1;
         }
 
+        .dec img {
+            height: 80px;
+            width: auto;
+        }
+
         .dec div {
             background: var(--brand);
             border-radius: 6px;
             box-shadow: 0 2px 8px rgba(246, 213, 92, 0.3);
         }
 
-        .dec div:first-child {
+        /* .dec div:first-child {
             width: 28px;
             height: 28px;
         }
@@ -164,7 +170,7 @@
         .dec div:last-child {
             width: 40px;
             height: 40px;
-        }
+        } */
 
         /* Subtle pattern overlay */
         .header::before {
@@ -234,7 +240,7 @@
         }
 
         .step.done .badge {
-            background: #22c55e;
+            background: #333333;
             color: #fff
         }
 
@@ -806,6 +812,129 @@
                 margin-right: 8px;
             }
         }
+
+        /* Validation styles */
+        .field.error,
+        select.error,
+        textarea.error {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+            font-weight: 600;
+            animation: shake 0.3s ease-in-out;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border-left: 3px solid #ef4444;
+        }
+
+        .field.error+.error-message,
+        select.error+.error-message,
+        textarea.error+.error-message {
+            display: block;
+        }
+
+        /* Enhanced error styling */
+        .radio-group.error {
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            padding: 8px;
+            background-color: rgba(239, 68, 68, 0.05);
+        }
+
+        .checkbox-group.error {
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            padding: 8px;
+            background-color: rgba(239, 68, 68, 0.05);
+        }
+
+        /* Shake animation for error messages */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        /* Error state for form groups */
+        .form-group.has-error {
+            border-left: 4px solid #ef4444;
+            background-color: rgba(239, 68, 68, 0.02);
+        }
+
+        /* Validation summary banner */
+        .validation-summary {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-left: 4px solid #ef4444;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .validation-summary.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .validation-summary h4 {
+            color: #dc2626;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+        }
+
+        .validation-summary ul {
+            color: #b91c1c;
+            font-size: 13px;
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success-message {
+            color: #22c55e;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .field.success+.success-message {
+            display: block;
+        }
+
+        /* Character counter */
+        .char-counter {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .char-counter.warning {
+            color: #f59e0b;
+        }
+
+        .char-counter.danger {
+            color: #ef4444;
+        }
+
+        /* Change checkbox tick color to grey */
+        input[type="radio"],
+        input[type="checkbox"] {
+            accent-color: grey;
+        }
     </style>
 </head>
 
@@ -821,15 +950,13 @@
         <!-- Updated Header -->
         <header class="header">
             <div class="brand-row">
-                <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
                 <div class="header-text">
                     <div class="title">Customer Information Form</div>
                     <div class="subtitle">Please fill the form below to know more about the property</div>
                 </div>
             </div>
             <div class="dec">
-                <div></div>
-                <div></div>
+                <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
             </div>
         </header>
 
@@ -874,8 +1001,14 @@
 
             <!-- Form -->
             <section class="form">
-                <form id="propertyInquiryForm" method="POST" action="/submit/">
+                <form id="propertyInquiryForm" method="POST" action="/submit/" novalidate>
                     {% csrf_token %}
+
+                    <!-- Validation Summary Banner -->
+                    <div class="validation-summary" id="validationSummary">
+                        <h4>⚠️ Please correct the following errors:</h4>
+                        <ul id="errorList"></ul>
+                    </div>
                     
                     <!-- Hidden fields -->
                     <input type="hidden" name="form_number" id="hiddenFormNumber">
@@ -892,15 +1025,26 @@
                         <div class="grid cols-3">
                             <div>
                                 <label for="firstName" class="required">First Name</label>
-                                <input class="field" type="text" id="firstName" name="first_name" required>
+                                <input class="field" type="text" id="firstName" name="first_name"
+                                    placeholder="First Name" required minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
+                                    title="Only letters and spaces allowed" />
+                                <div class="error-message">Please enter a valid first name (2-50 characters, letters
+                                    only)</div>
                             </div>
                             <div>
                                 <label for="middleName">Middle Name</label>
-                                <input class="field" type="text" id="middleName" name="middle_name">
+                                <input class="field" type="text" id="middleName" name="middle_name"
+                                    placeholder="Middle Name" maxlength="50" pattern="[A-Za-z\s]*"
+                                    title="Only letters and spaces allowed" />
+                                <div class="error-message">Please enter a valid middle name (letters only)</div>
                             </div>
                             <div>
                                 <label for="lastName" class="required">Last Name</label>
-                                <input class="field" type="text" id="lastName" name="last_name" required>
+                                <input class="field" type="text" id="lastName" name="last_name" placeholder="Last Name"
+                                    required minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
+                                    title="Only letters and spaces allowed" />
+                                <div class="error-message">Please enter a valid last name (2-50 characters, letters
+                                    only)</div>
                             </div>
                         </div>
 
@@ -908,19 +1052,27 @@
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
                                 <label for="email" class="required">Email</label>
-                                <input class="field" type="email" id="email" name="email" required>
+                                <input class="field" type="email" id="email" name="email" placeholder="Enter Your Email"
+                                    required maxlength="100" />
+                                <div class="error-message">Please enter a valid email address</div>
+                                <div class="success-message">✓ Valid email format</div>
                             </div>
                             <div>
                                 <label for="dob">Date of Birth</label>
-                                <input class="field" type="date" id="dob" name="date_of_birth">
+                                <input class="field" type="date" id="dob" name="date_of_birth" min="1924-01-01"
+                                    max="2006-12-31" />
+                                <div class="error-message">Please enter a valid date (age must be between 18-100 years)
+                                </div>
                             </div>
                         </div>
 
                         <!-- Phone Number Field -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
-                                <label for="phoneNumber" class="required">Phone Number</label>
-                                <input class="field" type="tel" id="phoneNumber" name="phone_number" pattern="[0-9]{10}" maxlength="10" required>
+                                <label for="phoneNumber">Phone Number</label>
+                                <input class="field" type="tel" id="phoneNumber" name="phone_number" 
+                                    placeholder="Enter 10-digit phone number (optional)" pattern="[0-9]{10}" maxlength="10">
+                                <div class="error-message">Please enter a valid 10-digit phone number</div>
                             </div>
                             <div>
                                 <!-- Empty space to maintain layout -->
@@ -936,58 +1088,63 @@
                                     <label><input type="radio" name="sex" value="female" /> Female</label>
                                     <label><input type="radio" name="sex" value="other" /> Other</label>
                                 </div>
+                                <div class="error-message">Please select your gender</div>
                             </div>
                             <div>
                                 <label class="required">Marital Status</label>
-                                <div class="radio-group">
+                                <div class="radio-group cols-3">
                                     <label><input type="radio" name="marital_status" value="single" required /> Single</label>
                                     <label><input type="radio" name="marital_status" value="married" /> Married</label>
-                                    <label><input type="radio" name="marital_status" value="divorced" /> Divorced</label>
-                                    <label><input type="radio" name="marital_status" value="widowed" /> Widowed</label>
                                     <label><input type="radio" name="marital_status" value="other" /> Other</label>
                                 </div>
+                                <div class="error-message">Please select marital status</div>
                             </div>
                         </div>
 
                         <!-- Address -->
                         <label style="margin-top:14px">Residential Address</label>
-                        <textarea class="field" id="address" name="residential_address" rows="3"></textarea>
+                        <textarea class="field" id="address" name="residential_address" rows="3"
+                            placeholder="Enter your complete residential address (optional)" maxlength="500"></textarea>
+                        <div class="char-counter" id="addressCounter">0/500 characters</div>
+                        <div class="error-message">Address cannot exceed 500 characters</div>
 
                         <!-- City, Locality -->
                         <div class="grid cols-2" style="margin-top:12px">
                             <div>
                                 <label for="city" class="required">City</label>
-                                <input class="field" type="text" id="city" name="city" required>
+                                <input class="field" type="text" id="city" name="city" placeholder="City" required
+                                    minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
+                                    title="Only letters and spaces allowed" />
+                                <div class="error-message">Please enter a valid city name (letters only)</div>
                             </div>
                             <div>
                                 <label for="locality" class="required">Locality</label>
-                                <input class="field" type="text" id="locality" name="locality" required>
+                                <input class="field" type="text" id="locality" name="locality" placeholder="Locality"
+                                    required minlength="2" maxlength="100" />
+                                <div class="error-message">Please enter a valid locality (2-100 characters)</div>
                             </div>
                         </div>
 
-                        <!-- Pincode and Nationality -->
-                        <div class="grid cols-2" style="margin-top:12px">
+                        <!-- Pincode -->
+                        <div class="grid cols-3" style="margin-top:12px">
                             <div>
-                                <label class="required">Pincode</label>
-                                <div class="pincode-input">
-                                    <input type="text" maxlength="1" name="pin1" required>
-                                    <input type="text" maxlength="1" name="pin2" required>
-                                    <input type="text" maxlength="1" name="pin3" required>
-                                    <input type="text" maxlength="1" name="pin4" required>
-                                    <input type="text" maxlength="1" name="pin5" required>
-                                    <input type="text" maxlength="1" name="pin6" required>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="required">Nationality</label>
-                                <div class="radio-group cols-2">
-                                    <label><input type="radio" name="nationality" value="indian" required /> Indian</label>
-                                    <label><input type="radio" name="nationality" value="nri" /> NRI</label>
-                                    <label><input type="radio" name="nationality" value="pio" /> PIO</label>
-                                    <label><input type="radio" name="nationality" value="oci" /> OCI</label>
-                                </div>
+                                <label for="pincode" class="required">Pincode</label>
+                                <input class="field" type="text" id="pincode" name="pincode_combined" placeholder="Pincode"
+                                    required pattern="[0-9]{6}" maxlength="6"
+                                    title="Please enter a valid 6-digit pincode" />
+                                <div class="error-message">Please enter a valid 6-digit pincode</div>
                             </div>
                         </div>
+
+                        <!-- Nationality -->
+                        <label class="required" style="margin-top:14px">Nationality</label>
+                        <div class="radio-group cols-4">
+                            <label><input type="radio" name="nationality" value="indian" required /> Indian</label>
+                            <label><input type="radio" name="nationality" value="nri" /> NRI</label>
+                            <label><input type="radio" name="nationality" value="pio" /> PIO</label>
+                            <label><input type="radio" name="nationality" value="oci" /> OCI</label>
+                        </div>
+                        <div class="error-message">Please select nationality</div>
                     </div>
 
                     <!-- Step 2: Employment Details -->
@@ -1003,6 +1160,7 @@
                             <label><input type="radio" name="employment_type" value="homemaker" /> Homemaker</label>
                             <label><input type="radio" name="employment_type" value="other" /> Other</label>
                         </div>
+                        <div class="error-message">Please select employment type</div>
 
                         <div class="grid cols-2" style="margin-top:16px">
                             <div>
@@ -1016,7 +1174,9 @@
                         </div>
 
                         <label for="industry" style="margin-top:16px">Industry</label>
-                        <input class="field" id="industry" name="industry">
+                        <textarea class="field" id="industry" name="industry" rows="4"
+                            placeholder="Describe your industry" maxlength="1000"></textarea>
+                        <div class="char-counter" id="industryCounter">0/1000 characters</div>
                     </div>
 
                     <!-- Step 3: Customer Requirements -->
@@ -1038,6 +1198,7 @@
                                     <label><input type="radio" name="configuration" value="duplex" /> Duplex</label>
                                     <label><input type="radio" name="configuration" value="other_config" /> Other</label>
                                 </div>
+                                <div class="error-message">Please select configuration</div>
                             </div>
                             <div>
                                 <label class="required">Budget</label>
@@ -1048,6 +1209,7 @@
                                     <label><input type="radio" name="budget" value="4cr_to_6cr" /> 4 Cr. to 6 Cr.</label>
                                     <label><input type="radio" name="budget" value="more_than_6cr" /> More than 6 Cr.</label>
                                 </div>
+                                <div class="error-message">Please select budget range</div>
                             </div>
                         </div>
 
@@ -1059,6 +1221,7 @@
                                     <label><input type="radio" name="construction_status" value="near_completion" /> Near Completion (&lt; 1 yr)</label>
                                     <label><input type="radio" name="construction_status" value="ready_possession" /> Ready Possession</label>
                                 </div>
+                                <div class="error-message">Please select construction status</div>
                             </div>
                             <div>
                                 <label class="required">Purpose of Buying</label>
@@ -1068,6 +1231,7 @@
                                     <label><input type="radio" name="purpose_of_buying" value="second_home" /> Second Home</label>
                                     <label><input type="radio" name="purpose_of_buying" value="gift" /> Gift</label>
                                 </div>
+                                <div class="error-message">Please select purpose of buying</div>
                             </div>
                         </div>
                     </div>
@@ -1091,7 +1255,10 @@
                         </div>
 
                         <label for="sourceDetails" style="margin-top:16px">If Newspaper Ad/ Social Media/ Exhibition/ Property Search Portal, Please Specify Details:</label>
-                        <textarea class="field" id="sourceDetails" name="source_details" rows="3"></textarea>
+                        <textarea class="field" id="sourceDetails" name="source_details" rows="4"
+                            placeholder="Please provide additional details if applicable..."
+                            maxlength="1000"></textarea>
+                        <div class="char-counter" id="additionalCounter">0/1000 characters</div>
 
                         <!-- Channel Partner Section (conditional) -->
                         <div class="conditional-section" id="channelPartnerSection">
@@ -1100,20 +1267,24 @@
                                 <div>
                                     <label for="partnerCompany" class="required">Company Name</label>
                                     <input class="field" id="partnerCompany" name="partner_company_name">
+                                    <div class="error-message">Please enter company name</div>
                                 </div>
                                 <div>
                                     <label for="partnerName" class="required">Channel Partner Name</label>
                                     <input class="field" id="partnerName" name="partner_name">
+                                    <div class="error-message">Please enter partner name</div>
                                 </div>
                             </div>
                             <div class="grid cols-2" style="margin-top: 12px;">
                                 <div>
                                     <label for="partnerMobile" class="required">Mobile No.</label>
                                     <input class="field" id="partnerMobile" name="partner_mobile" pattern="[0-9]{10}" maxlength="10">
+                                    <div class="error-message">Please enter 10-digit mobile number</div>
                                 </div>
                                 <div>
                                     <label for="reraNo" class="required">RERA No.</label>
                                     <input class="field" id="reraNo" name="partner_rera">
+                                    <div class="error-message">Please enter RERA number</div>
                                 </div>
                             </div>
                         </div>
@@ -1125,10 +1296,12 @@
                                 <div>
                                     <label for="referralName" class="required">Name</label>
                                     <input class="field" id="referralName" name="referral_name">
+                                    <div class="error-message">Please enter referral name</div>
                                 </div>
                                 <div>
                                     <label for="referralProject" class="required">Project Name</label>
                                     <input class="field" id="referralProject" name="referral_project">
+                                    <div class="error-message">Please enter project name</div>
                                 </div>
                             </div>
                         </div>
@@ -1203,28 +1376,166 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // Handle pincode input navigation and combination
-        const pincodeInputs = document.querySelectorAll('.pincode-input input');
-        pincodeInputs.forEach((input, index) => {
-            input.addEventListener('input', function() {
+        // Character counters
+        function setupCharacterCounters() {
+            const counters = [
+                { field: 'address', counter: 'addressCounter', max: 500 },
+                { field: 'industry', counter: 'industryCounter', max: 1000 },
+                { field: 'sourceDetails', counter: 'additionalCounter', max: 1000 }
+            ];
+
+            counters.forEach(({ field, counter, max }) => {
+                const fieldEl = document.getElementById(field);
+                const counterEl = document.getElementById(counter);
+
+                if (fieldEl && counterEl) {
+                    fieldEl.addEventListener('input', function () {
+                        const length = this.value.length;
+                        counterEl.textContent = `${length}/${max} characters`;
+
+                        counterEl.className = 'char-counter';
+                        if (length > max * 0.8) counterEl.classList.add('warning');
+                        if (length > max * 0.95) counterEl.classList.add('danger');
+                    });
+                }
+            });
+        }
+
+        // Simple real-time validation - only for email and specific fields
+        function setupRealTimeValidation() {
+            // Only validate email field in real-time
+            const emailField = document.getElementById('email');
+            if (emailField) {
+                emailField.addEventListener('input', function () {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    this.classList.remove('error', 'success');
+                    if (this.value && emailRegex.test(this.value)) {
+                        this.classList.add('success');
+                    }
+                });
+            }
+        }
+
+        function validateField(field) {
+            const value = field.value.trim();
+            let isValid = true;
+
+            // Remove previous validation classes
+            field.classList.remove('error', 'success');
+
+            // Skip validation for conditional fields that are not required when their section is hidden
+            const conditionalSection = field.closest('.conditional-section');
+            if (conditionalSection && conditionalSection.style.display === 'none') {
+                return true;
+            }
+
+            // Skip validation for optional empty fields (don't validate optional fields at all during real-time validation)
+            if (!field.required && !value) {
+                return true;
+            }
+
+            // For optional fields with content, only do basic format validation, not required validation
+            if (!field.required && value) {
+                // Only validate format, not whether it's filled
+                // Continue to format validation below
+            }
+
+            // Required field validation
+            if (field.required && !value) {
+                isValid = false;
+            }
+
+            // Specific field validations
+            switch (field.type) {
+                case 'email':
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (value && !emailRegex.test(value)) {
+                        isValid = false;
+                    } else if (value && emailRegex.test(value)) {
+                        field.classList.add('success');
+                    }
+                    break;
+
+                case 'date':
+                    if (field.id === 'dob' && value) {
+                        const birthDate = new Date(value);
+                        const today = new Date();
+                        let age = today.getFullYear() - birthDate.getFullYear();
+                        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+                        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                            age--;
+                        }
+
+                        if (age < 18 || age > 100) {
+                            isValid = false;
+                        }
+                    }
+                    break;
+
+                case 'text':
+                    // Name validation (only for personal name fields)
+                    if (field.id === 'firstName' || field.id === 'lastName' || field.id === 'middleName' || field.id === 'city') {
+                        const nameRegex = /^[A-Za-z\s]+$/;
+                        if (value && !nameRegex.test(value)) {
+                            isValid = false;
+                        }
+                    }
+
+                    // Pincode validation
+                    if (field.id === 'pincode') {
+                        const pincodeRegex = /^[0-9]{6}$/;
+                        if (value && !pincodeRegex.test(value)) {
+                            isValid = false;
+                        }
+                    }
+
+                    // Phone number validation (for partner mobile)
+                    if (field.id === 'partnerMobile' || field.id === 'phoneNumber') {
+                        const phoneRegex = /^[0-9]{10}$/;
+                        if (value && !phoneRegex.test(value)) {
+                            isValid = false;
+                        }
+                    }
+
+                    // Length validations (only if specified)
+                    if (field.minLength && value.length < field.minLength) {
+                        isValid = false;
+                    }
+                    if (field.maxLength && value.length > field.maxLength) {
+                        isValid = false;
+                    }
+                    break;
+
+                case 'tel':
+                    // Phone number validation
+                    if (value) {
+                        const phoneRegex = /^[0-9]{10}$/;
+                        if (!phoneRegex.test(value)) {
+                            isValid = false;
+                        }
+                    }
+                    break;
+            }
+
+            // Apply validation styles only if there's an error
+            if (!isValid) {
+                field.classList.add('error');
+            }
+
+            return isValid;
+        }
+
+        // Handle pincode input
+        const pincodeInput = document.getElementById('pincode');
+        if (pincodeInput) {
+            pincodeInput.addEventListener('input', function() {
                 // Only allow numbers
                 this.value = this.value.replace(/[^0-9]/g, '');
-                
-                // Combine pincode
-                const pincode = Array.from(pincodeInputs).map(inp => inp.value).join('');
-                document.getElementById('pincodeHidden').value = pincode;
-                
-                if (this.value.length === 1 && index < pincodeInputs.length - 1) {
-                    pincodeInputs[index + 1].focus();
-                }
+                // Update hidden field
+                document.getElementById('pincodeHidden').value = this.value;
             });
-            
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' && this.value === '' && index > 0) {
-                    pincodeInputs[index - 1].focus();
-                }
-            });
-        });
+        }
 
         // Multi-step navigation
         function setStep(n) {
@@ -1238,51 +1549,349 @@
             document.querySelector('.form').scrollTop = 0;
         }
 
-        // Validation function
-        function validateStep() {
-            const scope = document.querySelector(`.section[data-step="${current}"]`);
-            const required = scope.querySelectorAll('select[required], input[required], textarea[required]');
+        // Validate required fields
+        function validateFields(step) {
+            const currentSection = sections[step - 1];
+            const requiredFields = currentSection.querySelectorAll('[required]');
+            const radioGroups = {};
             let isValid = true;
 
-            for (const el of required) {
-                if (el.type === 'radio') {
-                    const group = scope.querySelectorAll(`input[name="${el.name}"]`);
-                    if (![...group].some(r => r.checked)) {
-                        isValid = false;
-                    }
-                } else if (!el.value.trim()) {
-                    isValid = false;
-                }
-            }
+            // Clear previous errors
+            currentSection.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            currentSection.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
 
-            // Special validation for pincode
-            if (current === 1) {
-                const pincode = document.getElementById('pincodeHidden').value;
-                if (pincode.length !== 6) {
-                    isValid = false;
-                    showMessage('Please enter a complete 6-digit pincode.', 'error');
+            requiredFields.forEach(field => {
+                // Skip validation for conditional fields that are in hidden sections
+                const conditionalSection = field.closest('.conditional-section');
+                if (conditionalSection && conditionalSection.style.display === 'none') {
+                    return; // Skip this field
                 }
-            }
+
+                if (field.type === 'radio') {
+                    if (!radioGroups[field.name]) {
+                        radioGroups[field.name] = {
+                            checked: false,
+                            elements: []
+                        };
+                    }
+                    radioGroups[field.name].elements.push(field);
+                    if (field.checked) {
+                        radioGroups[field.name].checked = true;
+                    }
+                } else {
+                    if (!field.value.trim()) {
+                        isValid = false;
+                        field.classList.add('error');
+                        const errorMsg = field.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'block';
+                    }
+                }
+            });
+
+            // Validate radio groups
+            Object.keys(radioGroups).forEach(groupName => {
+                if (!radioGroups[groupName].checked) {
+                    isValid = false;
+                    const firstRadio = currentSection.querySelector(`input[name="${groupName}"]`);
+                    if (firstRadio) {
+                        const radioContainer = firstRadio.closest('.radio-group');
+                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
+                        if (errorMsg) errorMsg.style.display = 'block';
+                        if (radioContainer) radioContainer.classList.add('error');
+                    }
+                } else {
+                    // Clear error state if radio group is checked
+                    const firstRadio = currentSection.querySelector(`input[name="${groupName}"]`);
+                    if (firstRadio) {
+                        const radioContainer = firstRadio.closest('.radio-group');
+                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
+                        if (errorMsg) errorMsg.style.display = 'none';
+                        if (radioContainer) radioContainer.classList.remove('error');
+                    }
+                }
+            });
 
             // Validate conditional sections
-            const conditionalSections = document.querySelectorAll('.conditional-section');
+            const conditionalSections = currentSection.querySelectorAll('.conditional-section');
             conditionalSections.forEach(section => {
                 if (section.style.display === 'block') {
                     const conditionalRequired = section.querySelectorAll('input[required]');
                     conditionalRequired.forEach(field => {
                         if (!field.value.trim()) {
                             isValid = false;
+                            field.classList.add('error');
+                            const errorMsg = field.parentElement.querySelector('.error-message');
+                            if (errorMsg) errorMsg.style.display = 'block';
                         }
                     });
                 }
             });
 
-            if (!isValid) {
-                showMessage('Please complete all required fields correctly.', 'error');
-                return false;
+            return isValid;
+        }
+
+        // Function to validate all required fields in the entire form
+        function validateAllRequiredFields() {
+            // Get all form fields that should be validated
+            const allFields = form.querySelectorAll('input, select, textarea');
+            const radioGroups = {};
+            let isValid = true;
+            let firstErrorElement = null;
+            const errorMessages = [];
+
+            console.log('Validating form fields...');
+
+            // Clear previous errors
+            form.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            form.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+            form.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+            
+            // Hide validation summary
+            const validationSummary = document.getElementById('validationSummary');
+            const errorList = document.getElementById('errorList');
+            validationSummary.classList.remove('show');
+
+            // Define required fields explicitly
+            const requiredFields = [
+                'first_name', 'last_name', 'email', 'city', 'locality', 'pincode_combined',
+                'nationality', 'employment_type', 'configuration', 'budget', 
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status'
+            ];
+
+            allFields.forEach(field => {
+                // Skip validation for conditional fields that are in hidden sections
+                const conditionalSection = field.closest('.conditional-section');
+                if (conditionalSection && conditionalSection.style.display === 'none') {
+                    return; // Skip this field
+                }
+
+                // Skip hidden fields
+                if (field.type === 'hidden') {
+                    return;
+                }
+
+                if (field.type === 'radio') {
+                    if (!radioGroups[field.name]) {
+                        radioGroups[field.name] = {
+                            checked: false,
+                            elements: [],
+                            section: field.closest('.section')
+                        };
+                    }
+                    radioGroups[field.name].elements.push(field);
+                    if (field.checked) {
+                        radioGroups[field.name].checked = true;
+                    }
+                } else if (field.type === 'checkbox') {
+                    // Handle sources checkboxes - at least one should be selected
+                    if (field.name === 'sources') {
+                        if (!radioGroups['sources']) {
+                            radioGroups['sources'] = {
+                                checked: false,
+                                elements: [],
+                                section: field.closest('.section')
+                            };
+                        }
+                        radioGroups['sources'].elements.push(field);
+                        if (field.checked) {
+                            radioGroups['sources'].checked = true;
+                        }
+                    }
+                } else {
+                    // Text fields, selects, textareas
+                    const isRequired = requiredFields.includes(field.name);
+                    
+                    if (isRequired && !field.value.trim()) {
+                        isValid = false;
+                        field.classList.add('error');
+                        
+                        // Get field label for error message
+                        const label = field.previousElementSibling || field.parentElement.querySelector('label');
+                        const fieldName = label ? label.textContent.replace('*', '').trim() : field.name.replace('_', ' ');
+                        errorMessages.push(fieldName);
+                        console.log('Empty required field found:', fieldName);
+                        
+                        const errorMsg = field.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'block';
+                        
+                        // Remember first error for navigation
+                        if (!firstErrorElement) {
+                            firstErrorElement = field.closest('.section');
+                        }
+                    } else if (field.name === 'phone_number' && field.value.trim()) {
+                        // Optional phone number format validation
+                        const phoneRegex = /^[0-9]{10}$/;
+                        if (!phoneRegex.test(field.value.trim())) {
+                            isValid = false;
+                            field.classList.add('error');
+                            const errorMsg = field.parentElement.querySelector('.error-message');
+                            if (errorMsg) errorMsg.style.display = 'block';
+                            errorMessages.push('Phone Number');
+                        }
+                    } else {
+                        field.classList.remove('error');
+                    }
+                }
+            });
+
+            // Validate radio groups
+            Object.keys(radioGroups).forEach(groupName => {
+                if (!radioGroups[groupName].checked) {
+                    isValid = false;
+                    // Find the radio group container and show error
+                    const firstRadio = form.querySelector(`input[name="${groupName}"]`);
+                    if (firstRadio) {
+                        // Get field label for error message
+                        const label = firstRadio.closest('div').previousElementSibling || firstRadio.closest('div').querySelector('label');
+                        const fieldName = label ? label.textContent.replace('*', '').trim() : groupName.replace('_', ' ');
+                        errorMessages.push(fieldName);
+                        console.log('Unchecked radio group found:', fieldName);
+                        
+                        const radioContainer = firstRadio.closest('.radio-group') || firstRadio.closest('.checkbox-group');
+                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
+                        if (errorMsg) {
+                            errorMsg.style.display = 'block';
+                        }
+                        
+                        // Add error styling to radio group and form group
+                        if (radioContainer) radioContainer.classList.add('error');
+                        const formGroup = firstRadio.closest('.form-group');
+                        if (formGroup) formGroup.classList.add('has-error');
+                        
+                        // Remember first error for navigation
+                        if (!firstErrorElement) {
+                            firstErrorElement = radioGroups[groupName].section;
+                        }
+                    }
+                } else {
+                    // Clear error state if radio group is checked
+                    const firstRadio = form.querySelector(`input[name="${groupName}"]`);
+                    if (firstRadio) {
+                        const radioContainer = firstRadio.closest('.radio-group') || firstRadio.closest('.checkbox-group');
+                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
+                        if (errorMsg) {
+                            errorMsg.style.display = 'none';
+                        }
+                        if (radioContainer) {
+                            radioContainer.classList.remove('error');
+                        }
+                        const formGroup = firstRadio.closest('.form-group');
+                        if (formGroup) {
+                            formGroup.classList.remove('has-error');
+                        }
+                    }
+                }
+            });
+
+            // Validate conditional sections
+            const conditionalSections = form.querySelectorAll('.conditional-section');
+            conditionalSections.forEach(section => {
+                if (section.style.display === 'block') {
+                    const conditionalRequired = section.querySelectorAll('input[required]');
+                    conditionalRequired.forEach(field => {
+                        if (!field.value.trim()) {
+                            isValid = false;
+                            field.classList.add('error');
+                            
+                            // Get field label for error message
+                            const label = field.previousElementSibling || field.parentElement.querySelector('label');
+                            const fieldName = label ? label.textContent.replace('*', '').trim() : field.name.replace('_', ' ');
+                            errorMessages.push(fieldName);
+                            
+                            const errorMsg = field.parentElement.querySelector('.error-message');
+                            if (errorMsg) errorMsg.style.display = 'block';
+                            
+                            // Remember first error for navigation
+                            if (!firstErrorElement) {
+                                firstErrorElement = section.closest('.section');
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Show validation summary if there are errors
+            if (!isValid && errorMessages.length > 0) {
+                console.log('Showing validation summary with errors:', errorMessages);
+                errorList.innerHTML = '';
+                errorMessages.forEach(message => {
+                    const li = document.createElement('li');
+                    li.textContent = message;
+                    errorList.appendChild(li);
+                });
+                validationSummary.classList.add('show');
+                validationSummary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (!isValid) {
+                console.log('Validation failed but no error messages collected');
             }
 
-            return true;
+            // Navigate to first error if validation fails
+            if (!isValid && firstErrorElement) {
+                const stepNumber = parseInt(firstErrorElement.getAttribute('data-step'));
+                setStep(stepNumber);
+            }
+
+            return isValid;
+        }
+
+        // Validation function for current step
+        function validateStep() {
+            const currentSection = sections[current - 1];
+            const requiredFields = ['first_name', 'last_name', 'email', 'city', 'locality', 'pincode_combined',
+                'nationality', 'employment_type', 'configuration', 'budget', 
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status'];
+            
+            let isValid = true;
+            
+            // Clear previous errors for current step
+            currentSection.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            currentSection.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+            
+            // Check fields in current step
+            const stepFields = currentSection.querySelectorAll('input, select, textarea');
+            const radioGroups = {};
+            
+            stepFields.forEach(field => {
+                if (field.type === 'hidden') return;
+                
+                const conditionalSection = field.closest('.conditional-section');
+                if (conditionalSection && conditionalSection.style.display === 'none') {
+                    return;
+                }
+                
+                if (field.type === 'radio') {
+                    if (!radioGroups[field.name]) {
+                        radioGroups[field.name] = { checked: false };
+                    }
+                    if (field.checked) {
+                        radioGroups[field.name].checked = true;
+                    }
+                } else {
+                    const isRequired = requiredFields.includes(field.name);
+                    if (isRequired && !field.value.trim()) {
+                        isValid = false;
+                        field.classList.add('error');
+                        const errorMsg = field.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'block';
+                    }
+                }
+            });
+            
+            // Check radio groups in current step
+            Object.keys(radioGroups).forEach(groupName => {
+                if (requiredFields.includes(groupName) && !radioGroups[groupName].checked) {
+                    isValid = false;
+                    const firstRadio = currentSection.querySelector(`input[name="${groupName}"]`);
+                    if (firstRadio) {
+                        const radioContainer = firstRadio.closest('.radio-group');
+                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
+                        if (errorMsg) errorMsg.style.display = 'block';
+                        if (radioContainer) radioContainer.classList.add('error');
+                    }
+                }
+            });
+            
+            return isValid;
         }
 
         // Show/hide conditional sections
@@ -1383,11 +1992,57 @@
         // Button click handler
         btn.addEventListener('click', () => {
             if (current === total) {
-                if (!validateStep()) return;
-                submitForm();
+                // Validate ALL required fields in the entire form
+                if (validateAllRequiredFields()) {
+                    console.log('Form is valid, submitting...');
+                    submitForm();
+                } else {
+                    console.log('Form validation failed');
+                    // Show a more detailed error message
+                    const errorCount = form.querySelectorAll('.error, .has-error').length;
+                    console.log('Error count:', errorCount);
+                    
+                    // Show browser alert
+                    alert(`❌ Cannot submit the form!\n\n${errorCount} required field(s) need to be filled out. Please check the error summary above and fill in all required fields marked with a red asterisk (*).`);
+                    
+                    // Scroll to validation summary
+                    const validationSummary = document.getElementById('validationSummary');
+                    if (validationSummary && validationSummary.classList.contains('show')) {
+                        validationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
                 return;
             }
             if (validateStep()) setStep(current + 1);
+        });
+
+        // Handle form submission event
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log('Form submission intercepted - running custom validation...');
+
+            // Validate ALL required fields in the entire form
+            const isFormValid = validateAllRequiredFields();
+            console.log('Validation result:', isFormValid);
+            
+            if (isFormValid) {
+                console.log('Form is valid, submitting...');
+                submitForm();
+            } else {
+                console.log('Form validation failed');
+                // Show a more detailed error message
+                const errorCount = form.querySelectorAll('.error, .has-error').length;
+                console.log('Error count:', errorCount);
+                
+                // Show browser alert
+                alert(`❌ Cannot submit the form!\n\n${errorCount} required field(s) need to be filled out. Please check the error summary above and fill in all required fields marked with a red asterisk (*).`);
+                
+                // Scroll to validation summary
+                const validationSummary = document.getElementById('validationSummary');
+                if (validationSummary && validationSummary.classList.contains('show')) {
+                    validationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
         });
 
         // Allow navigation between steps
@@ -1408,6 +2063,10 @@
         });
 
         // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            setupCharacterCounters();
+            setupRealTimeValidation();
+        });
         setStep(1);
     </script>
 </body>

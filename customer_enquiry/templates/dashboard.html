@@ -187,6 +187,42 @@
             text-align: center;
             padding: 40px;
             color: #666;
+            font-style: italic;
+        }
+        
+        .filter-info {
+            background: #e9f7ef;
+            border: 1px solid #27ae60;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #1e8449;
+            display: none;
+        }
+        
+        .filter-info.active {
+            display: block;
+        }
+        
+        .no-results-container {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .no-results-container h3 {
+            color: #888;
+            margin-bottom: 10px;
+        }
+        
+        .no-results-container p {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .no-results-container .btn {
+            margin: 0 5px;
         }
         
         .loading {
@@ -271,6 +307,9 @@
         </div>
     </div>
     
+    <!-- Filter Information -->
+    <div class="filter-info" id="filterInfo"></div>
+    
     <!-- Statistics -->
     <div class="stats-container">
         <div class="stat-card">
@@ -330,8 +369,7 @@
                     style="display: table-row;">
                     
                     <td>
-                        <span class="property-tag property-tag-js">{{ customer.form_number|slice:':3' }}</span>
-                        {{ customer.form_number }}
+                        <span class="property-tag property-tag-js">{{ customer.form_number|slice:':3' }}</span> {{ customer.form_number }}
                     </td>
                     <td>
                         <strong>{{ customer.get_full_name }}</strong>
@@ -344,11 +382,20 @@
                         <span class="phone-number">{{ customer.phone_number|default:'Not Provided' }}</span>
                     </td>
                     <td>{{ customer.city }}</td>
+                    
                     <td>
                         {% for source in customer.sources.all %}
-                            {{ source.get_source_type_display }}{% if not forloop.last %}, {% endif %}
+                            {% with display_text=source.get_source_type_display %}
+                                {% if 'Social Media' in display_text %}
+                                    Social Media
+                                {% else %}
+                                    {{ display_text }}
+                                {% endif %}{% if not forloop.last %}, {% endif %}
+                            {% endwith %}
                         {% endfor %}
                     </td>
+
+
                     <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
                     <td class="action-buttons">
                         <!-- Edit Customer Button -->
@@ -390,6 +437,7 @@
         // Global variables
         let allRows = [];
         let filteredRows = [];
+        let searchTimeout;
         
         // Property mapping function
         function getPropertyFromFormNumber(formNumber) {
@@ -412,7 +460,19 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             // Store all table rows for filtering and populate property data
-            allRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            const allTableRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            
+            // Filter out any existing no-results rows and store only data rows
+            allRows = allTableRows.filter(row => {
+                return row.dataset.formNumber && !row.querySelector('.no-results');
+            });
+            
+            console.log(`Found ${allRows.length} data rows for filtering`);
+            
+            // Debug: Check search data for first few rows
+            allRows.slice(0, 3).forEach((row, index) => {
+                console.log(`Row ${index} search data:`, row.dataset.search);
+            });
             
             // Populate property information using JavaScript
             allRows.forEach((row, index) => {
@@ -438,10 +498,38 @@
                 }
             });
             
+            // Initialize filtered rows
             filteredRows = [...allRows];
             
             // Add event listeners for real-time search
-            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            const searchInput = document.getElementById('searchInput');
+            
+            // Single event listener that handles both typing and clearing
+            searchInput.addEventListener('input', function(e) {
+                const currentValue = e.target.value.trim();
+                console.log('Search input changed:', `"${currentValue}"`);
+                
+                // Clear any existing timeout
+                clearTimeout(searchTimeout);
+                
+                if (currentValue === '') {
+                    // If search is empty, apply other filters immediately (but skip search filter)
+                    console.log('Search is empty - applying non-search filters');
+                    applyFiltersExceptSearch();
+                    
+                    // Force an immediate table display update as failsafe
+                    setTimeout(() => {
+                        console.log('Failsafe: Force updating table display');
+                        updateTableDisplay();
+                    }, 10);
+                } else {
+                    // If search has content, debounce the filtering
+                    searchTimeout = setTimeout(() => {
+                        console.log('Applying debounced search filter');
+                        applyFilters();
+                    }, 300);
+                }
+            });
             document.getElementById('propertyFilter').addEventListener('change', applyFilters);
             document.getElementById('dateFrom').addEventListener('change', applyFilters);
             document.getElementById('dateTo').addEventListener('change', applyFilters);
@@ -451,19 +539,110 @@
             // Show all rows initially
             updateTableDisplay();
             updateStatistics();
+            updateFilterInfo();
         });
         
-        function applyFilters() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        // Debounce function for search input
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        function applyFiltersExceptSearch() {
+            // Apply all filters except search (for when search is cleared)
             const propertyFilter = document.getElementById('propertyFilter').value;
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
             const assessmentFilter = document.getElementById('assessmentFilter').value;
             const bookingFilter = document.getElementById('bookingFilter').value;
             
+            console.log('Applying filters except search:', {
+                propertyFilter,
+                dateFrom,
+                dateTo,
+                assessmentFilter,
+                bookingFilter
+            });
+            
+            // Always start filtering from all rows
             filteredRows = allRows.filter(row => {
-                // Skip empty rows or no-results rows
-                if (row.cells.length < 8 || row.querySelector('.no-results')) return false;
+                // Skip if row doesn't have required data
+                if (!row.dataset || !row.cells || row.cells.length < 8) {
+                    return false;
+                }
+                
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                
+                // Skip search filter - only apply other filters
+                
+                // Property filter
+                if (propertyFilter && property !== propertyFilter) {
+                    return false;
+                }
+                
+                // Date filter
+                if (dateFrom && date < dateFrom) {
+                    return false;
+                }
+                if (dateTo && date > dateTo) {
+                    return false;
+                }
+                
+                // Assessment filter
+                if (assessmentFilter && assessment !== assessmentFilter) {
+                    return false;
+                }
+                
+                // Booking filter
+                if (bookingFilter && booking !== bookingFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            console.log(`Filtered (without search) from ${allRows.length} to ${filteredRows.length} rows`);
+            
+            // Update display
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+        
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+            
+            console.log('Applying filters:', {
+                searchTerm: `"${searchTerm}"`,
+                searchTermLength: searchTerm.length,
+                propertyFilter,
+                dateFrom,
+                dateTo,
+                assessmentFilter,
+                bookingFilter
+            });
+            
+            // Always start filtering from all rows to ensure consistency
+            filteredRows = allRows.filter(row => {
+                // Skip if row doesn't have required data
+                if (!row.dataset || !row.cells || row.cells.length < 8) {
+                    return false;
+                }
                 
                 const searchData = row.dataset.search || '';
                 const property = row.dataset.property || '';
@@ -472,8 +651,10 @@
                 const booking = row.dataset.booking || '';
                 
                 // Search filter
-                if (searchTerm && !searchData.includes(searchTerm)) {
-                    return false;
+                if (searchTerm && searchTerm.length > 0) {
+                    if (!searchData.includes(searchTerm)) {
+                        return false;
+                    }
                 }
                 
                 // Property filter
@@ -502,35 +683,71 @@
                 return true;
             });
             
-            // Update table display
+            console.log(`Filtered from ${allRows.length} to ${filteredRows.length} rows`);
+            
+            if (filteredRows.length === 0) {
+                console.log('No rows passed filter - checking why...');
+                // Debug: show why first few rows were filtered out
+                allRows.slice(0, 3).forEach((row, index) => {
+                    const searchData = row.dataset.search || '';
+                    const property = row.dataset.property || '';
+                    console.log(`Row ${index} - searchData: "${searchData}", property: "${property}"`);
+                });
+            }
+            
+            // Update display and show active filters
             updateTableDisplay();
             updateStatistics();
+            updateFilterInfo();
         }
         
         function updateTableDisplay() {
             const tbody = document.getElementById('leadsTableBody');
+            console.log(`Updating table display with ${filteredRows.length} filtered rows`);
             
-            // Show all original rows first
-            allRows.forEach(row => {
-                // Skip no-results rows
-                if (!row.querySelector('.no-results')) {
-                    row.style.display = 'none';
+            // First, remove any existing no-results rows
+            const noResultsRows = tbody.querySelectorAll('.no-results-container, .no-results');
+            noResultsRows.forEach(noResultElement => {
+                const noResultRow = noResultElement.closest('tr');
+                if (noResultRow) {
+                    noResultRow.remove();
                 }
             });
             
-            // Remove any existing no-results message
-            const existingNoResults = tbody.querySelector('.no-results');
-            if (existingNoResults && existingNoResults.parentElement) {
-                existingNoResults.parentElement.remove();
-            }
+            // Hide ALL rows initially (more reliable approach)
+            const allTableRows = tbody.querySelectorAll('tr');
+            allTableRows.forEach(row => {
+                row.style.display = 'none';
+            });
             
-            // Show filtered rows
+            // Show filtered rows or display no-results message
             if (filteredRows.length === 0) {
-                tbody.innerHTML += '<tr><td colspan="8" class="no-results">No leads found matching your criteria.</td></tr>';
+                console.log('No filtered rows - showing no results message');
+                // Create and insert enhanced no-results row
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = `
+                    <td colspan="8" class="no-results-container">
+                        <h3>🔍 No Results Found</h3>
+                        <p>We couldn't find any leads matching your current filter criteria.</p>
+                        <p>Try adjusting your filters or clearing them to see more results.</p>
+                        <button class="btn btn-primary" onclick="clearFilters()">🔄 Clear All Filters</button>
+                        <button class="btn btn-secondary" onclick="refreshData()">♻️ Refresh Data</button>
+                    </td>
+                `;
+                tbody.appendChild(noResultsRow);
             } else {
-                filteredRows.forEach(row => {
+                console.log(`Showing ${filteredRows.length} filtered rows`);
+                // Show filtered rows - more robust approach
+                filteredRows.forEach((row, index) => {
+                    console.log(`Showing row ${index}:`, row.dataset.formNumber);
                     row.style.display = 'table-row';
+                    
+                    // Ensure the row is properly attached to tbody if it got detached
+                    if (row.parentNode !== tbody) {
+                        tbody.appendChild(row);
+                    }
                 });
+                console.log('All filtered rows should now be visible');
             }
         }
         
@@ -549,7 +766,39 @@
             document.getElementById('completedBookings').textContent = completedBookings;
         }
         
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            const activeFilters = [];
+            
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+            
+            if (searchTerm) activeFilters.push(`Search: "${searchTerm}"`);
+            if (propertyFilter) {
+                const propertyName = document.getElementById('propertyFilter').options[document.getElementById('propertyFilter').selectedIndex].text;
+                activeFilters.push(`Property: ${propertyName}`);
+            }
+            if (dateFrom) activeFilters.push(`From: ${dateFrom}`);
+            if (dateTo) activeFilters.push(`To: ${dateTo}`);
+            if (assessmentFilter) activeFilters.push(`Assessment: ${assessmentFilter}`);
+            if (bookingFilter) activeFilters.push(`Booking: ${bookingFilter}`);
+            
+            if (activeFilters.length > 0) {
+                filterInfo.innerHTML = `🔍 Active Filters: ${activeFilters.join(' • ')} <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px;">Clear All</button>`;
+                filterInfo.classList.add('active');
+            } else {
+                filterInfo.classList.remove('active');
+            }
+        }
+        
         function clearFilters() {
+            console.log('Clearing all filters');
+            
+            // Clear all filter inputs
             document.getElementById('searchInput').value = '';
             document.getElementById('propertyFilter').value = '';
             document.getElementById('dateFrom').value = '';
@@ -557,9 +806,18 @@
             document.getElementById('assessmentFilter').value = '';
             document.getElementById('bookingFilter').value = '';
             
+            // Force clear any search timeouts
+            clearTimeout(searchTimeout);
+            
+            // Reset filtered rows to all rows
             filteredRows = [...allRows];
+            
+            console.log(`Reset to ${filteredRows.length} rows from total ${allRows.length}`);
+            
+            // Update display immediately
             updateTableDisplay();
             updateStatistics();
+            updateFilterInfo();
         }
         
         function refreshData() {
@@ -625,6 +883,77 @@
                 loadingIndicator.style.display = 'none';
                 alert('Export failed. Please try again.');
             });
+        }
+        
+        // Debug function - you can call this from browser console
+        function debugFilterState() {
+            console.log('=== FILTER DEBUG INFO ===');
+            console.log('Total rows:', allRows.length);
+            console.log('Filtered rows:', filteredRows.length);
+            console.log('Search input value:', `"${document.getElementById('searchInput').value}"`);
+            console.log('Search input trimmed:', `"${document.getElementById('searchInput').value.trim()}"`);
+            console.log('Property filter:', document.getElementById('propertyFilter').value);
+            
+            // Check table display state
+            const tbody = document.getElementById('leadsTableBody');
+            const visibleRows = tbody.querySelectorAll('tr[style*="table-row"]');
+            const hiddenRows = tbody.querySelectorAll('tr[style*="none"]');
+            console.log('Visible rows in DOM:', visibleRows.length);
+            console.log('Hidden rows in DOM:', hiddenRows.length);
+            
+            console.log('First 3 filtered rows display status:');
+            filteredRows.slice(0, 3).forEach((row, index) => {
+                console.log(`Filtered Row ${index}:`, {
+                    formNumber: row.dataset.formNumber,
+                    display: row.style.display,
+                    parentNode: row.parentNode === tbody ? 'correct parent' : 'wrong parent',
+                    inDOM: document.body.contains(row)
+                });
+            });
+            
+            console.log('First 3 all rows display status:');
+            allRows.slice(0, 3).forEach((row, index) => {
+                console.log(`All Row ${index}:`, {
+                    formNumber: row.dataset.formNumber,
+                    display: row.style.display,
+                    parentNode: row.parentNode === tbody ? 'correct parent' : 'wrong parent'
+                });
+            });
+            
+            console.log('========================');
+        }
+        
+        // Emergency function to force show all rows - call this from browser console if needed
+        function forceShowAllRows() {
+            console.log('Emergency: Force showing all rows');
+            const tbody = document.getElementById('leadsTableBody');
+            
+            // Remove any no-results rows
+            const noResultsRows = tbody.querySelectorAll('.no-results-container, .no-results');
+            noResultsRows.forEach(noResultElement => {
+                const noResultRow = noResultElement.closest('tr');
+                if (noResultRow) {
+                    noResultRow.remove();
+                }
+            });
+            
+            // Reset filtered rows to all rows
+            filteredRows = [...allRows];
+            
+            // Force display all rows
+            allRows.forEach((row, index) => {
+                console.log(`Emergency showing row ${index}:`, row.dataset.formNumber);
+                row.style.display = 'table-row';
+                if (row.parentNode !== tbody) {
+                    tbody.appendChild(row);
+                }
+            });
+            
+            // Update statistics
+            updateStatistics();
+            updateFilterInfo();
+            
+            console.log(`Emergency: Showed ${allRows.length} rows`);
         }
     </script>
     

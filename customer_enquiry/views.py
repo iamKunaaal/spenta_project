@@ -133,13 +133,13 @@ def customer_submit_view(request):
             
             property_name = property_mapping.get(property_code, property_code)
             
-            # Check required fields - UPDATED: Added sex and marital_status, removed date_of_birth and residential_address
+            # Check required fields - UPDATED: Added sex and marital_status
             required_fields = [
                 'first_name', 'last_name', 'email',
                 'city', 'locality', 'pincode',
                 'nationality', 'employment_type', 'configuration',
                 'budget', 'construction_status', 'purpose_of_buying',
-                'sex', 'marital_status'  # ADDED: New required fields
+                'sex', 'marital_status'
             ]
             
             missing_fields = [field for field in required_fields if not data.get(field)]
@@ -197,12 +197,7 @@ def customer_submit_view(request):
             # Handle optional date_of_birth field
             date_of_birth = data.get('date_of_birth', '').strip()
             if not date_of_birth:
-                # If no date provided, use a default date or handle appropriately
-                # Option 1: Use today's date (not recommended)
-                # date_of_birth = datetime.now().date()
-                
-                # Option 2: Use a placeholder date (better for now)
-                date_of_birth = '1900-01-01'  # Placeholder date
+                date_of_birth = None  # Allow null values as per model definition
                 
             # Create customer - UPDATED: Added sex and marital_status fields, made date_of_birth and residential_address optional
             customer = Customer.objects.create(
@@ -213,10 +208,10 @@ def customer_submit_view(request):
                 last_name=data.get('last_name'),
                 email=data.get('email'),
                 phone_number=phone_number if phone_number else None,
-                sex=sex,  # ADDED: Sex field
-                marital_status=marital_status,  # ADDED: Marital status field
-                date_of_birth=date_of_birth,  # Handle empty dates
-                residential_address=data.get('residential_address', ''),  # OPTIONAL - empty string if not provided
+                sex=sex,
+                marital_status=marital_status,
+                date_of_birth=date_of_birth,  # Can be None
+                residential_address=data.get('residential_address', ''),
                 city=data.get('city'),
                 locality=data.get('locality'),
                 pincode=pincode,

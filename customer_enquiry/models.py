@@ -121,8 +121,8 @@ class Customer(models.Model):
         help_text="Marital status of the customer"
     )
     
-    date_of_birth = models.DateField()
-    residential_address = models.TextField()
+    date_of_birth = models.DateField(blank=True, null=True)
+    residential_address = models.TextField(blank=True)
     city = models.CharField(max_length=100)
     locality = models.CharField(max_length=100)
     
@@ -704,6 +704,6 @@ class BookingApplicationManager(models.Manager):
         """Get bookings with applicants prefetched"""
         return self.prefetch_related('applicants')
 
-
+ 
 # Add custom manager to BookingApplication
 BookingApplication.add_to_class('objects', BookingApplicationManager())

@@ -10,3 +10,40 @@ git commit -m "Description of what you changed"
 
 # 5. Push to GitHub
 git push origin main
+
+
+
+
+Changes:  
+
+1) Assessment default value issue
+2) Customer Enquiry form style issue
+3) Dashboard search functionality issue
+4) Dashboard style
+5) Customer Enquiry form view style
+6) Property filter issue  
+7) clear filter not working - if the value not found in the list 
+
+
+
+
+   300 -500
+   500- 800
+   800 - 1000
+   1000 and above
+
+
+
+   Company Name
+   Designation
+   Channel Partner Details < Company Name < Channel Partner Name < RERA No
+
+
+
+
+1) Assessment default value issue
+3) Dashboard search functionality issue
+4) Dashboard style
+5) Customer Enquiry form view style
+6) Property filter issue  
+7) clear filter not working - if the value not found in the list 

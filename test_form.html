@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Test</title>
+</head>
+<body>
+    <h1>Simple Form Test</h1>
+    <form action="/submit/" method="POST">
+        <!-- Add a static CSRF token for testing -->
+        <input type="hidden" name="csrfmiddlewaretoken" value="test-token">
+        <input type="hidden" name="property_code" value="Alt">
+        <input type="hidden" name="form_number" value="Alt-12345">
+        <input type="hidden" name="form_date" value="2025-09-01">
+        <input type="hidden" name="pincode" value="400001">
+        
+        <p>First Name: <input type="text" name="first_name" value="Test" required></p>
+        <p>Last Name: <input type="text" name="last_name" value="User" required></p>
+        <p>Email: <input type="email" name="email" value="test@example.com" required></p>
+        <p>City: <input type="text" name="city" value="Mumbai" required></p>
+        <p>Locality: <input type="text" name="locality" value="Test Locality" required></p>
+        <p>Pincode: <input type="text" name="pincode_combined" value="400001" required></p>
+        
+        <p>Sex: 
+            <input type="radio" name="sex" value="male" checked required> Male
+            <input type="radio" name="sex" value="female"> Female
+        </p>
+        
+        <p>Marital Status: 
+            <input type="radio" name="marital_status" value="single" checked required> Single
+            <input type="radio" name="marital_status" value="married"> Married
+        </p>
+        
+        <p>Nationality: 
+            <input type="radio" name="nationality" value="indian" checked required> Indian
+        </p>
+        
+        <p>Employment: 
+            <input type="radio" name="employment_type" value="salaried" checked required> Salaried
+        </p>
+        
+        <p>Configuration: 
+            <input type="radio" name="configuration" value="2bhk" checked required> 2 BHK
+        </p>
+        
+        <p>Budget: 
+            <input type="radio" name="budget" value="1cr_to_2cr" checked required> 1-2 Cr
+        </p>
+        
+        <p>Construction: 
+            <input type="radio" name="construction_status" value="ready_possession" checked required> Ready
+        </p>
+        
+        <p>Purpose: 
+            <input type="radio" name="purpose_of_buying" value="personal_use" checked required> Personal
+        </p>
+        
+        <p>Sources: 
+            <input type="checkbox" name="sources" value="website" checked> Website
+        </p>
+        
+        <button type="submit">Submit</button>
+    </form>
+    
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('/submit/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                alert('Form submitted: ' + JSON.stringify(data));
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            });
+        });
+    </script>
+</body>
+</html>
