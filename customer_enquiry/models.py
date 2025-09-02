@@ -606,13 +606,13 @@ class BookingApplicant(models.Model):
     
     # Personal details
     title = models.CharField(max_length=5, choices=TITLE_CHOICES, blank=True, null=True)
-    first_name = models.CharField(max_length=100)  # Required - remove blank=True
+    first_name = models.CharField(max_length=100, blank=True)  # Allow blank for flexibility
     middle_name = models.CharField(max_length=100, blank=True, null=True)
-    last_name = models.CharField(max_length=100)  # Required - remove blank=True
+    last_name = models.CharField(max_length=100, blank=True)  # Allow blank for flexibility
     date_of_birth = models.DateField(null=True, blank=True)  # Optional - this is correct
-    marital_status = models.CharField(max_length=15, choices=MARITAL_STATUS_CHOICES)  # Required
+    marital_status = models.CharField(max_length=15, choices=MARITAL_STATUS_CHOICES, blank=True)  # Allow blank
     anniversary_date = models.DateField(null=True, blank=True)  # Optional - this is correct
-    sex = models.CharField(max_length=10, choices=SEX_CHOICES)  # Required
+    sex = models.CharField(max_length=10, choices=SEX_CHOICES, blank=True)  # Allow blank
     
     # Documents
     pan_no = models.CharField(max_length=10, blank=True)

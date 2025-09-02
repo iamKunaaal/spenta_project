@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python manage.py:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []

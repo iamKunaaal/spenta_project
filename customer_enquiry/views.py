@@ -828,32 +828,59 @@ def internal_sales_assessment(request, customer_id):
 @login_required
 def booking_form_view(request, customer_id):
     """
-    Booking form view with pre-filled customer data
+    Booking form view with pre-filled customer data and persistence support
     """
     customer = get_object_or_404(Customer, pk=customer_id)
     
     if request.method == 'GET':
-        # Pre-filled data prepare karo
-        prefilled_data = prepare_prefilled_data(customer)
+        # Check if customer already has a booking application (for editing)
+        existing_booking = BookingApplication.objects.filter(customer=customer).first()
+        
+        if existing_booking:
+            # Pre-fill with existing booking data
+            prefilled_data = prepare_prefilled_data_from_booking(customer, existing_booking)
+        else:
+            # Pre-fill with customer data only
+            prefilled_data = prepare_prefilled_data(customer)
         
         context = {
             'customer': customer,
             'prefilled_data': prefilled_data,
+            'existing_booking': existing_booking,
+            'existing_applicants': prefilled_data.get('existing_applicants', []),
         }
         
         return render(request, 'booking_form.html', context)
     
     elif request.method == 'POST':
-        # Form submission handle karo
+        # Handle form submission
         return handle_booking_submission(request, customer)
 
 def prepare_prefilled_data(customer):
     """
     Customer ke existing data se form pre-fill karo
     """
+    # Try to get project name from customer's related data
+    project_name = 'Project Name'  # Default
+    
+    # Try to get from customer referral (OneToOneField)
+    try:
+        if hasattr(customer, 'referral') and customer.referral:
+            project_name = customer.referral.project_name
+    except Exception:
+        pass
+    
+    # Try to get from existing bookings
+    try:
+        existing_booking = customer.booking_applications.first() if hasattr(customer, 'booking_applications') else None
+        if existing_booking and existing_booking.project_name:
+            project_name = existing_booking.project_name
+    except Exception:
+        pass
+    
     prefilled_data = {
-        # Project details - yeh aap customize kar sakte ho
-        'project_name': 'Default Project Name',  # Ya customer.project se if available
+        # Project details
+        'project_name': project_name,
         
         # 1st Applicant - Customer ki details se auto-fill
         'applicant_1_title': get_title_from_customer(customer),
@@ -861,6 +888,7 @@ def prepare_prefilled_data(customer):
         'applicant_1_middle_name': customer.middle_name or '',
         'applicant_1_last_name': customer.last_name,
         'applicant_1_email': customer.email,
+        'applicant_1_mobile': customer.phone_number or '',
         'applicant_1_residential_address': customer.residential_address,
         'applicant_1_city': customer.city,
         'applicant_1_pin': customer.pincode,
@@ -875,6 +903,126 @@ def prepare_prefilled_data(customer):
         'applicant_1_company_name': customer.company_name or '',
         'applicant_1_profession': customer.designation or '',
     }
+    
+    return prefilled_data
+
+def prepare_prefilled_data_from_booking(customer, booking):
+    """
+    Existing booking application se form pre-fill karo
+    """
+    prefilled_data = prepare_prefilled_data(customer)  # Start with customer data
+    
+    # Override with booking application data
+    prefilled_data.update({
+        'project_name': booking.project_name,
+        'flat_number': booking.flat_number,
+        'floor': booking.floor,
+        'rera_carpet_area': booking.rera_carpet_area,
+        'exclusive_deck_balcony': booking.exclusive_deck_balcony,
+        'car_parking_count': booking.car_parking_count,
+        'total_purchase_price': booking.total_purchase_price,
+        'total_purchase_price_words': booking.total_purchase_price_words,
+        'application_money_amount': booking.application_money_amount,
+        'application_money_words': booking.application_money_words,
+        'gst_amount': booking.gst_amount,
+        'gst_words': booking.gst_words,
+        'cheque_dd_no': booking.cheque_dd_no,
+        'instrument_date': booking.instrument_date,
+        'drawn_on': booking.drawn_on,
+        'gst_cheque_dd_no': booking.gst_cheque_dd_no,
+        'gst_instrument_date': booking.gst_instrument_date,
+        'gst_drawn_on': booking.gst_drawn_on,
+        'referral_customer_name': booking.referral_customer_name,
+        'referral_project': booking.referral_project,
+        'referral_flat_no': booking.referral_flat_no,
+        'sales_manager_name': booking.sales_manager_name,
+        'sourcing_manager_name': booking.sourcing_manager_name,
+        'source_direct': booking.source_direct,
+        'source_direct_specify': booking.source_direct_specify,
+    })
+    
+    # Add applicant data from booking
+    applicants = booking.applicants.all().order_by('applicant_order')
+    
+    # Track which applicants exist for JavaScript to show them
+    existing_applicants = []
+    
+    for applicant in applicants:
+        prefix = f'applicant_{applicant.applicant_order}_'
+        existing_applicants.append(applicant.applicant_order)
+        
+        prefilled_data.update({
+            f'{prefix}title': applicant.title or '',
+            f'{prefix}first_name': applicant.first_name or '',
+            f'{prefix}middle_name': applicant.middle_name or '',
+            f'{prefix}last_name': applicant.last_name or '',
+            f'{prefix}mobile': applicant.mobile or '',
+            f'{prefix}email': applicant.email or '',
+            f'{prefix}residential_address': applicant.residential_address or '',
+            f'{prefix}correspondence_address': applicant.correspondence_address or '',
+            f'{prefix}city': applicant.city or '',
+            f'{prefix}pin': applicant.pin or '',
+            f'{prefix}state': applicant.state or '',
+            f'{prefix}country': applicant.country or 'India',
+            f'{prefix}residential_status': applicant.residential_status or '',
+            f'{prefix}employment_type': applicant.employment_type or '',
+            f'{prefix}company_name': applicant.company_name or '',
+            f'{prefix}profession': applicant.profession or '',
+            f'{prefix}contact_residence': applicant.contact_residence or '',
+            f'{prefix}contact_office': applicant.contact_office or '',
+            f'{prefix}marital_status': applicant.marital_status or '',
+            f'{prefix}sex': applicant.sex or '',
+        })
+        
+        # Handle date fields safely
+        if applicant.date_of_birth:
+            dob_str = applicant.date_of_birth.strftime('%d%m%Y')
+            for i, char in enumerate(dob_str, 1):
+                if i <= 2:
+                    prefilled_data[f'{prefix}dob_d{i}'] = char
+                elif i <= 4:
+                    prefilled_data[f'{prefix}dob_m{i-2}'] = char
+                else:
+                    prefilled_data[f'{prefix}dob_y{i-4}'] = char
+        
+        if applicant.anniversary_date:
+            ann_str = applicant.anniversary_date.strftime('%d%m%Y')
+            for i, char in enumerate(ann_str, 1):
+                if i <= 2:
+                    prefilled_data[f'{prefix}anniversary_d{i}'] = char
+                elif i <= 4:
+                    prefilled_data[f'{prefix}anniversary_m{i-2}'] = char
+                else:
+                    prefilled_data[f'{prefix}anniversary_y{i-4}'] = char
+        
+        # Handle PAN and Aadhaar numbers
+        if applicant.pan_no:
+            for i, char in enumerate(applicant.pan_no, 1):
+                if i <= 10:
+                    prefilled_data[f'{prefix}pan_{i}'] = char
+        
+        if applicant.aadhar_no:
+            for i, char in enumerate(applicant.aadhar_no, 1):
+                if i <= 12:
+                    prefilled_data[f'{prefix}aadhar_{i}'] = char
+                    
+        # Handle checkboxes for marital status, sex, etc.
+        prefilled_data[f'{prefix}marital_status'] = applicant.marital_status
+        prefilled_data[f'{prefix}sex'] = applicant.sex
+    
+    # Add count of existing applicants to show them in the form
+    prefilled_data['existing_applicant_count'] = len(existing_applicants)
+    prefilled_data['existing_applicants'] = existing_applicants
+    
+    # Add channel partner data if exists
+    if hasattr(booking, 'channel_partner') and booking.channel_partner:
+        cp = booking.channel_partner
+        prefilled_data.update({
+            'channel_partner_name': cp.name,
+            'channel_partner_rera': cp.maharera_registration,
+            'channel_partner_mobile': cp.mobile,
+            'channel_partner_email': cp.email,
+        })
     
     return prefilled_data
 
@@ -933,75 +1081,96 @@ def get_state_from_city(city):
 
 def handle_booking_submission(request, customer):
     """
-    Form submission handle karo aur database mein save karo
+    Form submission handle karo aur database mein save karo (create or update)
     """
     try:
         logger.debug(f"Form data received: {request.POST}")
         
         with transaction.atomic():
-            # Main booking application create karo
-            booking_app = BookingApplication.objects.create(
-                customer=customer,
-                project_name=request.POST.get('project_name', 'Default Project'),
-                application_date=request.POST.get('application_date'),
+            # Check if customer already has a booking application
+            existing_booking = BookingApplication.objects.filter(customer=customer).first()
+            
+            booking_data = {
+                'customer': customer,
+                'project_name': request.POST.get('project_name', 'Default Project'),
+                'application_date': request.POST.get('application_date'),
                 
                 # Flat details
-                flat_number=request.POST.get('flat_number', ''),
-                floor=request.POST.get('floor', ''),
-                rera_carpet_area=request.POST.get('rera_carpet_area') or None,
-                exclusive_deck_balcony=request.POST.get('exclusive_deck_balcony') or None,
-                car_parking_count=request.POST.get('car_parking_count') or 0,
-                total_purchase_price=request.POST.get('total_purchase_price') or None,
-                total_purchase_price_words=request.POST.get('total_purchase_price_words', ''),
+                'flat_number': request.POST.get('flat_number', ''),
+                'floor': request.POST.get('floor', ''),
+                'rera_carpet_area': request.POST.get('rera_carpet_area') or None,
+                'exclusive_deck_balcony': request.POST.get('exclusive_deck_balcony') or None,
+                'car_parking_count': request.POST.get('car_parking_count') or 0,
+                'total_purchase_price': request.POST.get('total_purchase_price') or None,
+                'total_purchase_price_words': request.POST.get('total_purchase_price_words', ''),
                 
                 # Source of funds
-                self_financed='self_financed' in request.POST.getlist('source_of_funds'),
-                housing_loan='housing_loan' in request.POST.getlist('source_of_funds'),
+                'self_financed': 'self_financed' in request.POST.getlist('source_of_funds'),
+                'housing_loan': 'housing_loan' in request.POST.getlist('source_of_funds'),
                 
                 # Source of booking
-                source_direct=request.POST.get('source_direct') == 'on',
-                source_direct_specify=request.POST.get('source_direct_specify', ''),
+                'source_direct': request.POST.get('source_direct') == 'on',
+                'source_direct_specify': request.POST.get('source_direct_specify', ''),
                 
                 # Referral details
-                referral_customer_name=request.POST.get('referral_customer_name', ''),
-                referral_project=request.POST.get('referral_project', ''),
-                referral_flat_no=request.POST.get('referral_flat_no', ''),
+                'referral_customer_name': request.POST.get('referral_customer_name', ''),
+                'referral_project': request.POST.get('referral_project', ''),
+                'referral_flat_no': request.POST.get('referral_flat_no', ''),
                 
                 # Payment details
-                application_money_amount=request.POST.get('application_money_amount') or None,
-                application_money_words=request.POST.get('application_money_words', ''),
-                gst_amount=request.POST.get('gst_amount') or None,
-                gst_words=request.POST.get('gst_words', ''),
-                cheque_dd_no=request.POST.get('cheque_dd_no', ''),
-                instrument_date=request.POST.get('instrument_date') or None,
-                drawn_on=request.POST.get('drawn_on', ''),
-                gst_cheque_dd_no=request.POST.get('gst_cheque_dd_no', ''),
-                gst_instrument_date=request.POST.get('gst_instrument_date') or None,
-                gst_drawn_on=request.POST.get('gst_drawn_on', ''),
+                'application_money_amount': request.POST.get('application_money_amount') or None,
+                'application_money_words': request.POST.get('application_money_words', ''),
+                'gst_amount': request.POST.get('gst_amount') or None,
+                'gst_words': request.POST.get('gst_words', ''),
+                'cheque_dd_no': request.POST.get('cheque_dd_no', ''),
+                'instrument_date': request.POST.get('instrument_date') or None,
+                'drawn_on': request.POST.get('drawn_on', ''),
+                'gst_cheque_dd_no': request.POST.get('gst_cheque_dd_no', ''),
+                'gst_instrument_date': request.POST.get('gst_instrument_date') or None,
+                'gst_drawn_on': request.POST.get('gst_drawn_on', ''),
                 
                 # Manager details
-                sales_manager_name=request.POST.get('sales_manager_name', ''),
-                sourcing_manager_name=request.POST.get('sourcing_manager_name', ''),
-            )
+                'sales_manager_name': request.POST.get('sales_manager_name', ''),
+                'sourcing_manager_name': request.POST.get('sourcing_manager_name', ''),
+            }
             
-            # Applicants create karo
+            if existing_booking:
+                # Update existing booking
+                for field, value in booking_data.items():
+                    if field != 'customer':  # Don't update customer field
+                        setattr(existing_booking, field, value)
+                existing_booking.save()
+                booking_app = existing_booking
+                
+                # Clear existing applicants and channel partner
+                booking_app.applicants.all().delete()
+                if hasattr(booking_app, 'channel_partner'):
+                    booking_app.channel_partner.delete()
+                
+                action_message = 'updated'
+                logger.debug(f"Booking updated successfully: {booking_app.id}")
+            else:
+                # Create new booking
+                booking_app = BookingApplication.objects.create(**booking_data)
+                action_message = 'created'
+                logger.debug(f"Booking created successfully: {booking_app.id}")
+            
+            # Create applicants (fresh data)
             create_applicants(request, booking_app)
             
-            # Channel partner create karo (if exists)
+            # Create channel partner (if exists)
             create_channel_partner(request, booking_app)
-            
-            logger.debug(f"Booking created successfully: {booking_app.id}")
             
             # Success response for AJAX
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
-                    'message': 'Booking application created successfully!',
+                    'message': f'Booking application {action_message} successfully!',
                     'booking_id': booking_app.id,
                     'redirect_url': reverse('customer_enquiry:dashboard')
                 })
             else:
-                messages.success(request, 'Booking application created successfully!')
+                messages.success(request, f'Booking application {action_message} successfully!')
                 return redirect('customer_enquiry:dashboard')
             
     except Exception as e:
@@ -1010,11 +1179,23 @@ def handle_booking_submission(request, customer):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': False,
-                'error': f'Error creating booking: {str(e)}'
+                'error': f'Error processing booking: {str(e)}'
             })
         else:
-            messages.error(request, f'Error creating booking: {str(e)}')
+            messages.error(request, f'Error processing booking: {str(e)}')
             return redirect('customer_enquiry:booking_form', customer_id=customer.id)
+
+def generate_booking_pdf(request, customer):
+    """
+    PDF generation removed as requested
+    """
+    from django.http import HttpResponse
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    
+    # PDF functionality removed - redirect back to form
+    messages.info(request, 'PDF download functionality has been disabled.')
+    return redirect('customer_enquiry:booking_form', customer_id=customer.id)
 
 def create_applicants(request, booking_app):
     """
@@ -1030,47 +1211,110 @@ def create_applicants(request, booking_app):
         
         if first_name or last_name:  # Agar kuch data hai toh applicant create karo
             try:
-                BookingApplicant.objects.create(
-                    booking_application=booking_app,
-                    applicant_order=i,
+                # Build PAN number from individual character fields
+                pan_chars = []
+                for j in range(1, 11):  # PAN has 10 characters
+                    pan_char = request.POST.get(f'{prefix}pan_{j}', '').strip()
+                    pan_chars.append(pan_char)
+                pan_no = ''.join(pan_chars).strip().upper()  # PAN should be uppercase
+                
+                # Build Aadhaar number from individual character fields  
+                aadhar_chars = []
+                for j in range(1, 13):  # Aadhaar has 12 digits
+                    aadhar_char = request.POST.get(f'{prefix}aadhar_{j}', '').strip()
+                    if aadhar_char.isdigit():  # Only accept digits for Aadhaar
+                        aadhar_chars.append(aadhar_char)
+                aadhar_no = ''.join(aadhar_chars).strip()
+                
+                # Build date of birth from individual fields
+                dob_d1 = request.POST.get(f'{prefix}dob_d1', '')
+                dob_d2 = request.POST.get(f'{prefix}dob_d2', '')
+                dob_m1 = request.POST.get(f'{prefix}dob_m1', '')
+                dob_m2 = request.POST.get(f'{prefix}dob_m2', '')
+                dob_y1 = request.POST.get(f'{prefix}dob_y1', '')
+                dob_y2 = request.POST.get(f'{prefix}dob_y2', '')
+                dob_y3 = request.POST.get(f'{prefix}dob_y3', '')
+                dob_y4 = request.POST.get(f'{prefix}dob_y4', '')
+                
+                date_of_birth = None
+                if all([dob_d1, dob_d2, dob_m1, dob_m2, dob_y1, dob_y2, dob_y3, dob_y4]):
+                    try:
+                        from datetime import datetime
+                        dob_str = f"{dob_d1}{dob_d2}/{dob_m1}{dob_m2}/{dob_y1}{dob_y2}{dob_y3}{dob_y4}"
+                        date_of_birth = datetime.strptime(dob_str, '%d/%m/%Y').date()
+                    except ValueError:
+                        date_of_birth = None
+                
+                # Build anniversary date from individual fields
+                ann_d1 = request.POST.get(f'{prefix}anniversary_d1', '')
+                ann_d2 = request.POST.get(f'{prefix}anniversary_d2', '')
+                ann_m1 = request.POST.get(f'{prefix}anniversary_m1', '')
+                ann_m2 = request.POST.get(f'{prefix}anniversary_m2', '')
+                ann_y1 = request.POST.get(f'{prefix}anniversary_y1', '')
+                ann_y2 = request.POST.get(f'{prefix}anniversary_y2', '')
+                ann_y3 = request.POST.get(f'{prefix}anniversary_y3', '')
+                ann_y4 = request.POST.get(f'{prefix}anniversary_y4', '')
+                
+                anniversary_date = None
+                if all([ann_d1, ann_d2, ann_m1, ann_m2, ann_y1, ann_y2, ann_y3, ann_y4]):
+                    try:
+                        from datetime import datetime
+                        ann_str = f"{ann_d1}{ann_d2}/{ann_m1}{ann_m2}/{ann_y1}{ann_y2}{ann_y3}{ann_y4}"
+                        anniversary_date = datetime.strptime(ann_str, '%d/%m/%Y').date()
+                    except ValueError:
+                        anniversary_date = None
+                
+                # Validate data before saving
+                mobile_no = request.POST.get(f'{prefix}mobile', '').strip()
+                email_addr = request.POST.get(f'{prefix}email', '').strip()
+                
+                # Create applicant with proper validation
+                applicant_data = {
+                    'booking_application': booking_app,
+                    'applicant_order': i,
                     
                     # Personal details
-                    title=request.POST.get(f'{prefix}title', ''),
-                    first_name=first_name,
-                    middle_name=request.POST.get(f'{prefix}middle_name', ''),
-                    last_name=last_name,
-                    date_of_birth=request.POST.get(f'{prefix}date_of_birth') or None,
-                    marital_status=request.POST.get(f'{prefix}marital_status', ''),
-                    anniversary_date=request.POST.get(f'{prefix}anniversary') or None,
-                    sex=request.POST.get(f'{prefix}sex', ''),
+                    'title': request.POST.get(f'{prefix}title', ''),
+                    'first_name': first_name,
+                    'middle_name': request.POST.get(f'{prefix}middle_name', ''),
+                    'last_name': last_name,
+                    'date_of_birth': date_of_birth,
+                    'marital_status': request.POST.get(f'{prefix}marital_status', ''),
+                    'anniversary_date': anniversary_date,
+                    'sex': request.POST.get(f'{prefix}sex', ''),
                     
                     # Documents
-                    pan_no=request.POST.get(f'{prefix}pan_no', ''),
-                    aadhar_no=request.POST.get(f'{prefix}aadhar_no', ''),
-                    residential_status=request.POST.get(f'{prefix}residential_status', ''),
+                    'pan_no': pan_no[:10] if pan_no else '',  # Limit to 10 chars
+                    'aadhar_no': aadhar_no[:12] if aadhar_no else '',  # Limit to 12 chars
+                    'residential_status': request.POST.get(f'{prefix}residential_status', ''),
                     
                     # Address
-                    residential_address=request.POST.get(f'{prefix}residential_address', ''),
-                    city=request.POST.get(f'{prefix}city', ''),
-                    pin=request.POST.get(f'{prefix}pin', ''),
-                    state=request.POST.get(f'{prefix}state', ''),
-                    country=request.POST.get(f'{prefix}country', 'India'),
-                    correspondence_address=request.POST.get(f'{prefix}correspondence_address', ''),
+                    'residential_address': request.POST.get(f'{prefix}residential_address', ''),
+                    'city': request.POST.get(f'{prefix}city', ''),
+                    'pin': request.POST.get(f'{prefix}pin', ''),
+                    'state': request.POST.get(f'{prefix}state', ''),
+                    'country': request.POST.get(f'{prefix}country', 'India'),
+                    'correspondence_address': request.POST.get(f'{prefix}correspondence_address', ''),
                     
                     # Contact
-                    contact_residence=request.POST.get(f'{prefix}contact_residence', ''),
-                    contact_office=request.POST.get(f'{prefix}contact_office', ''),
-                    mobile=request.POST.get(f'{prefix}mobile', ''),
-                    email=request.POST.get(f'{prefix}email', ''),
+                    'contact_residence': request.POST.get(f'{prefix}contact_residence', ''),
+                    'contact_office': request.POST.get(f'{prefix}contact_office', ''),
+                    'mobile': mobile_no[:10] if mobile_no else '',  # Limit to 10 chars
+                    'email': email_addr[:254] if email_addr else '',  # Standard email length limit
                     
                     # Employment
-                    employment_type=request.POST.get(f'{prefix}employment_type', ''),
-                    profession=request.POST.get(f'{prefix}profession', ''),
-                    company_name=request.POST.get(f'{prefix}company_name', ''),
-                )
-                logger.debug(f"Applicant {i} created successfully")
+                    'employment_type': request.POST.get(f'{prefix}employment_type', ''),
+                    'profession': request.POST.get(f'{prefix}profession', ''),
+                    'company_name': request.POST.get(f'{prefix}company_name', ''),
+                }
+                
+                BookingApplicant.objects.create(**applicant_data)
+                logger.debug(f"Applicant {i} created successfully with full data")
+                
             except Exception as e:
                 logger.error(f"Error creating applicant {i}: {str(e)}")
+                # Log the specific data that caused the error
+                logger.error(f"Applicant {i} data: first_name='{first_name}', last_name='{last_name}'")
                 continue
 
 def create_channel_partner(request, booking_app):
@@ -1092,19 +1336,6 @@ def create_channel_partner(request, booking_app):
         except Exception as e:
             logger.error(f"Error creating channel partner: {str(e)}")
 
-def generate_booking_pdf(request, booking_app):
-    """
-    PDF generate karo aur download karo - Basic implementation
-    """
-    # Abhi basic response return kar rahe hain
-    # Baad mein WeasyPrint use karenge PDF generation ke liye
-    
-    return JsonResponse({
-        'success': True,
-        'message': 'Booking created successfully!',
-        'booking_id': booking_app.id,
-        'redirect_url': reverse('customer_enquiry:dashboard')
-    })
 
 def user_login_view(request):
     """

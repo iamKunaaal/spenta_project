@@ -8,7 +8,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SPENTA Edit Customer Information</title>
+    <title>SPENTA View Customer Information</title>
     <style>
         :root {
             --bg: #f5f5f5;
@@ -179,7 +179,6 @@
             gap: 12px;
             padding: 10px 12px;
             border-radius: 12px;
-            cursor: pointer;
         }
 
         .badge {
@@ -865,6 +864,36 @@
         input[type="checkbox"] {
             accent-color: grey;
         }
+
+        /* Field display styles for view mode */
+        .field-display {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #fafafa;
+            color: #2b3036;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .address-display {
+            min-height: 60px;
+            align-items: flex-start;
+            white-space: pre-line;
+            line-height: 1.5;
+        }
+
+        .source-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .source-list li {
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 
@@ -874,8 +903,8 @@
         <header class="header">
             <div class="brand-row">
                 <div class="header-text">
-                    <div class="title">Edit Customer Information</div>
-                    <div class="subtitle">Update customer details as required</div>
+                    <div class="title">View Customer Information</div>
+                    <div class="subtitle">Customer details and information</div>
                 </div>
             </div>
             <div class="dec">
@@ -925,18 +954,6 @@
             <!-- Form -->
             <section class="form">
                 <a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
-                
-                <form id="editCustomerForm" method="POST" novalidate>
-                    {% csrf_token %}
-
-                    <!-- Validation Summary Banner -->
-                    <div class="validation-summary" id="validationSummary">
-                        <h4>⚠️ Please correct the following errors:</h4>
-                        <ul id="errorList"></ul>
-                    </div>
-                    
-                    <!-- Hidden fields -->
-                    <input type="hidden" name="pincode" id="pincodeHidden" value="{{ customer.pincode }}">
                     
                     <!-- Step 1: Personal Details -->
                     <div class="section active" data-step="1">
@@ -945,54 +962,36 @@
                         <!-- Name Fields -->
                         <div class="grid cols-3">
                             <div>
-                                <label for="firstName" class="required">First Name</label>
-                                <input class="field" type="text" id="firstName" name="first_name"
-                                    value="{{ customer.first_name }}" placeholder="First Name" required minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
-                                    title="Only letters and spaces allowed" />
-                                <div class="error-message">Please enter a valid first name (2-50 characters, letters only)</div>
+                                <label>First Name</label>
+                                <div class="field-display">{{ customer.first_name|default:"Not provided" }}</div>
                             </div>
                             <div>
-                                <label for="middleName">Middle Name</label>
-                                <input class="field" type="text" id="middleName" name="middle_name"
-                                    value="{{ customer.middle_name }}" placeholder="Middle Name" maxlength="50" pattern="[A-Za-z\s]*"
-                                    title="Only letters and spaces allowed" />
-                                <div class="error-message">Please enter a valid middle name (letters only)</div>
+                                <label>Middle Name</label>
+                                <div class="field-display">{{ customer.middle_name|default:"Not provided" }}</div>
                             </div>
                             <div>
-                                <label for="lastName" class="required">Last Name</label>
-                                <input class="field" type="text" id="lastName" name="last_name" 
-                                    value="{{ customer.last_name }}" placeholder="Last Name"
-                                    required minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
-                                    title="Only letters and spaces allowed" />
-                                <div class="error-message">Please enter a valid last name (2-50 characters, letters only)</div>
+                                <label>Last Name</label>
+                                <div class="field-display">{{ customer.last_name|default:"Not provided" }}</div>
                             </div>
                         </div>
 
                         <!-- Email, Date of Birth -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
-                                <label for="email" class="required">Email</label>
-                                <input class="field" type="email" id="email" name="email" 
-                                    value="{{ customer.email }}" placeholder="Enter Your Email"
-                                    required maxlength="100" />
-                                <div class="error-message">Please enter a valid email address</div>
-                                <div class="success-message">✓ Valid email format</div>
+                                <label>Email</label>
+                                <div class="field-display">{{ customer.email|default:"Not provided" }}</div>
                             </div>
                             <div>
-                                <label for="dob">Date of Birth</label>
-                                <input class="field" type="date" id="dob" name="date_of_birth" 
-                                    value="{{ customer.date_of_birth|date:'Y-m-d' }}" min="1924-01-01" max="2006-12-31" />
-                                <div class="error-message">Please enter a valid date (age must be between 18-100 years)</div>
+                                <label>Date of Birth</label>
+                                <div class="field-display">{{ customer.date_of_birth|date:"F d, Y"|default:"Not provided" }}</div>
                             </div>
                         </div>
 
                         <!-- Phone Number Field -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
-                                <label for="phoneNumber">Phone Number</label>
-                                <input class="field" type="tel" id="phoneNumber" name="phone_number" 
-                                    value="{{ customer.phone_number }}" placeholder="Enter 10-digit phone number (optional)" pattern="[0-9]{10}" maxlength="10">
-                                <div class="error-message">Please enter a valid 10-digit phone number</div>
+                                <label>Phone Number</label>
+                                <div class="field-display">{{ customer.phone_number|default:"Not provided" }}</div>
                             </div>
                             <div>
                                 <!-- Empty space to maintain layout -->
@@ -1002,104 +1001,64 @@
                         <!-- Sex and Marital Status -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
-                                <label class="required">Sex</label>
-                                <div class="radio-group cols-3">
-                                    <label><input type="radio" name="sex" value="male" {% if customer.sex == 'male' %}checked{% endif %} required /> Male</label>
-                                    <label><input type="radio" name="sex" value="female" {% if customer.sex == 'female' %}checked{% endif %} /> Female</label>
-                                    <label><input type="radio" name="sex" value="other" {% if customer.sex == 'other' %}checked{% endif %} /> Other</label>
-                                </div>
-                                <div class="error-message">Please select your gender</div>
+                                <label>Sex</label>
+                                <div class="field-display">{% if customer.sex == 'male' %}Male{% elif customer.sex == 'female' %}Female{% elif customer.sex == 'other' %}Other{% else %}Not provided{% endif %}</div>
                             </div>
                             <div>
-                                <label class="required">Marital Status</label>
-                                <div class="radio-group cols-3">
-                                    <label><input type="radio" name="marital_status" value="single" {% if customer.marital_status == 'single' %}checked{% endif %} required /> Single</label>
-                                    <label><input type="radio" name="marital_status" value="married" {% if customer.marital_status == 'married' %}checked{% endif %} /> Married</label>
-                                    <label><input type="radio" name="marital_status" value="other" {% if customer.marital_status == 'other' %}checked{% endif %} /> Other</label>
-                                </div>
-                                <div class="error-message">Please select marital status</div>
+                                <label>Marital Status</label>
+                                <div class="field-display">{% if customer.marital_status == 'single' %}Single{% elif customer.marital_status == 'married' %}Married{% elif customer.marital_status == 'other' %}Other{% else %}Not provided{% endif %}</div>
                             </div>
                         </div>
 
                         <!-- Address -->
                         <label style="margin-top:14px">Residential Address</label>
-                        <textarea class="field" id="address" name="residential_address" rows="3"
-                            placeholder="Enter your complete residential address (optional)" maxlength="500">{{ customer.residential_address }}</textarea>
-                        <div class="char-counter" id="addressCounter">{{ customer.residential_address|length }}/500 characters</div>
-                        <div class="error-message">Address cannot exceed 500 characters</div>
+                        <div class="field-display address-display">{{ customer.residential_address|default:"Not provided" }}</div>
 
                         <!-- City, Locality -->
                         <div class="grid cols-2" style="margin-top:12px">
                             <div>
-                                <label for="city" class="required">City</label>
-                                <input class="field" type="text" id="city" name="city" 
-                                    value="{{ customer.city }}" placeholder="City" required
-                                    minlength="2" maxlength="50" pattern="[A-Za-z\s]+"
-                                    title="Only letters and spaces allowed" />
-                                <div class="error-message">Please enter a valid city name (letters only)</div>
+                                <label>City</label>
+                                <div class="field-display">{{ customer.city|default:"Not provided" }}</div>
                             </div>
                             <div>
-                                <label for="locality" class="required">Locality</label>
-                                <input class="field" type="text" id="locality" name="locality" 
-                                    value="{{ customer.locality }}" placeholder="Locality"
-                                    required minlength="2" maxlength="100" />
-                                <div class="error-message">Please enter a valid locality (2-100 characters)</div>
+                                <label>Locality</label>
+                                <div class="field-display">{{ customer.locality|default:"Not provided" }}</div>
                             </div>
                         </div>
 
                         <!-- Pincode -->
                         <div class="grid cols-3" style="margin-top:12px">
                             <div>
-                                <label for="pincode" class="required">Pincode</label>
-                                <input class="field" type="text" id="pincode" name="pincode_combined" 
-                                    value="{{ customer.pincode }}" placeholder="Pincode"
-                                    required pattern="[0-9]{6}" maxlength="6"
-                                    title="Please enter a valid 6-digit pincode" />
-                                <div class="error-message">Please enter a valid 6-digit pincode</div>
+                                <label>Pincode</label>
+                                <div class="field-display">{{ customer.pincode|default:"Not provided" }}</div>
                             </div>
                         </div>
 
                         <!-- Nationality -->
-                        <label class="required" style="margin-top:14px">Nationality</label>
-                        <div class="radio-group cols-4">
-                            <label><input type="radio" name="nationality" value="indian" {% if customer.nationality == 'indian' %}checked{% endif %} required /> Indian</label>
-                            <label><input type="radio" name="nationality" value="nri" {% if customer.nationality == 'nri' %}checked{% endif %} /> NRI</label>
-                            <label><input type="radio" name="nationality" value="pio" {% if customer.nationality == 'pio' %}checked{% endif %} /> PIO</label>
-                            <label><input type="radio" name="nationality" value="oci" {% if customer.nationality == 'oci' %}checked{% endif %} /> OCI</label>
-                        </div>
-                        <div class="error-message">Please select nationality</div>
+                        <label style="margin-top:14px">Nationality</label>
+                        <div class="field-display">{% if customer.nationality == 'indian' %}Indian{% elif customer.nationality == 'nri' %}NRI{% elif customer.nationality == 'pio' %}PIO{% elif customer.nationality == 'oci' %}OCI{% else %}Not provided{% endif %}</div>
                     </div>
 
                     <!-- Step 2: Employment Details -->
                     <div class="section" data-step="2">
                         <h3>Employment Details</h3>
 
-                        <label class="required">Employment Type</label>
-                        <div class="radio-group cols-3">
-                            <label><input type="radio" name="employment_type" value="salaried" {% if customer.employment_type == 'salaried' %}checked{% endif %} required /> Salaried</label>
-                            <label><input type="radio" name="employment_type" value="business" {% if customer.employment_type == 'business' %}checked{% endif %} /> Business</label>
-                            <label><input type="radio" name="employment_type" value="professional" {% if customer.employment_type == 'professional' %}checked{% endif %} /> Professional</label>
-                            <label><input type="radio" name="employment_type" value="retired" {% if customer.employment_type == 'retired' %}checked{% endif %} /> Retired</label>
-                            <label><input type="radio" name="employment_type" value="homemaker" {% if customer.employment_type == 'homemaker' %}checked{% endif %} /> Homemaker</label>
-                            <label><input type="radio" name="employment_type" value="other" {% if customer.employment_type == 'other' %}checked{% endif %} /> Other</label>
-                        </div>
-                        <div class="error-message">Please select employment type</div>
+                        <label>Employment Type</label>
+                        <div class="field-display">{% if customer.employment_type == 'salaried' %}Salaried{% elif customer.employment_type == 'business' %}Business{% elif customer.employment_type == 'professional' %}Professional{% elif customer.employment_type == 'retired' %}Retired{% elif customer.employment_type == 'homemaker' %}Homemaker{% elif customer.employment_type == 'other' %}Other{% else %}Not provided{% endif %}</div>
 
                         <div class="grid cols-2" style="margin-top:16px">
                             <div>
-                                <label for="companyName">Company Name</label>
-                                <input class="field" id="companyName" name="company_name" value="{{ customer.company_name }}">
+                                <label>Company Name</label>
+                                <div class="field-display">{{ customer.company_name|default:"Not provided" }}</div>
                             </div>
                             <div>
-                                <label for="designation">Designation</label>
-                                <input class="field" id="designation" name="designation" value="{{ customer.designation }}">
+                                <label>Designation</label>
+                                <div class="field-display">{{ customer.designation|default:"Not provided" }}</div>
                             </div>
                         </div>
 
-                        <label for="industry" style="margin-top:16px">Industry</label>
-                        <textarea class="field" id="industry" name="industry" rows="4"
-                            placeholder="Describe your industry" maxlength="1000">{{ customer.industry }}</textarea>
-                        <div class="char-counter" id="industryCounter">{{ customer.industry|length }}/1000 characters</div>
+                        <label style="margin-top:16px">Industry</label>
+                        <div class="field-display address-display">{{ customer.industry|default:"Not provided" }}</div>
                     </div>
 
                     <!-- Step 3: Customer Requirements -->
@@ -1109,52 +1068,52 @@
 
                         <div class="grid cols-2" style="margin-top:16px">
                             <div>
-                                <label class="required">Configuration</label>
-                                <div class="radio-group">
-                                    <label><input type="radio" name="configuration" value="1bhk" {% if customer.configuration == '1bhk' %}checked{% endif %} required /> 1 BHK</label>
-                                    <label><input type="radio" name="configuration" value="1.5bhk" {% if customer.configuration == '1.5bhk' %}checked{% endif %} /> 1.5 BHK</label>
-                                    <label><input type="radio" name="configuration" value="2bhk" {% if customer.configuration == '2bhk' %}checked{% endif %} /> 2 BHK</label>
-                                    <label><input type="radio" name="configuration" value="2.5bhk" {% if customer.configuration == '2.5bhk' %}checked{% endif %} /> 2.5 BHK</label>
-                                    <label><input type="radio" name="configuration" value="3bhk" {% if customer.configuration == '3bhk' %}checked{% endif %} /> 3 BHK</label>
-                                    <label><input type="radio" name="configuration" value="3.5bhk" {% if customer.configuration == '3.5bhk' %}checked{% endif %} /> 3.5 BHK</label>
-                                    <label><input type="radio" name="configuration" value="4bhk" {% if customer.configuration == '4bhk' %}checked{% endif %} /> 4 BHK</label>
-                                    <label><input type="radio" name="configuration" value="duplex" {% if customer.configuration == 'duplex' %}checked{% endif %} /> Duplex</label>
-                                    <label><input type="radio" name="configuration" value="other_config" {% if customer.configuration == 'other_config' %}checked{% endif %} /> Other</label>
+                                <label>Configuration</label>
+                                <div class="field-display">
+                                    {% if customer.configuration == '1bhk' %}1 BHK
+                                    {% elif customer.configuration == '1.5bhk' %}1.5 BHK
+                                    {% elif customer.configuration == '2bhk' %}2 BHK
+                                    {% elif customer.configuration == '2.5bhk' %}2.5 BHK
+                                    {% elif customer.configuration == '3bhk' %}3 BHK
+                                    {% elif customer.configuration == '3.5bhk' %}3.5 BHK
+                                    {% elif customer.configuration == '4bhk' %}4 BHK
+                                    {% elif customer.configuration == 'duplex' %}Duplex
+                                    {% elif customer.configuration == 'other_config' %}Other
+                                    {% else %}Not provided{% endif %}
                                 </div>
-                                <div class="error-message">Please select configuration</div>
                             </div>
                             <div>
-                                <label class="required">Budget</label>
-                                <div class="radio-group">
-                                    <label><input type="radio" name="budget" value="less_than_1cr" {% if customer.budget == 'less_than_1cr' %}checked{% endif %} required /> Less than 1 Cr.</label>
-                                    <label><input type="radio" name="budget" value="1cr_to_2cr" {% if customer.budget == '1cr_to_2cr' %}checked{% endif %} /> 1 Cr. to 2 Cr.</label>
-                                    <label><input type="radio" name="budget" value="2cr_to_4cr" {% if customer.budget == '2cr_to_4cr' %}checked{% endif %} /> 2 Cr. to 4 Cr.</label>
-                                    <label><input type="radio" name="budget" value="4cr_to_6cr" {% if customer.budget == '4cr_to_6cr' %}checked{% endif %} /> 4 Cr. to 6 Cr.</label>
-                                    <label><input type="radio" name="budget" value="more_than_6cr" {% if customer.budget == 'more_than_6cr' %}checked{% endif %} /> More than 6 Cr.</label>
+                                <label>Budget</label>
+                                <div class="field-display">
+                                    {% if customer.budget == 'less_than_1cr' %}Less than 1 Cr.
+                                    {% elif customer.budget == '1cr_to_2cr' %}1 Cr. to 2 Cr.
+                                    {% elif customer.budget == '2cr_to_4cr' %}2 Cr. to 4 Cr.
+                                    {% elif customer.budget == '4cr_to_6cr' %}4 Cr. to 6 Cr.
+                                    {% elif customer.budget == 'more_than_6cr' %}More than 6 Cr.
+                                    {% else %}Not provided{% endif %}
                                 </div>
-                                <div class="error-message">Please select budget range</div>
                             </div>
                         </div>
 
                         <div class="grid cols-2" style="margin-top:16px">
                             <div>
-                                <label class="required">Construction Status</label>
-                                <div class="radio-group">
-                                    <label><input type="radio" name="construction_status" value="under_construction" {% if customer.construction_status == 'under_construction' %}checked{% endif %} required /> Under Construction (&gt; 1 yr)</label>
-                                    <label><input type="radio" name="construction_status" value="near_completion" {% if customer.construction_status == 'near_completion' %}checked{% endif %} /> Near Completion (&lt; 1 yr)</label>
-                                    <label><input type="radio" name="construction_status" value="ready_possession" {% if customer.construction_status == 'ready_possession' %}checked{% endif %} /> Ready Possession</label>
+                                <label>Construction Status</label>
+                                <div class="field-display">
+                                    {% if customer.construction_status == 'under_construction' %}Under Construction (> 1 yr)
+                                    {% elif customer.construction_status == 'near_completion' %}Near Completion (< 1 yr)
+                                    {% elif customer.construction_status == 'ready_possession' %}Ready Possession
+                                    {% else %}Not provided{% endif %}
                                 </div>
-                                <div class="error-message">Please select construction status</div>
                             </div>
                             <div>
-                                <label class="required">Purpose of Buying</label>
-                                <div class="radio-group">
-                                    <label><input type="radio" name="purpose_of_buying" value="personal_use" {% if customer.purpose_of_buying == 'personal_use' %}checked{% endif %} required /> Personal Use</label>
-                                    <label><input type="radio" name="purpose_of_buying" value="investment" {% if customer.purpose_of_buying == 'investment' %}checked{% endif %} /> Investment</label>
-                                    <label><input type="radio" name="purpose_of_buying" value="second_home" {% if customer.purpose_of_buying == 'second_home' %}checked{% endif %} /> Second Home</label>
-                                    <label><input type="radio" name="purpose_of_buying" value="gift" {% if customer.purpose_of_buying == 'gift' %}checked{% endif %} /> Gift</label>
+                                <label>Purpose of Buying</label>
+                                <div class="field-display">
+                                    {% if customer.purpose_of_buying == 'personal_use' %}Personal Use
+                                    {% elif customer.purpose_of_buying == 'investment' %}Investment
+                                    {% elif customer.purpose_of_buying == 'second_home' %}Second Home
+                                    {% elif customer.purpose_of_buying == 'gift' %}Gift
+                                    {% else %}Not provided{% endif %}
                                 </div>
-                                <div class="error-message">Please select purpose of buying</div>
                             </div>
                         </div>
                     </div>
@@ -1164,76 +1123,73 @@
                         <h3>Source of Visit</h3>
 
                         <label>How did you hear about us?</label>
-                        <div class="checkbox-group">
-                            <label><input type="checkbox" id="channelPartner" name="sources" value="channel_partner" {% if 'channel_partner' in current_sources %}checked{% endif %} /> Channel Partner</label>
-                            <label><input type="checkbox" id="referral" name="sources" value="referral" {% if 'referral' in current_sources %}checked{% endif %} /> Referral</label>
-                            <label><input type="checkbox" name="sources" value="whatsapp" {% if 'whatsapp' in current_sources %}checked{% endif %} /> WhatsApp</label>
-                            <label><input type="checkbox" name="sources" value="social_media" {% if 'social_media' in current_sources %}checked{% endif %} /> Social Media (Facebook, Google, etc.)</label>
-                            <label><input type="checkbox" name="sources" value="website" {% if 'website' in current_sources %}checked{% endif %} /> Website</label>
-                            <label><input type="checkbox" name="sources" value="passing_by" {% if 'passing_by' in current_sources %}checked{% endif %} /> Passing by</label>
-                            <label><input type="checkbox" name="sources" value="property_portal" {% if 'property_portal' in current_sources %}checked{% endif %} /> Property Search Portal</label>
-                            <label><input type="checkbox" name="sources" value="hoarding" {% if 'hoarding' in current_sources %}checked{% endif %} /> Hoarding</label>
-                            <label><input type="checkbox" name="sources" value="newspaper_ad" {% if 'newspaper_ad' in current_sources %}checked{% endif %} /> Newspaper Ad</label>
-                            <label><input type="checkbox" name="sources" value="exhibition" {% if 'exhibition' in current_sources %}checked{% endif %} /> Exhibition</label>
+                        <div class="field-display source-list">
+                            {% if current_sources %}
+                                <ul style="margin: 0; padding-left: 20px;">
+                                    {% if 'channel_partner' in current_sources %}<li>Channel Partner</li>{% endif %}
+                                    {% if 'referral' in current_sources %}<li>Referral</li>{% endif %}
+                                    {% if 'whatsapp' in current_sources %}<li>WhatsApp</li>{% endif %}
+                                    {% if 'social_media' in current_sources %}<li>Social Media (Facebook, Google, etc.)</li>{% endif %}
+                                    {% if 'website' in current_sources %}<li>Website</li>{% endif %}
+                                    {% if 'passing_by' in current_sources %}<li>Passing by</li>{% endif %}
+                                    {% if 'property_portal' in current_sources %}<li>Property Search Portal</li>{% endif %}
+                                    {% if 'hoarding' in current_sources %}<li>Hoarding</li>{% endif %}
+                                    {% if 'newspaper_ad' in current_sources %}<li>Newspaper Ad</li>{% endif %}
+                                    {% if 'exhibition' in current_sources %}<li>Exhibition</li>{% endif %}
+                                </ul>
+                            {% else %}
+                                Not provided
+                            {% endif %}
                         </div>
 
-                        <label for="sourceDetails" style="margin-top:16px">If Newspaper Ad/ Social Media/ Exhibition/ Property Search Portal, Please Specify Details:</label>
-                        <textarea class="field" id="sourceDetails" name="source_details" rows="4"
-                            placeholder="Please provide additional details if applicable..."
-                            maxlength="1000">{{ customer.source_details }}</textarea>
-                        <div class="char-counter" id="additionalCounter">{{ customer.source_details|length }}/1000 characters</div>
+                        <label style="margin-top:16px">Additional Details (Newspaper Ad/ Social Media/ Exhibition/ Property Search Portal):</label>
+                        <div class="field-display address-display">{{ customer.source_details|default:"Not provided" }}</div>
 
-                        <!-- Channel Partner Section (conditional) -->
-                        <div class="conditional-section" id="channelPartnerSection" {% if channel_partner %}style="display:block"{% endif %}>
+                        <!-- Channel Partner Section -->
+                        {% if channel_partner %}
+                        <div class="conditional-section" style="display:block">
                             <h4>Channel Partner Details</h4>
                             <div class="grid cols-2" style="margin-top: 12px;">
                                 <div>
-                                    <label for="partnerCompany" class="required">Company Name</label>
-                                    <input class="field" id="partnerCompany" name="partner_company_name" value="{{ channel_partner.company_name|default:'' }}">
-                                    <div class="error-message">Please enter company name</div>
+                                    <label>Company Name</label>
+                                    <div class="field-display">{{ channel_partner.company_name|default:"Not provided" }}</div>
                                 </div>
                                 <div>
-                                    <label for="partnerName" class="required">Channel Partner Name</label>
-                                    <input class="field" id="partnerName" name="partner_name" value="{{ channel_partner.partner_name|default:'' }}">
-                                    <div class="error-message">Please enter partner name</div>
+                                    <label>Channel Partner Name</label>
+                                    <div class="field-display">{{ channel_partner.partner_name|default:"Not provided" }}</div>
                                 </div>
                             </div>
                             <div class="grid cols-2" style="margin-top: 12px;">
                                 <div>
-                                    <label for="partnerMobile" class="required">Mobile No.</label>
-                                    <input class="field" id="partnerMobile" name="partner_mobile" pattern="[0-9]{10}" maxlength="10" value="{{ channel_partner.mobile_number|default:'' }}">
-                                    <div class="error-message">Please enter 10-digit mobile number</div>
+                                    <label>Mobile No.</label>
+                                    <div class="field-display">{{ channel_partner.mobile_number|default:"Not provided" }}</div>
                                 </div>
                                 <div>
-                                    <label for="reraNo" class="required">RERA No.</label>
-                                    <input class="field" id="reraNo" name="partner_rera" value="{{ channel_partner.rera_number|default:'' }}">
-                                    <div class="error-message">Please enter RERA number</div>
+                                    <label>RERA No.</label>
+                                    <div class="field-display">{{ channel_partner.rera_number|default:"Not provided" }}</div>
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
 
-                        <!-- Referral Section (conditional) -->
-                        <div class="conditional-section" id="referralSection" {% if referral %}style="display:block"{% endif %}>
+                        <!-- Referral Section -->
+                        {% if referral %}
+                        <div class="conditional-section" style="display:block">
                             <h4>Referral Details</h4>
                             <div class="grid cols-2" style="margin-top: 12px;">
                                 <div>
-                                    <label for="referralName" class="required">Name</label>
-                                    <input class="field" id="referralName" name="referral_name" value="{{ referral.referral_name|default:'' }}">
-                                    <div class="error-message">Please enter referral name</div>
+                                    <label>Name</label>
+                                    <div class="field-display">{{ referral.referral_name|default:"Not provided" }}</div>
                                 </div>
                                 <div>
-                                    <label for="referralProject" class="required">Project Name</label>
-                                    <input class="field" id="referralProject" name="referral_project" value="{{ referral.project_name|default:'' }}">
-                                    <div class="error-message">Please enter project name</div>
+                                    <label>Project Name</label>
+                                    <div class="field-display">{{ referral.project_name|default:"Not provided" }}</div>
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
 
-                    <div class="actions">
-                        <button type="button" class="btn" id="nextBtn">Continue →</button>
-                    </div>
-                </form>
             </section>
         </div>
     </div>
@@ -1242,61 +1198,8 @@
         let current = 1, total = 4;
         const sections = [...document.querySelectorAll('.section')];
         const steps = [...document.querySelectorAll('.step')];
-        const btn = document.getElementById('nextBtn');
-        const form = document.getElementById('editCustomerForm');
 
-        // Character counters
-        function setupCharacterCounters() {
-            const counters = [
-                { field: 'address', counter: 'addressCounter', max: 500 },
-                { field: 'industry', counter: 'industryCounter', max: 1000 },
-                { field: 'sourceDetails', counter: 'additionalCounter', max: 1000 }
-            ];
-
-            counters.forEach(({ field, counter, max }) => {
-                const fieldEl = document.getElementById(field);
-                const counterEl = document.getElementById(counter);
-
-                if (fieldEl && counterEl) {
-                    fieldEl.addEventListener('input', function () {
-                        const length = this.value.length;
-                        counterEl.textContent = `${length}/${max} characters`;
-
-                        counterEl.className = 'char-counter';
-                        if (length > max * 0.8) counterEl.classList.add('warning');
-                        if (length > max * 0.95) counterEl.classList.add('danger');
-                    });
-                }
-            });
-        }
-
-        // Simple real-time validation - only for email
-        function setupRealTimeValidation() {
-            // Only validate email field in real-time
-            const emailField = document.getElementById('email');
-            if (emailField) {
-                emailField.addEventListener('input', function () {
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    this.classList.remove('error', 'success');
-                    if (this.value && emailRegex.test(this.value)) {
-                        this.classList.add('success');
-                    }
-                });
-            }
-        }
-
-        // Handle pincode input
-        const pincodeInput = document.getElementById('pincode');
-        if (pincodeInput) {
-            pincodeInput.addEventListener('input', function() {
-                // Only allow numbers
-                this.value = this.value.replace(/[^0-9]/g, '');
-                // Update hidden field
-                document.getElementById('pincodeHidden').value = this.value;
-            });
-        }
-
-        // Multi-step navigation
+        // Multi-step navigation for viewing
         function setStep(n) {
             current = Math.min(Math.max(n, 1), total);
             sections.forEach(s => s.classList.toggle('active', +s.dataset.step === current));
@@ -1304,248 +1207,8 @@
                 s.classList.toggle('active', i + 1 === current);
                 s.classList.toggle('done', i + 1 < current);
             });
-            btn.textContent = current === total ? 'Update Customer' : 'Continue →';
             document.querySelector('.form').scrollTop = 0;
         }
-
-        // Validate required fields
-        function validateFields(step) {
-            const currentSection = sections[step - 1];
-            const requiredFields = currentSection.querySelectorAll('[required]');
-            const radioGroups = {};
-            let isValid = true;
-
-            // Clear previous errors
-            currentSection.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
-            currentSection.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
-
-            requiredFields.forEach(field => {
-                // Skip validation for conditional fields that are in hidden sections
-                const conditionalSection = field.closest('.conditional-section');
-                if (conditionalSection && conditionalSection.style.display === 'none') {
-                    return; // Skip this field
-                }
-
-                if (field.type === 'radio') {
-                    if (!radioGroups[field.name]) {
-                        radioGroups[field.name] = {
-                            checked: false,
-                            elements: []
-                        };
-                    }
-                    radioGroups[field.name].elements.push(field);
-                    if (field.checked) {
-                        radioGroups[field.name].checked = true;
-                    }
-                } else {
-                    if (!field.value.trim()) {
-                        isValid = false;
-                        field.classList.add('error');
-                        const errorMsg = field.parentElement.querySelector('.error-message');
-                        if (errorMsg) errorMsg.style.display = 'block';
-                    }
-                }
-            });
-
-            // Validate radio groups
-            Object.keys(radioGroups).forEach(groupName => {
-                if (!radioGroups[groupName].checked) {
-                    isValid = false;
-                    const firstRadio = currentSection.querySelector(`input[name="${groupName}"]`);
-                    if (firstRadio) {
-                        const radioContainer = firstRadio.closest('.radio-group');
-                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
-                        if (errorMsg) errorMsg.style.display = 'block';
-                        if (radioContainer) radioContainer.classList.add('error');
-                    }
-                } else {
-                    // Clear error state if radio group is checked
-                    const firstRadio = currentSection.querySelector(`input[name="${groupName}"]`);
-                    if (firstRadio) {
-                        const radioContainer = firstRadio.closest('.radio-group');
-                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
-                        if (errorMsg) errorMsg.style.display = 'none';
-                        if (radioContainer) radioContainer.classList.remove('error');
-                    }
-                }
-            });
-
-            return isValid;
-        }
-
-        // Function to validate all required fields in the entire form
-        function validateAllRequiredFields() {
-            const allRequiredFields = form.querySelectorAll('[required]');
-            const radioGroups = {};
-            let isValid = true;
-            let firstErrorElement = null;
-            const errorMessages = [];
-
-            // Clear previous errors
-            form.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
-            form.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
-            
-            // Hide validation summary
-            const validationSummary = document.getElementById('validationSummary');
-            const errorList = document.getElementById('errorList');
-            validationSummary.classList.remove('show');
-
-            allRequiredFields.forEach(field => {
-                // Skip validation for conditional fields that are in hidden sections
-                const conditionalSection = field.closest('.conditional-section');
-                if (conditionalSection && conditionalSection.style.display === 'none') {
-                    return; // Skip this field
-                }
-
-                if (field.type === 'radio' || field.type === 'checkbox') {
-                    if (!radioGroups[field.name]) {
-                        radioGroups[field.name] = {
-                            checked: false,
-                            elements: [],
-                            section: field.closest('.section')
-                        };
-                    }
-                    radioGroups[field.name].elements.push(field);
-                    if (field.checked) {
-                        radioGroups[field.name].checked = true;
-                    }
-                } else {
-                    // For text fields, textareas, and selects
-                    // Only validate truly required fields (skip phone_number and residential_address)
-                    if (field.name === 'phone_number' || field.name === 'residential_address') {
-                        // Optional fields - skip required validation but validate format if filled
-                        if (field.value.trim() && field.name === 'phone_number') {
-                            const phoneRegex = /^[0-9]{10}$/;
-                            if (!phoneRegex.test(field.value.trim())) {
-                                isValid = false;
-                                field.classList.add('error');
-                                const errorMsg = field.parentElement.querySelector('.error-message');
-                                if (errorMsg) errorMsg.style.display = 'block';
-                            }
-                        }
-                    } else if (!field.value.trim()) {
-                        isValid = false;
-                        field.classList.add('error');
-                        
-                        // Get field label for error message
-                        const label = field.previousElementSibling || field.parentElement.querySelector('label');
-                        const fieldName = label ? label.textContent.replace('*', '').trim() : field.name.replace('_', ' ');
-                        errorMessages.push(fieldName);
-                        
-                        const errorMsg = field.parentElement.querySelector('.error-message');
-                        if (errorMsg) errorMsg.style.display = 'block';
-                        
-                        // Remember first error for navigation
-                        if (!firstErrorElement) {
-                            firstErrorElement = field.closest('.section');
-                        }
-                    } else {
-                        field.classList.remove('error');
-                    }
-                }
-            });
-
-            // Validate radio groups
-            Object.keys(radioGroups).forEach(groupName => {
-                if (!radioGroups[groupName].checked) {
-                    isValid = false;
-                    // Find the radio group container and show error
-                    const firstRadio = form.querySelector(`input[name="${groupName}"]`);
-                    if (firstRadio) {
-                        // Get field label for error message
-                        const label = firstRadio.closest('div').previousElementSibling || firstRadio.closest('div').querySelector('label');
-                        const fieldName = label ? label.textContent.replace('*', '').trim() : groupName.replace('_', ' ');
-                        errorMessages.push(fieldName);
-                        
-                        const radioContainer = firstRadio.closest('.radio-group') || firstRadio.closest('.checkbox-group');
-                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
-                        if (errorMsg) {
-                            errorMsg.style.display = 'block';
-                        }
-                        
-                        // Add error styling to radio group
-                        if (radioContainer) radioContainer.classList.add('error');
-                        
-                        // Remember first error for navigation
-                        if (!firstErrorElement) {
-                            firstErrorElement = radioGroups[groupName].section;
-                        }
-                    }
-                } else {
-                    // Clear error state if radio group is checked
-                    const firstRadio = form.querySelector(`input[name="${groupName}"]`);
-                    if (firstRadio) {
-                        const radioContainer = firstRadio.closest('.radio-group') || firstRadio.closest('.checkbox-group');
-                        const errorMsg = radioContainer ? radioContainer.parentElement.querySelector('.error-message') : null;
-                        if (errorMsg) {
-                            errorMsg.style.display = 'none';
-                        }
-                        if (radioContainer) {
-                            radioContainer.classList.remove('error');
-                        }
-                    }
-                }
-            });
-
-            // Show validation summary if there are errors
-            if (!isValid && errorMessages.length > 0) {
-                errorList.innerHTML = '';
-                errorMessages.forEach(message => {
-                    const li = document.createElement('li');
-                    li.textContent = message;
-                    errorList.appendChild(li);
-                });
-                validationSummary.classList.add('show');
-                validationSummary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-
-            // Navigate to first error if validation fails
-            if (!isValid && firstErrorElement) {
-                const stepNumber = parseInt(firstErrorElement.getAttribute('data-step'));
-                setStep(stepNumber);
-            }
-
-            return isValid;
-        }
-
-        // Show message
-        function showMessage(text, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.textContent = text;
-            messageDiv.className = `message ${type}`;
-            messageDiv.style.display = 'block';
-            
-            // Scroll to message
-            messageDiv.scrollIntoView({ behavior: 'smooth' });
-            
-            // Hide after 5 seconds
-            setTimeout(() => {
-                messageDiv.style.display = 'none';
-            }, 5000);
-        }
-
-        // Button click handler
-        btn.addEventListener('click', () => {
-            if (current === total) {
-                // Validate ALL required fields in the entire form
-                if (validateAllRequiredFields()) {
-                    // Submit the form normally
-                    form.submit();
-                } else {
-                    // Show a more detailed error message
-                    const errorCount = form.querySelectorAll('.error, .has-error').length;
-                    alert(`❌ Cannot update customer information!\n\n${errorCount} required field(s) need to be filled out. Please check the error summary above and fill in all required fields marked with a red asterisk (*).`);
-                    
-                    // Scroll to validation summary
-                    const validationSummary = document.getElementById('validationSummary');
-                    if (validationSummary && validationSummary.classList.contains('show')) {
-                        validationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }
-                return;
-            }
-            if (validateFields(current)) setStep(current + 1);
-        });
 
         // Allow navigation between steps
         steps.forEach((s, i) => {
@@ -1554,45 +1217,7 @@
             });
         });
 
-        // Show/hide conditional sections
-        document.getElementById('channelPartner').addEventListener('change', function() {
-            const section = document.getElementById('channelPartnerSection');
-            const isVisible = this.checked;
-            section.style.display = isVisible ? 'block' : 'none';
-            
-            // Toggle required fields
-            const requiredFields = section.querySelectorAll('input');
-            requiredFields.forEach(field => {
-                field.required = isVisible;
-            });
-        });
-
-        document.getElementById('referral').addEventListener('change', function() {
-            const section = document.getElementById('referralSection');
-            const isVisible = this.checked;
-            section.style.display = isVisible ? 'block' : 'none';
-            
-            // Toggle required fields
-            const requiredFields = section.querySelectorAll('input');
-            requiredFields.forEach(field => {
-                field.required = isVisible;
-            });
-        });
-
-        // Validate mobile numbers
-        document.getElementById('partnerMobile').addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
-        });
-
-        document.getElementById('phoneNumber').addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
-        });
-
         // Initialize
-        document.addEventListener('DOMContentLoaded', function () {
-            setupCharacterCounters();
-            setupRealTimeValidation();
-        });
         setStep(1);
     </script>
 </body>
