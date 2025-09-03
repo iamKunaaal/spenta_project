@@ -1069,10 +1069,11 @@
                         <!-- Phone Number Field -->
                         <div class="grid cols-2" style="margin-top:14px">
                             <div>
-                                <label for="phoneNumber">Phone Number</label>
+                                <label for="phoneNumber" class="required">Phone Number</label>
                                 <input class="field" type="tel" id="phoneNumber" name="phone_number" 
-                                    placeholder="Enter 10-digit phone number (optional)" pattern="[0-9]{10}" maxlength="10">
+                                    placeholder="Enter 10-digit phone number" pattern="[0-9]{10}" maxlength="10" minlength="10" required>
                                 <div class="error-message">Please enter a valid 10-digit phone number</div>
+                                <div class="success-message">✓ Valid phone number format</div>
                             </div>
                             <div>
                                 <!-- Empty space to maintain layout -->
@@ -1268,7 +1269,7 @@
                                     <label for="partnerCompany" class="required">Company Name</label>
                                     <input class="field" id="partnerCompany" name="partner_company_name">
                                     <div class="error-message">Please enter company name</div>
-                                </div>
+                                </div>     
                                 <div>
                                     <label for="partnerName" class="required">Channel Partner Name</label>
                                     <input class="field" id="partnerName" name="partner_name">
@@ -1355,9 +1356,9 @@
                 document.getElementById('userPhone').textContent = userPhone || 'Not provided';
                 document.getElementById('propertyBanner').style.display = 'block';
                 
-                // Generate form number with property code
+                // Generate form number with property code (uppercase)
                 const timestamp = Date.now().toString().slice(-5);
-                const formNumber = selectedProperty + '-' + timestamp;
+                const formNumber = selectedProperty.toUpperCase() + '-' + timestamp;
                 document.getElementById('formNumber').value = formNumber;
                 document.getElementById('hiddenFormNumber').value = formNumber;
             } else {
@@ -1408,9 +1409,19 @@
             if (emailField) {
                 emailField.addEventListener('input', function () {
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    const errorMessage = this.parentNode.querySelector('.error-message');
+                    const successMessage = this.parentNode.querySelector('.success-message');
+                    
                     this.classList.remove('error', 'success');
+                    if (errorMessage) errorMessage.style.display = 'none';
+                    if (successMessage) successMessage.style.display = 'none';
+                    
                     if (this.value && emailRegex.test(this.value)) {
                         this.classList.add('success');
+                        if (successMessage) successMessage.style.display = 'block';
+                    } else if (this.value && !emailRegex.test(this.value)) {
+                        this.classList.add('error');
+                        if (errorMessage) errorMessage.style.display = 'block';
                     }
                 });
             }
@@ -1653,7 +1664,7 @@
 
             // Define required fields explicitly
             const requiredFields = [
-                'first_name', 'last_name', 'email', 'city', 'locality', 'pincode_combined',
+                'first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
                 'construction_status', 'purpose_of_buying', 'sex', 'marital_status'
             ];
@@ -1837,7 +1848,7 @@
         // Validation function for current step
         function validateStep() {
             const currentSection = sections[current - 1];
-            const requiredFields = ['first_name', 'last_name', 'email', 'city', 'locality', 'pincode_combined',
+            const requiredFields = ['first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
                 'construction_status', 'purpose_of_buying', 'sex', 'marital_status'];
             
@@ -2057,9 +2068,26 @@
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
         });
 
-        // Validate phone number
+        // Validate phone number with real-time feedback
         document.getElementById('phoneNumber').addEventListener('input', function() {
+            // Only allow numbers and limit to 10 digits
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            
+            const errorMessage = this.parentNode.querySelector('.error-message');
+            const successMessage = this.parentNode.querySelector('.success-message');
+            const phoneRegex = /^[0-9]{10}$/;
+            
+            this.classList.remove('error', 'success');
+            if (errorMessage) errorMessage.style.display = 'none';
+            if (successMessage) successMessage.style.display = 'none';
+            
+            if (this.value && phoneRegex.test(this.value)) {
+                this.classList.add('success');
+                if (successMessage) successMessage.style.display = 'block';
+            } else if (this.value && !phoneRegex.test(this.value)) {
+                this.classList.add('error');
+                if (errorMessage) errorMessage.style.display = 'block';
+            }
         });
 
         // Initialize

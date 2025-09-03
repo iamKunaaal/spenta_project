@@ -449,7 +449,7 @@
         }
 
         .back-btn {
-            color: var(--brand);
+            color: #333;
             text-decoration: none;
             font-weight: 600;
             font-size: 14px;
@@ -851,7 +851,7 @@
                                     <strong>Name:</strong> {{ customer.get_full_name }}
                                 </div>
                                 <div>
-                                    <strong>Form #:</strong> {{ customer.form_number }}
+                                    <strong>Form #:</strong> <span class="form-number-display">{{ customer.form_number }}</span>
                                 </div>
                                 <div>
                                     <strong>Email:</strong> {{ customer.email }}
@@ -908,11 +908,10 @@
 
                         <div class="grid cols-2" style="margin-top: 16px;">
                             <div>
-                                <label class="required {% if assessment.customer_gender and not assessment.id %}auto-populated-label{% endif %}">Customer Gender</label>
-                                <div class="radio-group cols-3">
-                                    <label><input type="radio" name="customer_gender" value="male" {% if assessment.customer_gender == 'male' %}checked{% endif %} required> Male</label>
-                                    <label><input type="radio" name="customer_gender" value="female" {% if assessment.customer_gender == 'female' %}checked{% endif %} required> Female</label>
-                                    <label><input type="radio" name="customer_gender" value="family" {% if assessment.customer_gender == 'family' %}checked{% endif %} required> Family</label>
+                                <label class="required">Customer Gender</label>
+                                <div class="radio-group cols-2">
+                                    <label><input type="radio" name="customer_gender" value="male" {% if customer.sex == 'male' %}checked{% endif %} required> Male</label>
+                                    <label><input type="radio" name="customer_gender" value="female" {% if customer.sex == 'female' %}checked{% endif %} required> Female</label>
                                 </div>
                                 <div class="error-message">Please select customer gender</div>
                             </div>
@@ -926,9 +925,6 @@
                             </div>
                         </div>
 
-                        <label for="executiveName" style="margin-top:16px">Executive Name</label>
-                        <input class="field" type="text" id="executiveName" name="executive_name" 
-                               value="{{ assessment.executive_name|default:'' }}" placeholder="Enter Executive Name">
                     </div>
 
                     <!-- Step 2: Assessment Details -->
@@ -936,12 +932,12 @@
                         <h3>Assessment Details</h3>
 
                         <div>
-                            <label class="required {% if assessment.lead_classification and not assessment.id %}auto-populated-label{% endif %}">Lead Classification</label>
+                            <label class="required">Lead Classification</label>
                             <div class="radio-group cols-2">
-                                <label><input type="radio" name="lead_classification" value="hot" {% if assessment.lead_classification == 'hot' %}checked{% endif %} required> Hot</label>
-                                <label><input type="radio" name="lead_classification" value="warm" {% if assessment.lead_classification == 'warm' %}checked{% endif %} required> Warm</label>
-                                <label><input type="radio" name="lead_classification" value="cold" {% if assessment.lead_classification == 'cold' %}checked{% endif %} required> Cold</label>
-                                <label><input type="radio" name="lead_classification" value="lost" {% if assessment.lead_classification == 'lost' %}checked{% endif %} required> Lost</label>
+                                <label><input type="radio" name="lead_classification" value="hot" required> Hot</label>
+                                <label><input type="radio" name="lead_classification" value="warm" required> Warm</label>
+                                <label><input type="radio" name="lead_classification" value="cold" required> Cold</label>
+                                <label><input type="radio" name="lead_classification" value="lost" required> Lost</label>
                             </div>
                             <div class="error-message">Please select lead classification</div>
                         </div>
@@ -989,7 +985,7 @@
 
                         <div class="grid cols-2">
                             <div>
-                                <label class="required {% if assessment.current_residence_config and not assessment.id %}auto-populated-label{% endif %}">Configuration</label>
+                                <label class="required">Configuration</label>
                                 <div class="radio-group cols-4">
                                     <label><input type="radio" name="current_residence_config" value="1bhk" {% if assessment.current_residence_config == '1bhk' %}checked{% endif %} required> 1 BHK</label>
                                     <label><input type="radio" name="current_residence_config" value="1.5bhk" {% if assessment.current_residence_config == '1.5bhk' %}checked{% endif %} required> 1.5 BHK</label>
@@ -1023,15 +1019,15 @@
                         </div>
 
                         <div style="margin-top: 16px;">
-                            <label class="required {% if assessment.family_size and not assessment.id %}auto-populated-label{% endif %}">Family Size</label>
+                            <label class="required">Family Size</label>
                             <div class="radio-group cols-6">
-                                <label><input type="radio" name="family_size" value="1" {% if assessment.family_size == '1' %}checked{% endif %} required> 1</label>
-                                <label><input type="radio" name="family_size" value="2" {% if assessment.family_size == '2' %}checked{% endif %} required> 2</label>
-                                <label><input type="radio" name="family_size" value="3" {% if assessment.family_size == '3' %}checked{% endif %} required> 3</label>
-                                <label><input type="radio" name="family_size" value="4" {% if assessment.family_size == '4' %}checked{% endif %} required> 4</label>
-                                <label><input type="radio" name="family_size" value="5" {% if assessment.family_size == '5' %}checked{% endif %} required> 5</label>
-                                <label><input type="radio" name="family_size" value="6" {% if assessment.family_size == '6' %}checked{% endif %} required> 6</label>
-                                <label><input type="radio" name="family_size" value="6+" {% if assessment.family_size == '6+' %}checked{% endif %} required> >6</label>
+                                <label><input type="radio" name="family_size" value="1" required> 1</label>
+                                <label><input type="radio" name="family_size" value="2" required> 2</label>
+                                <label><input type="radio" name="family_size" value="3" required> 3</label>
+                                <label><input type="radio" name="family_size" value="4" required> 4</label>
+                                <label><input type="radio" name="family_size" value="5" required> 5</label>
+                                <label><input type="radio" name="family_size" value="6" required> 6</label>
+                                <label><input type="radio" name="family_size" value="6+" required> >6</label>
                             </div>
                             <div class="error-message">Please select family size</div>
                         </div>
@@ -1042,7 +1038,7 @@
                         <h3>Customer's Desired Requirements</h3>
 
                         <div>
-                            <label for="areaLooking" class="required {% if assessment.area_looking and not assessment.id %}auto-populated-label{% endif %}">Type/Area of Flat Customer is looking for</label>
+                            <label for="areaLooking" class="required">Type/Area of Flat Customer is looking for</label>
                             <textarea class="field" id="areaLooking" name="area_looking" rows="3" 
                                       placeholder="Describe the area and specifications..." required>{{ assessment.area_looking|default:'' }}</textarea>
                             <div class="error-message">Please enter area requirements</div>
@@ -1059,12 +1055,12 @@
                                 <div class="error-message">Please select funding source</div>
                             </div>
                             <div>
-                                <label for="ethnicity" class="required {% if assessment.ethnicity and not assessment.id %}auto-populated-label{% endif %}">Ethnicity</label>
+                                <label for="ethnicity" class="required">Ethnicity</label>
                                 <select class="field" id="ethnicity" name="ethnicity" required>
                                     <option value="">Select Ethnicity</option>
-                                    <option value="hindu" {% if assessment.ethnicity == 'hindu' %}selected{% endif %}>Hindu</option>
-                                    <option value="maharashtrian" {% if assessment.ethnicity == 'maharashtrian' %}selected{% endif %}>Maharashtrian</option>
-                                    <option value="other" {% if assessment.ethnicity == 'other' %}selected{% endif %}>Other</option>
+                                    <option value="hindu">Hindu</option>
+                                    <option value="maharashtrian">Maharashtrian</option>
+                                    <option value="other">Other</option>
                                 </select>
                                 <div class="error-message">Please select ethnicity</div>
                             </div>
@@ -1371,6 +1367,16 @@
         // Initialize first step and conditional sections
         setStep(1);
         toggleLostReasonDropdown();
+
+        // Format form numbers to uppercase property codes
+        document.querySelectorAll('.form-number-display').forEach(function(el) {
+            let formNumber = el.textContent.trim();
+            if (formNumber.includes('-')) {
+                const parts = formNumber.split('-');
+                parts[0] = parts[0].toUpperCase();
+                el.textContent = parts.join('-');
+            }
+        });
     </script>
 </body>
 </html>

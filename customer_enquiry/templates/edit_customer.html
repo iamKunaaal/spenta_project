@@ -116,7 +116,7 @@
             background-color: #f8f9fa;
             color: #6c757d;
             font-size: 13px;
-            width: 150px;
+            width: 200px;
         }
 
         /* Updated decorative elements */
@@ -920,7 +920,7 @@
             </div>
             <div>
                 <label>Form No.:</label>
-                <input type="text" value="{{ customer.form_number }}" readonly>
+                <input type="text" value="{{ customer.form_number }}" readonly class="form-number-input">
             </div>
         </div>
 
@@ -1219,6 +1219,16 @@
 
         // Initialize
         setStep(1);
+
+        // Format form numbers to uppercase property codes
+        document.querySelectorAll('.form-number-input').forEach(function(el) {
+            let formNumber = el.value.trim();
+            if (formNumber.includes('-')) {
+                const parts = formNumber.split('-');
+                parts[0] = parts[0].toUpperCase();
+                el.value = parts.join('-');
+            }
+        });
     </script>
 </body>
 </html>

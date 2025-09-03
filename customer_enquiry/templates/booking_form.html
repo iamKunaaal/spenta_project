@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Application Form</title>
+    
+    <!-- html2pdf.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --gold: #f0c24f;
@@ -412,6 +415,208 @@
                 text-align: left !important;
             }
         }
+
+        /* PDF-specific styles */
+        @media print {
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .page {
+                width: 100% !important;
+                margin: 0 !important;
+                background: white !important;
+                border: 6px solid var(--gold) !important;
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+            
+            /* Ensure form values are visible in PDF */
+            input, select, textarea {
+                -webkit-appearance: none !important;
+                background: white !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            /* Hide non-essential elements in PDF */
+            #downloadPdfBtn {
+                display: none !important;
+            }
+            
+            .customer-info-section {
+                display: none !important;
+            }
+        }
+
+        /* Enhanced styles for better PDF rendering */
+        .page {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+        
+        /* Ensure form elements are visible in PDF */
+        input, select, textarea {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        input[type="radio"]:checked {
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="radio"]:checked::after {
+            content: "●";
+            color: black;
+            font-size: 12px;
+            position: absolute;
+            top: -1px;
+            left: 2px;
+        }
+        
+        input[type="checkbox"]:checked {
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="checkbox"]:checked::after {
+            content: "✓";
+            color: black;
+            font-weight: bold;
+            position: absolute;
+            top: -2px;
+            left: 1px;
+        }
+
+        /* Enhanced PDF Page Break Rules for Long Content */
+        @media print {
+            /* Main container should allow natural page breaks */
+            .page {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            
+            /* Section headers can break before but not inside */
+            .section-head, .section-head-term {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-before: auto;
+                break-before: auto;
+                orphans: 2;
+                widows: 2;
+            }
+            
+            /* Small form elements should stay together */
+            .inline, .char-grid, .checks {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Rows can break if needed but prefer to stay together */
+            .row {
+                page-break-inside: auto;
+                break-inside: auto;
+                orphans: 1;
+                widows: 1;
+            }
+            
+            /* Grid elements should stay together when small */
+            .grid-fit {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Applicant boxes should allow natural breaks */
+            .applicant-box {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            
+            /* Terms section must allow breaking for long content */
+            .terms {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            
+            .terms p {
+                orphans: 2;
+                widows: 2;
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            
+            /* Input fields should not break in the middle */
+            input, select, textarea {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Labels with inputs should stay together when possible */
+            .label {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            /* Multiline textareas can break if very long */
+            .multiline {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+        }
+
+        /* Page break utility classes for manual control */
+        .page-break-before {
+            page-break-before: always;
+            break-before: always;
+        }
+        
+        .page-break-after {
+            page-break-after: always;
+            break-after: always;
+        }
+        
+        .page-break-avoid {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        
+        .page-break-auto {
+            page-break-inside: auto;
+            break-inside: auto;
+        }
+
+        /* Improved PDF layout */
+        @page {
+            size: A3 portrait;
+            margin: 10mm;
+        }
+        
+        /* Ensure content flows properly in PDF */
+        .page {
+            max-width: none !important;
+            overflow: visible !important;
+            height: auto !important;
+        }
+        
+        .frame {
+            overflow: visible !important;
+            height: auto !important;
+        }
+        
+        /* Better spacing for PDF */
+        .row, .inline, .grid-fit {
+            margin-bottom: 8px;
+        }
+        
+        /* Ensure all text is visible */
+        * {
+            overflow: visible !important;
+        }
     </style>
 </head>
 <body>
@@ -432,12 +637,15 @@
             <!-- Customer Information -->
             <div style="background: #e6f3ff; border: 1px solid #007bff; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
                 <strong>Customer:</strong> {{ customer.get_full_name }} | 
-                <strong>Form #:</strong> {{ customer.form_number }} | 
+                <strong>Form #:</strong> <span id="formNumber">{{ customer.form_number }}</span> | 
                 <strong>Email:</strong> {{ customer.email }} |
                 <strong>City:</strong> {{ customer.city }} | 
                 <strong>Config:</strong> {{ customer.get_configuration_display }} | 
                 <strong>Budget:</strong> {{ customer.get_budget_display }}
-                <div style="margin-top: 5px;"><a href="{% url 'customer_enquiry:dashboard' %}" style="color: #007bff;">← Back to Dashboard</a></div>
+                <div style="margin-top: 5px;">
+                    <a href="{% url 'customer_enquiry:dashboard' %}" style="color: #007bff; margin-right: 15px;">← Back to Dashboard</a>
+                    <button type="button" id="downloadPdfBtn" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">📄 Download PDF</button>
+                </div>
             </div>
             <form id="bookingForm" method="POST">
                 {% csrf_token %}
@@ -509,33 +717,33 @@
                     </div>
                 </div>
                 <div class="inline" style="margin-top: 6px">
-                    <span>'Marital Status':</span>
+                    <span>Marital Status:</span>
                     <div class="checks">
-                        <label><input type="checkbox" name="applicant_1_marital_status" value="married" {% if prefilled_data.applicant_1_marital_status == 'married' or customer.marital_status == 'married' %}checked{% endif %} /> Married</label>
-                        <label><input type="checkbox" name="applicant_1_marital_status" value="unmarried" {% if prefilled_data.applicant_1_marital_status == 'unmarried' or customer.marital_status == 'single' %}checked{% endif %} /> Unmarried</label>
-                        <label><input type="checkbox" name="applicant_1_marital_status" value="other" {% if prefilled_data.applicant_1_marital_status == 'other' or customer.marital_status == 'other' or customer.marital_status == 'divorced' or customer.marital_status == 'widowed' %}checked{% endif %} /> Other</label>
+                        <label><input type="radio" name="applicant_1_marital_status" value="married" {% if prefilled_data.applicant_1_marital_status == 'married' or customer.marital_status == 'married' %}checked{% endif %} /> Married</label>
+                        <label><input type="radio" name="applicant_1_marital_status" value="unmarried" {% if prefilled_data.applicant_1_marital_status == 'unmarried' or customer.marital_status == 'single' %}checked{% endif %} /> Unmarried</label>
+                        <label><input type="radio" name="applicant_1_marital_status" value="other" {% if prefilled_data.applicant_1_marital_status == 'other' or customer.marital_status == 'other' or customer.marital_status == 'divorced' or customer.marital_status == 'widowed' %}checked{% endif %} /> Other</label>
                     </div>
                 </div>
 
                 <div class="row cols-2" style="margin-top: 6px">
                     <div class="inline">
-                        <span>'Pan No.':</span>
+                        <span>Pan No.:</span>
                         <div class="char-grid pan">
                             <input class="char" maxlength="1" name="applicant_1_pan_1" value="{{ prefilled_data.applicant_1_pan_1|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_2" value="{{ prefilled_data.applicant_1_pan_2|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_3" value="{{ prefilled_data.applicant_1_pan_3|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_4" value="{{ prefilled_data.applicant_1_pan_4|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_5" value="{{ prefilled_data.applicant_1_pan_5|default:'' }}" required />
                             <input class="char" maxlength="1" name="applicant_1_pan_6" value="{{ prefilled_data.applicant_1_pan_6|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_7" value="{{ prefilled_data.applicant_1_pan_7|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_8" value="{{ prefilled_data.applicant_1_pan_8|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_9" value="{{ prefilled_data.applicant_1_pan_9|default:'' }}" required /><input class="char" maxlength="1" name="applicant_1_pan_10" value="{{ prefilled_data.applicant_1_pan_10|default:'' }}" required />
                         </div>
                     </div>
                     <div class="inline">
-                        <span>'Sex':</span>
+                        <span>Sex:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_1_sex" value="male" {% if prefilled_data.applicant_1_sex == 'male' or customer.sex == 'male' %}checked{% endif %} /> Male</label>
-                            <label><input type="checkbox" name="applicant_1_sex" value="female" {% if prefilled_data.applicant_1_sex == 'female' or customer.sex == 'female' %}checked{% endif %} /> Female</label>
-                            <label><input type="checkbox" name="applicant_1_sex" value="others" {% if prefilled_data.applicant_1_sex == 'others' or customer.sex == 'other' %}checked{% endif %} /> Others</label>
+                            <label><input type="radio" name="applicant_1_sex" value="male" {% if prefilled_data.applicant_1_sex == 'male' or customer.sex == 'male' %}checked{% endif %} /> Male</label>
+                            <label><input type="radio" name="applicant_1_sex" value="female" {% if prefilled_data.applicant_1_sex == 'female' or customer.sex == 'female' %}checked{% endif %} /> Female</label>
+                            <label><input type="radio" name="applicant_1_sex" value="others" {% if prefilled_data.applicant_1_sex == 'others' or customer.sex == 'other' %}checked{% endif %} /> Others</label>
                         </div>
                     </div>
                 </div>
                 <div class="inline" style="margin-top: 6px">
-                    <span>'Aadhar Card No.':</span>
+                    <span>Aadhar Card No.:</span>
                     <div class="char-grid aadhaar">
                         <input class="char" maxlength="1" name="applicant_1_aadhar_1" value="{{ prefilled_data.applicant_1_aadhar_1|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_2" value="{{ prefilled_data.applicant_1_aadhar_2|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_3" value="{{ prefilled_data.applicant_1_aadhar_3|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_4" value="{{ prefilled_data.applicant_1_aadhar_4|default:'' }}" />
                         <input class="char" maxlength="1" name="applicant_1_aadhar_5" value="{{ prefilled_data.applicant_1_aadhar_5|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_6" value="{{ prefilled_data.applicant_1_aadhar_6|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_7" value="{{ prefilled_data.applicant_1_aadhar_7|default:'' }}" /><input class="char" maxlength="1" name="applicant_1_aadhar_8" value="{{ prefilled_data.applicant_1_aadhar_8|default:'' }}" />
@@ -544,76 +752,76 @@
                 </div>
 
                 <div class="inline" style="margin-top: 6px">
-                    <span>'Residential Status':</span>
+                    <span>Residential Status:</span>
                     <div class="checks">
-                        <label><input type="checkbox" name="applicant_1_residential_status" value="indian" {% if prefilled_data.applicant_1_residential_status == 'indian' or customer.nationality == 'indian' %}checked{% endif %} /> Indian</label>
-                        <label><input type="checkbox" name="applicant_1_residential_status" value="nri" {% if prefilled_data.applicant_1_residential_status == 'nri' or customer.nationality == 'nri' %}checked{% endif %} /> NRI</label>
-                        <label><input type="checkbox" name="applicant_1_residential_status" value="pio" {% if prefilled_data.applicant_1_residential_status == 'pio' or customer.nationality == 'pio' %}checked{% endif %} /> PIO</label>
-                        <label><input type="checkbox" name="applicant_1_residential_status" value="oci" {% if prefilled_data.applicant_1_residential_status == 'oci' or customer.nationality == 'oci' %}checked{% endif %} /> OCI</label>
+                        <label><input type="radio" name="applicant_1_residential_status" value="indian" {% if prefilled_data.applicant_1_residential_status == 'indian' or customer.nationality == 'indian' %}checked{% endif %} /> Indian</label>
+                        <label><input type="radio" name="applicant_1_residential_status" value="nri" {% if prefilled_data.applicant_1_residential_status == 'nri' or customer.nationality == 'nri' %}checked{% endif %} /> NRI</label>
+                        <label><input type="radio" name="applicant_1_residential_status" value="pio" {% if prefilled_data.applicant_1_residential_status == 'pio' or customer.nationality == 'pio' %}checked{% endif %} /> PIO</label>
+                        <label><input type="radio" name="applicant_1_residential_status" value="oci" {% if prefilled_data.applicant_1_residential_status == 'oci' or customer.nationality == 'oci' %}checked{% endif %} /> OCI</label>
                     </div>
                 </div>
 
                 <div class="grid-fit" style="margin-top: 6px">
-                    <div class="label">'Residential Address':</div>
+                    <div class="label">Residential Address:</div>
                     <textarea class="multiline" name="applicant_1_residential_address" required>{{ prefilled_data.applicant_1_residential_address|default:customer.residential_address|default:'' }}</textarea>
                 </div>
 
                 <div class="row cols-4" style="margin-top: 6px">
                     <div class="grid-fit">
-                        <div class="label">'City':</div>
+                        <div class="label">City:</div>
                         <input class="line" name="applicant_1_city" value="{{ prefilled_data.applicant_1_city|default:customer.city|default:'' }}" required />
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'Pin':</div>
+                        <div class="label">Pin:</div>
                         <input class="line" name="applicant_1_pin" value="{{ prefilled_data.applicant_1_pin|default:customer.pincode|default:'' }}" maxlength="6" required />
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'State':</div>
+                        <div class="label">State:</div>
                         <input class="line" name="applicant_1_state" value="{{ prefilled_data.applicant_1_state|default:'Maharashtra' }}" required />
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'Country':</div>
+                        <div class="label">Country:</div>
                         <input class="line" name="applicant_1_country" value="{{ prefilled_data.applicant_1_country|default:'India' }}" required />
                     </div>
                 </div>
 
                 <div class="grid-fit" style="margin-top: 6px">
-                    <div class="label">'Correspondence Address':</div>
+                    <div class="label">Correspondence Address:</div>
                     <textarea class="multiline" name="applicant_1_correspondence_address">{{ prefilled_data.applicant_1_correspondence_address|default:'' }}</textarea>
                 </div>
                 <div class="row cols-3" style="margin-top: 6px">
                     <div class="grid-fit">
-                        <div class="label">'Contact No.: Residence':</div>
+                        <div class="label">Contact No.: Residence:</div>
                         <input class="line" name="applicant_1_contact_residence" value="{{ prefilled_data.applicant_1_contact_residence|default:'' }}" />
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'Office':</div>
+                        <div class="label">Office:</div>
                         <input class="line" name="applicant_1_contact_office" value="{{ prefilled_data.applicant_1_contact_office|default:'' }}" />
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'Mobile':</div>
+                        <div class="label">Mobile:</div>
                         <input class="line" name="applicant_1_mobile" maxlength="10" value="{{ prefilled_data.applicant_1_mobile|default:customer.phone_number|default:'' }}" required />
                     </div>
                 </div>
                 <div class="grid-fit" style="margin-top: 6px">
-                    <div class="label">'E-mail id':</div>
+                    <div class="label">E-mail id:</div>
                     <input class="line" name="applicant_1_email" value="{{ prefilled_data.applicant_1_email|default:customer.email|default:'' }}" required />
                 </div>
                 <div class="row cols-2" style="margin-top: 6px">
                     <div class="grid-fit">
-                        <div class="label">'Employment Type:'</div>
+                        <div class="label">Employment Type:</div>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_1_employment_type" value="salaried" {% if prefilled_data.applicant_1_employment_type == 'salaried' or customer.employment_type == 'salaried' %}checked{% endif %} /> Salaried</label>
-                            <label><input type="checkbox" name="applicant_1_employment_type" value="self_employed" {% if prefilled_data.applicant_1_employment_type == 'self_employed' or customer.employment_type == 'business' or customer.employment_type == 'professional' %}checked{% endif %} /> Self Employed</label>
+                            <label><input type="radio" name="applicant_1_employment_type" value="salaried" {% if prefilled_data.applicant_1_employment_type == 'salaried' or customer.employment_type == 'salaried' %}checked{% endif %} /> Salaried</label>
+                            <label><input type="radio" name="applicant_1_employment_type" value="self_employed" {% if prefilled_data.applicant_1_employment_type == 'self_employed' or customer.employment_type == 'business' or customer.employment_type == 'professional' %}checked{% endif %} /> Self Employed</label>
                         </div>
                     </div>
                     <div class="grid-fit">
-                        <div class="label">'Company Name':</div>
+                        <div class="label">Company Name:</div>
                         <input class="line" name="applicant_1_company_name" value="{{ prefilled_data.applicant_1_company_name|default:customer.company_name|default:'' }}" />
                     </div>
                 </div>
                 <div class="grid-fit" style="margin-top: 6px">
-                    <div class="label">'Profession / Job Title':</div>
+                    <div class="label">Profession / Job Title:</div>
                     <input class="line" name="applicant_1_profession" value="{{ prefilled_data.applicant_1_profession|default:customer.designation|default:'' }}" />
                 </div>
 
@@ -660,33 +868,33 @@
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Marital Status':</span>
+                        <span>Marital Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_2_marital_status" value="married" {% if prefilled_data.applicant_2_marital_status == 'married' %}checked{% endif %} /> Married</label>
-                            <label><input type="checkbox" name="applicant_2_marital_status" value="unmarried" {% if prefilled_data.applicant_2_marital_status == 'unmarried' %}checked{% endif %} /> Unmarried</label>
-                            <label><input type="checkbox" name="applicant_2_marital_status" value="other" {% if prefilled_data.applicant_2_marital_status == 'other' %}checked{% endif %} /> Other</label>
+                            <label><input type="radio" name="applicant_2_marital_status" value="married" {% if prefilled_data.applicant_2_marital_status == 'married' %}checked{% endif %} /> Married</label>
+                            <label><input type="radio" name="applicant_2_marital_status" value="unmarried" {% if prefilled_data.applicant_2_marital_status == 'unmarried' %}checked{% endif %} /> Unmarried</label>
+                            <label><input type="radio" name="applicant_2_marital_status" value="other" {% if prefilled_data.applicant_2_marital_status == 'other' %}checked{% endif %} /> Other</label>
                         </div>
                     </div>
 
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="inline">
-                            <span>'Pan No.':</span>
+                            <span>Pan No.:</span>
                             <div class="char-grid pan">
                                 <input class="char" maxlength="1" name="applicant_2_pan_1" value="{{ prefilled_data.applicant_2_pan_1|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_2" value="{{ prefilled_data.applicant_2_pan_2|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_3" value="{{ prefilled_data.applicant_2_pan_3|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_4" value="{{ prefilled_data.applicant_2_pan_4|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_5" value="{{ prefilled_data.applicant_2_pan_5|default:'' }}" />
                                 <input class="char" maxlength="1" name="applicant_2_pan_6" value="{{ prefilled_data.applicant_2_pan_6|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_7" value="{{ prefilled_data.applicant_2_pan_7|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_8" value="{{ prefilled_data.applicant_2_pan_8|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_9" value="{{ prefilled_data.applicant_2_pan_9|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_pan_10" value="{{ prefilled_data.applicant_2_pan_10|default:'' }}" />
                             </div>
                         </div>
                         <div class="inline">
-                            <span>'Sex':</span>
+                            <span>Sex:</span>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_2_sex" value="male" {% if prefilled_data.applicant_2_sex == 'male' %}checked{% endif %} /> Male</label>
-                                <label><input type="checkbox" name="applicant_2_sex" value="female" {% if prefilled_data.applicant_2_sex == 'female' %}checked{% endif %} /> Female</label>
-                                <label><input type="checkbox" name="applicant_2_sex" value="others" {% if prefilled_data.applicant_2_sex == 'others' %}checked{% endif %} /> Others</label>
+                                <label><input type="radio" name="applicant_2_sex" value="male" {% if prefilled_data.applicant_2_sex == 'male' %}checked{% endif %} /> Male</label>
+                                <label><input type="radio" name="applicant_2_sex" value="female" {% if prefilled_data.applicant_2_sex == 'female' %}checked{% endif %} /> Female</label>
+                                <label><input type="radio" name="applicant_2_sex" value="others" {% if prefilled_data.applicant_2_sex == 'others' %}checked{% endif %} /> Others</label>
                             </div>
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Aadhar Card No.':</span>
+                        <span>Aadhar Card No.:</span>
                         <div class="char-grid aadhaar">
                             <input class="char" maxlength="1" name="applicant_2_aadhar_1" value="{{ prefilled_data.applicant_2_aadhar_1|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_2" value="{{ prefilled_data.applicant_2_aadhar_2|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_3" value="{{ prefilled_data.applicant_2_aadhar_3|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_4" value="{{ prefilled_data.applicant_2_aadhar_4|default:'' }}" />
                             <input class="char" maxlength="1" name="applicant_2_aadhar_5" value="{{ prefilled_data.applicant_2_aadhar_5|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_6" value="{{ prefilled_data.applicant_2_aadhar_6|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_7" value="{{ prefilled_data.applicant_2_aadhar_7|default:'' }}" /><input class="char" maxlength="1" name="applicant_2_aadhar_8" value="{{ prefilled_data.applicant_2_aadhar_8|default:'' }}" />
@@ -695,76 +903,76 @@
                     </div>
 
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Residential Status':</span>
+                        <span>Residential Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_2_residential_status" value="indian" {% if prefilled_data.applicant_2_residential_status == 'indian' %}checked{% endif %} /> Indian</label>
-                            <label><input type="checkbox" name="applicant_2_residential_status" value="nri" {% if prefilled_data.applicant_2_residential_status == 'nri' %}checked{% endif %} /> NRI</label>
-                            <label><input type="checkbox" name="applicant_2_residential_status" value="pio" {% if prefilled_data.applicant_2_residential_status == 'pio' %}checked{% endif %} /> PIO</label>
-                            <label><input type="checkbox" name="applicant_2_residential_status" value="oci" {% if prefilled_data.applicant_2_residential_status == 'oci' %}checked{% endif %} /> OCI</label>
+                            <label><input type="radio" name="applicant_2_residential_status" value="indian" {% if prefilled_data.applicant_2_residential_status == 'indian' %}checked{% endif %} /> Indian</label>
+                            <label><input type="radio" name="applicant_2_residential_status" value="nri" {% if prefilled_data.applicant_2_residential_status == 'nri' %}checked{% endif %} /> NRI</label>
+                            <label><input type="radio" name="applicant_2_residential_status" value="pio" {% if prefilled_data.applicant_2_residential_status == 'pio' %}checked{% endif %} /> PIO</label>
+                            <label><input type="radio" name="applicant_2_residential_status" value="oci" {% if prefilled_data.applicant_2_residential_status == 'oci' %}checked{% endif %} /> OCI</label>
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Residential Address':</div>
+                        <div class="label">Residential Address:</div>
                         <textarea class="multiline" name="applicant_2_residential_address">{{ prefilled_data.applicant_2_residential_address|default:'' }}</textarea>
                     </div>
 
                     <div class="row cols-4" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'City':</div>
+                            <div class="label">City:</div>
                             <input class="line" name="applicant_2_city" value="{{ prefilled_data.applicant_2_city|default:'' }}" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Pin':</div>
+                            <div class="label">Pin:</div>
                             <input class="line" name="applicant_2_pin" maxlength="6" value="{{ prefilled_data.applicant_2_pin|default:'' }}" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'State':</div>
+                            <div class="label">State:</div>
                             <input class="line" name="applicant_2_state" value="{{ prefilled_data.applicant_2_state|default:'Maharashtra' }}" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Country':</div>
+                            <div class="label">Country:</div>
                             <input class="line" name="applicant_2_country" value="{{ prefilled_data.applicant_2_country|default:'India' }}" />
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Correspondence Address':</div>
+                        <div class="label">Correspondence Address:</div>
                         <textarea class="multiline" name="applicant_2_correspondence_address">{{ prefilled_data.applicant_2_correspondence_address|default:'' }}</textarea>
                     </div>
                     <div class="row cols-3" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Contact No.: Residence':</div>
+                            <div class="label">Contact No.: Residence:</div>
                             <input class="line" name="applicant_2_contact_residence" value="{{ prefilled_data.applicant_2_contact_residence|default:'' }}" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Office':</div>
+                            <div class="label">Office:</div>
                             <input class="line" name="applicant_2_contact_office" value="{{ prefilled_data.applicant_2_contact_office|default:'' }}" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Mobile':</div>
+                            <div class="label">Mobile:</div>
                             <input class="line" name="applicant_2_mobile" maxlength="10" value="{{ prefilled_data.applicant_2_mobile|default:'' }}" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'E-mail id':</div>
+                        <div class="label">E-mail id:</div>
                         <input class="line" name="applicant_2_email" value="{{ prefilled_data.applicant_2_email|default:'' }}" />
                     </div>
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Employment Type:'</div>
+                            <div class="label">Employment Type:</div>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_2_employment_type" value="salaried" {% if prefilled_data.applicant_2_employment_type == 'salaried' %}checked{% endif %} /> Salaried</label>
-                                <label><input type="checkbox" name="applicant_2_employment_type" value="self_employed" {% if prefilled_data.applicant_2_employment_type == 'self_employed' %}checked{% endif %} /> Self Employed</label>
+                                <label><input type="radio" name="applicant_2_employment_type" value="salaried" {% if prefilled_data.applicant_2_employment_type == 'salaried' %}checked{% endif %} /> Salaried</label>
+                                <label><input type="radio" name="applicant_2_employment_type" value="self_employed" {% if prefilled_data.applicant_2_employment_type == 'self_employed' %}checked{% endif %} /> Self Employed</label>
                             </div>
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Company Name':</div>
+                            <div class="label">Company Name:</div>
                             <input class="line" name="applicant_2_company_name" value="{{ prefilled_data.applicant_2_company_name|default:'' }}" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Profession / Job Title':</div>
+                        <div class="label">Profession / Job Title:</div>
                         <input class="line" name="applicant_2_profession" value="{{ prefilled_data.applicant_2_profession|default:'' }}" />
                     </div>
                 </div>
@@ -808,33 +1016,33 @@
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Marital Status':</span>
+                        <span>Marital Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_3_marital_status" value="married" /> Married</label>
-                            <label><input type="checkbox" name="applicant_3_marital_status" value="unmarried" /> Unmarried</label>
-                            <label><input type="checkbox" name="applicant_3_marital_status" value="other" /> Other</label>
+                            <label><input type="radio" name="applicant_3_marital_status" value="married" /> Married</label>
+                            <label><input type="radio" name="applicant_3_marital_status" value="unmarried" /> Unmarried</label>
+                            <label><input type="radio" name="applicant_3_marital_status" value="other" /> Other</label>
                         </div>
                     </div>
 
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="inline">
-                            <span>'Pan No.':</span>
+                            <span>Pan No.:</span>
                             <div class="char-grid pan">
                                 <input class="char" maxlength="1" name="applicant_3_pan_1" /><input class="char" maxlength="1" name="applicant_3_pan_2" /><input class="char" maxlength="1" name="applicant_3_pan_3" /><input class="char" maxlength="1" name="applicant_3_pan_4" /><input class="char" maxlength="1" name="applicant_3_pan_5" />
                                 <input class="char" maxlength="1" name="applicant_3_pan_6" /><input class="char" maxlength="1" name="applicant_3_pan_7" /><input class="char" maxlength="1" name="applicant_3_pan_8" /><input class="char" maxlength="1" name="applicant_3_pan_9" /><input class="char" maxlength="1" name="applicant_3_pan_10" />
                             </div>
                         </div>
                         <div class="inline">
-                            <span>'Sex':</span>
+                            <span>Sex:</span>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_3_sex" value="male" /> Male</label>
-                                <label><input type="checkbox" name="applicant_3_sex" value="female" /> Female</label>
-                                <label><input type="checkbox" name="applicant_3_sex" value="others" /> Others</label>
+                                <label><input type="radio" name="applicant_3_sex" value="male" /> Male</label>
+                                <label><input type="radio" name="applicant_3_sex" value="female" /> Female</label>
+                                <label><input type="radio" name="applicant_3_sex" value="others" /> Others</label>
                             </div>
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Aadhar Card No.':</span>
+                        <span>Aadhar Card No.:</span>
                         <div class="char-grid aadhaar">
                             <input class="char" maxlength="1" name="applicant_3_aadhar_1" /><input class="char" maxlength="1" name="applicant_3_aadhar_2" /><input class="char" maxlength="1" name="applicant_3_aadhar_3" /><input class="char" maxlength="1" name="applicant_3_aadhar_4" />
                             <input class="char" maxlength="1" name="applicant_3_aadhar_5" /><input class="char" maxlength="1" name="applicant_3_aadhar_6" /><input class="char" maxlength="1" name="applicant_3_aadhar_7" /><input class="char" maxlength="1" name="applicant_3_aadhar_8" />
@@ -843,76 +1051,76 @@
                     </div>
 
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Residential Status':</span>
+                        <span>Residential Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_3_residential_status" value="indian" /> Indian</label>
-                            <label><input type="checkbox" name="applicant_3_residential_status" value="nri" /> NRI</label>
-                            <label><input type="checkbox" name="applicant_3_residential_status" value="pio" /> PIO</label>
-                            <label><input type="checkbox" name="applicant_3_residential_status" value="oci" /> OCI</label>
+                            <label><input type="radio" name="applicant_3_residential_status" value="indian" /> Indian</label>
+                            <label><input type="radio" name="applicant_3_residential_status" value="nri" /> NRI</label>
+                            <label><input type="radio" name="applicant_3_residential_status" value="pio" /> PIO</label>
+                            <label><input type="radio" name="applicant_3_residential_status" value="oci" /> OCI</label>
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Residential Address':</div>
+                        <div class="label">Residential Address:</div>
                         <textarea class="multiline" name="applicant_3_residential_address"></textarea>
                     </div>
 
                     <div class="row cols-4" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'City':</div>
+                            <div class="label">City:</div>
                             <input class="line" name="applicant_3_city" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Pin':</div>
+                            <div class="label">Pin:</div>
                             <input class="line" name="applicant_3_pin" maxlength="6" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'State':</div>
+                            <div class="label">State:</div>
                             <input class="line" name="applicant_3_state" value="Maharashtra" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Country':</div>
+                            <div class="label">Country:</div>
                             <input class="line" name="applicant_3_country" value="India" />
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Correspondence Address':</div>
+                        <div class="label">Correspondence Address:</div>
                         <textarea class="multiline" name="applicant_3_correspondence_address"></textarea>
                     </div>
                     <div class="row cols-3" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Contact No.: Residence':</div>
+                            <div class="label">Contact No.: Residence:</div>
                             <input class="line" name="applicant_3_contact_residence" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Office':</div>
+                            <div class="label">Office:</div>
                             <input class="line" name="applicant_3_contact_office" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Mobile':</div>
+                            <div class="label">Mobile:</div>
                             <input class="line" name="applicant_3_mobile" maxlength="10" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'E-mail id':</div>
+                        <div class="label">E-mail id:</div>
                         <input class="line" name="applicant_3_email" />
                     </div>
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Employment Type:'</div>
+                            <div class="label">Employment Type:</div>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_3_employment_type" value="salaried" /> Salaried</label>
-                                <label><input type="checkbox" name="applicant_3_employment_type" value="self_employed" /> Self Employed</label>
+                                <label><input type="radio" name="applicant_3_employment_type" value="salaried" /> Salaried</label>
+                                <label><input type="radio" name="applicant_3_employment_type" value="self_employed" /> Self Employed</label>
                             </div>
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Company Name':</div>
+                            <div class="label">Company Name:</div>
                             <input class="line" name="applicant_3_company_name" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Profession / Job Title':</div>
+                        <div class="label">Profession / Job Title:</div>
                         <input class="line" name="applicant_3_profession" />
                     </div>
                 </div>
@@ -956,33 +1164,33 @@
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Marital Status':</span>
+                        <span>Marital Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_4_marital_status" value="married" /> Married</label>
-                            <label><input type="checkbox" name="applicant_4_marital_status" value="unmarried" /> Unmarried</label>
-                            <label><input type="checkbox" name="applicant_4_marital_status" value="other" /> Other</label>
+                            <label><input type="radio" name="applicant_4_marital_status" value="married" /> Married</label>
+                            <label><input type="radio" name="applicant_4_marital_status" value="unmarried" /> Unmarried</label>
+                            <label><input type="radio" name="applicant_4_marital_status" value="other" /> Other</label>
                         </div>
                     </div>
 
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="inline">
-                            <span>'Pan No.':</span>
+                            <span>Pan No.:</span>
                             <div class="char-grid pan">
                                 <input class="char" maxlength="1" name="applicant_4_pan_1" /><input class="char" maxlength="1" name="applicant_4_pan_2" /><input class="char" maxlength="1" name="applicant_4_pan_3" /><input class="char" maxlength="1" name="applicant_4_pan_4" /><input class="char" maxlength="1" name="applicant_4_pan_5" />
                                 <input class="char" maxlength="1" name="applicant_4_pan_6" /><input class="char" maxlength="1" name="applicant_4_pan_7" /><input class="char" maxlength="1" name="applicant_4_pan_8" /><input class="char" maxlength="1" name="applicant_4_pan_9" /><input class="char" maxlength="1" name="applicant_4_pan_10" />
                             </div>
                         </div>
                         <div class="inline">
-                            <span>'Sex':</span>
+                            <span>Sex:</span>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_4_sex" value="male" /> Male</label>
-                                <label><input type="checkbox" name="applicant_4_sex" value="female" /> Female</label>
-                                <label><input type="checkbox" name="applicant_4_sex" value="others" /> Others</label>
+                                <label><input type="radio" name="applicant_4_sex" value="male" /> Male</label>
+                                <label><input type="radio" name="applicant_4_sex" value="female" /> Female</label>
+                                <label><input type="radio" name="applicant_4_sex" value="others" /> Others</label>
                             </div>
                         </div>
                     </div>
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Aadhar Card No.':</span>
+                        <span>Aadhar Card No.:</span>
                         <div class="char-grid aadhaar">
                             <input class="char" maxlength="1" name="applicant_4_aadhar_1" /><input class="char" maxlength="1" name="applicant_4_aadhar_2" /><input class="char" maxlength="1" name="applicant_4_aadhar_3" /><input class="char" maxlength="1" name="applicant_4_aadhar_4" />
                             <input class="char" maxlength="1" name="applicant_4_aadhar_5" /><input class="char" maxlength="1" name="applicant_4_aadhar_6" /><input class="char" maxlength="1" name="applicant_4_aadhar_7" /><input class="char" maxlength="1" name="applicant_4_aadhar_8" />
@@ -991,76 +1199,76 @@
                     </div>
 
                     <div class="inline" style="margin-top: 6px">
-                        <span>'Residential Status':</span>
+                        <span>Residential Status:</span>
                         <div class="checks">
-                            <label><input type="checkbox" name="applicant_4_residential_status" value="indian" /> Indian</label>
-                            <label><input type="checkbox" name="applicant_4_residential_status" value="nri" /> NRI</label>
-                            <label><input type="checkbox" name="applicant_4_residential_status" value="pio" /> PIO</label>
-                            <label><input type="checkbox" name="applicant_4_residential_status" value="oci" /> OCI</label>
+                            <label><input type="radio" name="applicant_4_residential_status" value="indian" /> Indian</label>
+                            <label><input type="radio" name="applicant_4_residential_status" value="nri" /> NRI</label>
+                            <label><input type="radio" name="applicant_4_residential_status" value="pio" /> PIO</label>
+                            <label><input type="radio" name="applicant_4_residential_status" value="oci" /> OCI</label>
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Residential Address':</div>
+                        <div class="label">Residential Address:</div>
                         <textarea class="multiline" name="applicant_4_residential_address"></textarea>
                     </div>
 
                     <div class="row cols-4" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'City':</div>
+                            <div class="label">City:</div>
                             <input class="line" name="applicant_4_city" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Pin':</div>
+                            <div class="label">Pin:</div>
                             <input class="line" name="applicant_4_pin" maxlength="6" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'State':</div>
+                            <div class="label">State:</div>
                             <input class="line" name="applicant_4_state" value="Maharashtra" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Country':</div>
+                            <div class="label">Country:</div>
                             <input class="line" name="applicant_4_country" value="India" />
                         </div>
                     </div>
 
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Correspondence Address':</div>
+                        <div class="label">Correspondence Address:</div>
                         <textarea class="multiline" name="applicant_4_correspondence_address"></textarea>
                     </div>
                     <div class="row cols-3" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Contact No.: Residence':</div>
+                            <div class="label">Contact No.: Residence:</div>
                             <input class="line" name="applicant_4_contact_residence" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Office':</div>
+                            <div class="label">Office:</div>
                             <input class="line" name="applicant_4_contact_office" />
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Mobile':</div>
+                            <div class="label">Mobile:</div>
                             <input class="line" name="applicant_4_mobile" maxlength="10" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'E-mail id':</div>
+                        <div class="label">E-mail id:</div>
                         <input class="line" name="applicant_4_email" />
                     </div>
                     <div class="row cols-2" style="margin-top: 6px">
                         <div class="grid-fit">
-                            <div class="label">'Employment Type:'</div>
+                            <div class="label">Employment Type:</div>
                             <div class="checks">
-                                <label><input type="checkbox" name="applicant_4_employment_type" value="salaried" /> Salaried</label>
-                                <label><input type="checkbox" name="applicant_4_employment_type" value="self_employed" /> Self Employed</label>
+                                <label><input type="radio" name="applicant_4_employment_type" value="salaried" /> Salaried</label>
+                                <label><input type="radio" name="applicant_4_employment_type" value="self_employed" /> Self Employed</label>
                             </div>
                         </div>
                         <div class="grid-fit">
-                            <div class="label">'Company Name':</div>
+                            <div class="label">Company Name:</div>
                             <input class="line" name="applicant_4_company_name" />
                         </div>
                     </div>
                     <div class="grid-fit" style="margin-top: 6px">
-                        <div class="label">'Profession / Job Title':</div>
+                        <div class="label">Profession / Job Title:</div>
                         <input class="line" name="applicant_4_profession" />
                     </div>
                 </div>
@@ -1071,16 +1279,16 @@
                 </div>
                 <div class="grid-fit">
                     <div class="label">Name of the Channel Partner:</div>
-                    <input class="line" name="channel_partner_name" value="{{ prefilled_data.channel_partner_name|default:'' }}" />
+                    <input class="line" name="channel_partner_name" value="{% if channel_partner %}{{ prefilled_data.channel_partner_name|default:channel_partner.partner_name|default:'' }}{% else %}{{ prefilled_data.channel_partner_name|default:'' }}{% endif %}" />
                 </div>
                 <div class="grid-fit" style="margin-top: 6px">
                     <div class="label">Channel Partner MahaRERA Registration Number:</div>
-                    <input class="line" name="channel_partner_rera" value="{{ prefilled_data.channel_partner_rera|default:'' }}" />
+                    <input class="line" name="channel_partner_rera" value="{% if channel_partner %}{{ prefilled_data.channel_partner_rera|default:channel_partner.rera_number|default:'' }}{% else %}{{ prefilled_data.channel_partner_rera|default:'' }}{% endif %}" />
                 </div>
                 <div class="row cols-2" style="margin-top: 6px">
                     <div class="grid-fit">
                         <div class="label">Mobile no.:</div>
-                        <input class="line" name="channel_partner_mobile" maxlength="10" value="{{ prefilled_data.channel_partner_mobile|default:'' }}" />
+                        <input class="line" name="channel_partner_mobile" maxlength="10" value="{% if channel_partner %}{{ prefilled_data.channel_partner_mobile|default:channel_partner.mobile_number|default:'' }}{% else %}{{ prefilled_data.channel_partner_mobile|default:'' }}{% endif %}" />
                     </div>
                     <div class="grid-fit">
                         <div class="label">E-mail ID:</div>
@@ -1111,11 +1319,11 @@
                 <div class="row cols-21">
                     <div class="grid-fit">
                         <div class="label">Customer Name:</div>
-                        <input class="line" name="referral_customer_name" value="{{ prefilled_data.referral_customer_name|default:'' }}" />
+                        <input class="line" name="referral_customer_name" value="{% if referral %}{{ prefilled_data.referral_customer_name|default:referral.referral_name|default:'' }}{% else %}{{ prefilled_data.referral_customer_name|default:'' }}{% endif %}" />
                     </div>
                     <div class="grid-fit-21">
                         <div class="label">Project:</div>
-                        <input class="line" style="max-width: 180px" name="referral_project" value="{{ prefilled_data.referral_project|default:'' }}" />
+                        <input class="line" style="max-width: 180px" name="referral_project" value="{% if referral %}{{ prefilled_data.referral_project|default:referral.project_name|default:'' }}{% else %}{{ prefilled_data.referral_project|default:'' }}{% endif %}" />
                         <div class="label">Flat No.:</div>
                         <input class="line" style="max-width: 80px" name="referral_flat_no" value="{{ prefilled_data.referral_flat_no|default:'' }}" />
                     </div>
@@ -1724,6 +1932,100 @@
                 submitBtn.innerHTML = submitOriginalText;
             });
         }
+
+        // Format form number to uppercase property code
+        document.addEventListener('DOMContentLoaded', function() {
+            const formNumberEl = document.getElementById('formNumber');
+            if (formNumberEl) {
+                let formNumber = formNumberEl.textContent.trim();
+                // Convert property code part to uppercase
+                if (formNumber.includes('-')) {
+                    const parts = formNumber.split('-');
+                    parts[0] = parts[0].toUpperCase();
+                    formNumberEl.textContent = parts.join('-');
+                }
+            }
+        });
+
+        // PDF Download Functionality - Simplified and Fixed
+        document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+            const button = this;
+            button.innerHTML = '⏳ Generating PDF...';
+            button.disabled = true;
+            
+            console.log('=== PDF Generation Debug Info ===');
+            console.log('html2pdf available:', typeof html2pdf !== 'undefined');
+            
+            // Get the target element for PDF generation
+            const targetElement = document.querySelector('.page');
+            console.log('Target element (.page):', !!targetElement);
+            
+            if (targetElement) {
+                console.log('Element dimensions:', targetElement.offsetWidth + 'x' + targetElement.offsetHeight);
+                console.log('Element display style:', getComputedStyle(targetElement).display);
+                console.log('Element visibility:', getComputedStyle(targetElement).visibility);
+                console.log('Content preview:', targetElement.innerHTML.substring(0, 200) + '...');
+            } else {
+                console.error('Target element not found!');
+                button.innerHTML = '❌ Element Not Found';
+                setTimeout(() => { button.innerHTML = '📄 Download PDF'; button.disabled = false; }, 3000);
+                return;
+            }
+            
+            // Hide download button from PDF
+            const downloadBtn = document.getElementById('downloadPdfBtn');
+            const originalBtnDisplay = downloadBtn.style.display;
+            downloadBtn.style.display = 'none';
+            
+            // Simplified PDF configuration
+            const opt = {
+                margin: 0,
+                filename: 'booking-form.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a3', 
+                    orientation: 'portrait' 
+                }
+            };
+            
+            console.log('Starting PDF generation...');
+            
+            // Use the simpler API
+            html2pdf().set(opt).from(targetElement).save().then(() => {
+                console.log('PDF generation completed successfully');
+            }).catch((error) => {
+                console.error('PDF generation failed:', error);
+                button.innerHTML = '❌ PDF Failed';
+                setTimeout(() => { button.innerHTML = '📄 Download PDF'; }, 3000);
+            }).finally(() => {
+                // Restore button
+                downloadBtn.style.display = originalBtnDisplay;
+                button.innerHTML = '📄 Download PDF';
+                button.disabled = false;
+            });
+        });
+
+        // Debug function - Add a test button to check if the page element is being found
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+            console.log('Page element:', document.querySelector('.page'));
+            console.log('Form element:', document.getElementById('bookingForm'));
+            console.log('Download button:', document.getElementById('downloadPdfBtn'));
+            
+            // Test if html2pdf is loaded
+            if (typeof html2pdf !== 'undefined') {
+                console.log('html2pdf loaded successfully');
+            } else {
+                console.error('html2pdf not loaded!');
+            }
+        });
     </script>
 </body>
 </html>

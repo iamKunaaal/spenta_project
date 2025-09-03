@@ -224,7 +224,7 @@
 
         nav {
             padding: 15px 25px;
-            background: #fff;
+            {% comment %} background: #fff; {% endcomment %}
             display: flex;
             flex-direction: row;
             justify-content: center;
@@ -381,11 +381,11 @@
 
 <body>
     <header>
-        <div class="logo">
-            <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
+        <div >
+           
         </div>
-        <nav>
-            <a href="homepage.html">Home</a>
+        <nav class="logo">
+            <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
         </nav>
     </header>
     <main>
@@ -441,7 +441,7 @@
         </div>
     </main>
 
-    <footer>
+    {% comment %} <footer>
         <div class="footer-top">
             <div class="footer-about">
                 <img src="{% static 'media/spenta grey.png' %}" alt="Spenta Logo">
@@ -480,7 +480,7 @@
             <a href="#">Disclaimer</a>
             <span>© 2025 Copyright</span>
         </div>
-    </footer>
+    </footer> {% endcomment %}
     <script>
         let generatedOTP = "";
         let otpSent = false;

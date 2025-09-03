@@ -252,7 +252,7 @@
             <div class="info-title">Your Enquiry Details</div>
             <div class="info-row">
                 <span class="info-label">Form Number:</span>
-                <span class="info-value">{{ request.session.customer_data.form_number }}</span>
+                <span class="info-value form-number-display">{{ request.session.customer_data.form_number }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Name:</span>
@@ -300,6 +300,16 @@
         
         // Add some interactive effects
         document.addEventListener('DOMContentLoaded', function() {
+            // Format form numbers to uppercase property codes
+            document.querySelectorAll('.form-number-display').forEach(function(el) {
+                let formNumber = el.textContent.trim();
+                if (formNumber.includes('-')) {
+                    const parts = formNumber.split('-');
+                    parts[0] = parts[0].toUpperCase();
+                    el.textContent = parts.join('-');
+                }
+            });
+
             // Add click tracking for buttons
             const buttons = document.querySelectorAll('.btn');
             buttons.forEach(button => {

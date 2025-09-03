@@ -407,25 +407,26 @@ def export_leads(request):
         for customer in customers:
             # Get property name - Updated with new properties
             property_code = customer.form_number[:3] if customer.form_number else ''
-            # Handle different property code lengths
+            # Handle different property code lengths (case insensitive check, uppercase output)
             if customer.form_number:
-                if customer.form_number.startswith('Star'):
-                    property_code = 'Star'
-                elif customer.form_number.startswith('Ant'):
-                    property_code = 'Ant'
-                elif customer.form_number.startswith('Orn'):
-                    property_code = 'Orn'
-                elif customer.form_number.startswith('Med'):
-                    property_code = 'Med'
-                elif customer.form_number.startswith('Alt'):
-                    property_code = 'Alt'
+                form_upper = customer.form_number.upper()
+                if form_upper.startswith('STAR'):
+                    property_code = 'STAR'
+                elif form_upper.startswith('ANT'):
+                    property_code = 'ANT'
+                elif form_upper.startswith('ORN'):
+                    property_code = 'ORN'
+                elif form_upper.startswith('MED'):
+                    property_code = 'MED'
+                elif form_upper.startswith('ALT'):
+                    property_code = 'ALT'
             
             property_names = {
-                'Alt': 'Altavista',
-                'Orn': 'Ornata',
-                'Med': 'Medius',
-                'Star': 'Spenta Stardeous',
-                'Ant': 'Spenta Anthea'
+                'ALT': 'Altavista',
+                'ORN': 'Ornata',
+                'MED': 'Medius',
+                'STAR': 'Spenta Stardeous',
+                'ANT': 'Spenta Anthea'
             }
             property_name = property_names.get(property_code, property_code)
             
@@ -843,11 +844,25 @@ def booking_form_view(request, customer_id):
             # Pre-fill with customer data only
             prefilled_data = prepare_prefilled_data(customer)
         
+        # Get channel partner if exists
+        try:
+            channel_partner = customer.channel_partner
+        except (ChannelPartner.DoesNotExist, AttributeError):
+            channel_partner = None
+        
+        # Get referral if exists
+        try:
+            referral = customer.referral
+        except (Referral.DoesNotExist, AttributeError):
+            referral = None
+
         context = {
             'customer': customer,
             'prefilled_data': prefilled_data,
             'existing_booking': existing_booking,
             'existing_applicants': prefilled_data.get('existing_applicants', []),
+            'channel_partner': channel_partner,
+            'referral': referral,
         }
         
         return render(request, 'booking_form.html', context)
