@@ -36,4 +36,10 @@ urlpatterns = [
     path('customer/<int:customer_id>/assessment/', views.internal_sales_assessment, name='internal_sales_assessment'),
     path('customer/<int:customer_id>/booking/', views.booking_form_view, name='booking_form'),
     path('export-leads/', views.export_leads, name='export_leads'),
+    
+    # Password Reset URLs
+    path('password-reset/', views.password_reset_request, name='password_reset'),
+    path('password-reset-done/', views.password_reset_done, name='password_reset_done'),
+    path('password-reset-confirm/<uidb64>/<token>/', views.password_reset_confirm, name='password_reset_confirm'),
+    path('password-reset-complete/', views.password_reset_complete, name='password_reset_complete'),
 ]

@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-ypys+uq$j%8l2*td_ws8%yg==^gdrx=+4hw1=j-a3gei^=g#))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['kunaaal.pythonanywhere.com', '127.0.0.1']
+ALLOWED_HOSTS = ['kunaaal.pythonanywhere.com', '127.0.0.1', 'yourdomain.com']  # Add your production domain
 
 
 # Application definition
@@ -135,12 +135,22 @@ LOGGING = {
 # CSRF settings - make sure these are correct
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:9000',
+    'http://localhost:9000',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'https://kunaaal.pythonanywhere.com',  # Add your production domain with HTTPS
+    'https://yourdomain.com',  # Add your actual production domain
+]
 
 # If you're using different domain for frontend/backend
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:9000",
+    "http://127.0.0.1:9000",
 ]
 
 STATIC_URL = '/static/'
@@ -152,5 +162,21 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Email Configuration
+# For development - emails will be displayed in console
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production - uncomment and configure these settings:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'your-email@gmail.com'
+# EMAIL_HOST_PASSWORD = 'your-app-password'
+# DEFAULT_FROM_EMAIL = 'GRE System <noreply@spenta.com>'
+
+# Password reset settings
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
 
 

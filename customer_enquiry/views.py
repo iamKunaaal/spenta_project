@@ -21,14 +21,15 @@ from django.views.decorators.csrf import csrf_exempt
 import io
 from django.db import models
 from django.db.models import Q
-from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.contrib.auth.views import PasswordResetView
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -433,6 +434,14 @@ def export_leads(request):
             # Get sources
             sources = ', '.join([source.get_source_type_display() for source in customer.sources.all()])
             
+            # Get channel partner information
+            channel_partner_name = ''
+            try:
+                if hasattr(customer, 'channel_partner') and customer.channel_partner:
+                    channel_partner_name = customer.channel_partner.partner_name
+            except (ChannelPartner.DoesNotExist, AttributeError):
+                channel_partner_name = ''
+            
             # Assessment status
             assessment_status = 'Completed' if hasattr(customer, 'sales_assessment') and customer.sales_assessment else 'Pending'
             
@@ -462,6 +471,7 @@ def export_leads(request):
                 'Construction Status': customer.get_construction_status_display(),
                 'Purpose of Buying': customer.get_purpose_of_buying_display(),
                 'Lead Sources': sources,
+                'Channel Partner Name': channel_partner_name or 'Not Applicable',
                 'Source Details': customer.source_details or '',
                 'Assessment Status': assessment_status,
                 'Booking Status': booking_status,
@@ -1514,3 +1524,94 @@ def login_required_custom(view_func):
             return redirect('customer_enquiry:user_login')
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+# PASSWORD RESET FUNCTIONALITY
+def password_reset_request(request):
+    """
+    Handle password reset request
+    """
+    if request.method == 'POST':
+        form = PasswordResetForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data.get('email')
+            try:
+                user = User.objects.get(email=email)
+                
+                # Generate token and UID
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                
+                # Create reset link
+                reset_link = request.build_absolute_uri(
+                    f"/password-reset-confirm/{uid}/{token}/"
+                )
+                
+                # Send email (for development, we'll show the link in messages)
+                # In production, you would send an actual email
+                try:
+                    send_mail(
+                        'Password Reset Request',
+                        f'Click the following link to reset your password: {reset_link}',
+                        'noreply@spenta.com',
+                        [email],
+                        fail_silently=False,
+                    )
+                    messages.success(request, 'Password reset email has been sent to your email address.')
+                except Exception as e:
+                    # For development - show the reset link in messages
+                    messages.success(request, f'Password reset link (for development): {reset_link}')
+                    logger.error(f"Email sending failed: {str(e)}")
+                
+                return redirect('customer_enquiry:password_reset_done')
+                
+            except User.DoesNotExist:
+                messages.error(request, 'No user found with this email address.')
+                
+    else:
+        form = PasswordResetForm()
+    
+    return render(request, 'password_reset_form.html', {'form': form})
+
+def password_reset_done(request):
+    """
+    Display success message after password reset email is sent
+    """
+    return render(request, 'password_reset_done.html')
+
+def password_reset_confirm(request, uidb64, token):
+    """
+    Handle password reset confirmation with token
+    """
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            form = SetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Your password has been reset successfully!')
+                return redirect('customer_enquiry:login')
+            else:
+                # Debug: Print form errors
+                logger.error(f"Form errors: {form.errors}")
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+        else:
+            form = SetPasswordForm(user)
+        
+        return render(request, 'password_reset_confirm.html', {'form': form, 'validlink': True})
+    else:
+        messages.error(request, 'The password reset link is invalid or has expired.')
+        return redirect('customer_enquiry:password_reset')
+
+def password_reset_complete(request):
+    """
+    Display success message after password has been reset
+    """
+    return render(request, 'password_reset_complete.html') 
