@@ -294,6 +294,24 @@
             padding-top: 80px;
         }
 
+        /* PDF Page Break Controls - Only for PDF, won't affect screen layout */
+        .page-break-before {
+            page-break-before: always !important;
+            break-before: page !important;
+        }
+
+        /* Hide elements from PDF generation only - keeps them visible on screen */
+        .hide-from-pdf {
+            /* Elements remain visible on screen, hidden only during PDF generation */
+        }
+
+        /* Add top margin to all pages starting from second page */
+        .page-break-before {
+            margin-top: 20px !important;
+            padding-top: 20px !important;
+        }
+
+
         .terms {
             font: 400 13px/1.6 Arial, sans-serif;
             color: #000;
@@ -629,13 +647,13 @@
                     <div class="label">Project Name:</div>
                     <input class="line" name="project_name" id="projectName" value="{{ prefilled_data.project_name|default:'Project Name' }}" />
                 </div>
-                <div style="text-align: right">
+                <div class="hide-from-pdf" style="text-align: right">
                     <span class="red-chip">Customized form will open as per selected project</span>
                 </div>
             </div>
             
             <!-- Customer Information -->
-            <div style="background: #e6f3ff; border: 1px solid #007bff; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
+            <div class="hide-from-pdf" style="background: #e6f3ff; border: 1px solid #007bff; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
                 <strong>Customer:</strong> {{ customer.get_full_name }} | 
                 <strong>Form #:</strong> <span id="formNumber">{{ customer.form_number }}</span> | 
                 <strong>Email:</strong> {{ customer.email }} |
@@ -826,7 +844,7 @@
                 </div>
 
                 <!-- Add Applicants button -->
-                <div id="addBtn" class="add-btn">Add a tab name "ADD APPLICANTS"</div>
+                <div id="addBtn" class="add-btn hide-from-pdf">Add a tab name "ADD APPLICANTS"</div>
 
                 <!-- Applicant 2 (red box + note) -->
                 <div id="app2" class="applicant-box" style="display: none">
@@ -1274,7 +1292,7 @@
                 </div>
 
                 <!-- Channel Partner & Signatures -->
-                <div class="section-head" style="margin-top: 16px">
+                <div class="section-head" style="margin-top: 16px; page-break-before: always;">
                     INCASE OF CHANNEL PARTNER
                 </div>
                 <div class="grid-fit">
@@ -1377,6 +1395,10 @@
                         necessitated from time to time, as per RERA Act 2016 & MahaRERA
                         Rules 2017.
                     </p>
+                    
+                    <!-- Spacer for PDF top margin on page 2+ -->
+                    <div style="height: 20px; width: 100%;"></div>
+                    
                     <p>
                         7) Eligibility for Application: <br />
                         a) Any person competent to enter into contract under the Indian
@@ -1438,7 +1460,7 @@
                         detailed in Annexure ‘A’ herewith annexed.
                     </p>
     
-                    <p>
+                    <p style="page-break-before: always;">
                         11) It is specifically agreed and confirmed by the Applicant/s that
                         the timely payment of the installments is the essence of this
                         transaction. Incase of delay or non-payment of any of the
@@ -1572,7 +1594,7 @@
                         e-mail regarding its upcoming projects and related offers.
                     </p>
     
-                    <p>
+                    <p style="page-break-before: always;">
                         I/We have fully read, understood and agree to abide by the above
                         mentioned terms and conditions stipulated by
                         <b>Heston Builders Private Ltd.</b> <span style="color: red">As per selected Project</span>
@@ -1727,7 +1749,7 @@
 
 
                 <!-- Submit Buttons -->
-                <div style="display: flex; gap: 20px; justify-content: center; margin: 30px 0;">
+                <div class="hide-from-pdf" style="display: flex; gap: 20px; justify-content: center; margin: 30px 0;">
                     <button type="submit" style="background: var(--gold); color: var(--ink); padding: 15px 30px; border: 2px solid var(--ink); border-radius: 8px; font: 700 14px Arial, sans-serif; cursor: pointer; transition: all 0.3s ease;" id="submitFormBtn">
                         {% if existing_booking %}
                             💾 UPDATE BOOKING APPLICATION
@@ -1972,12 +1994,20 @@
                 return;
             }
             
-            // Hide download button from PDF
+            // Hide elements from PDF
             const downloadBtn = document.getElementById('downloadPdfBtn');
             const originalBtnDisplay = downloadBtn.style.display;
             downloadBtn.style.display = 'none';
             
-            // Simplified PDF configuration
+            // Hide all elements with 'hide-from-pdf' class
+            const elementsToHide = document.querySelectorAll('.hide-from-pdf');
+            const originalDisplays = [];
+            elementsToHide.forEach((element, index) => {
+                originalDisplays[index] = element.style.display;
+                element.style.display = 'none';
+            });
+            
+            // PDF configuration - back to no margins, we'll handle spacing manually
             const opt = {
                 margin: 0,
                 filename: 'booking-form.pdf',
@@ -1992,6 +2022,10 @@
                     unit: 'mm', 
                     format: 'a3', 
                     orientation: 'portrait' 
+                },
+                pagebreak: { 
+                    mode: ['css'],
+                    before: '.page-break-before'
                 }
             };
             
@@ -2005,8 +2039,11 @@
                 button.innerHTML = '❌ PDF Failed';
                 setTimeout(() => { button.innerHTML = '📄 Download PDF'; }, 3000);
             }).finally(() => {
-                // Restore button
+                // Restore all hidden elements
                 downloadBtn.style.display = originalBtnDisplay;
+                elementsToHide.forEach((element, index) => {
+                    element.style.display = originalDisplays[index];
+                });
                 button.innerHTML = '📄 Download PDF';
                 button.disabled = false;
             });
