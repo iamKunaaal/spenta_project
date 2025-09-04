@@ -1763,6 +1763,169 @@
     </div>
 
     <script>
+        // Form validation functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Number-only fields validation
+            const numberOnlyFields = [
+                'flat_number',
+                'floor',
+                'exclusive_deck_balcony',
+                'car_parking_count',
+                'total_purchase_price',
+                'applicant_1_mobile',
+                'applicant_2_mobile',
+                'applicant_3_mobile',
+                'applicant_4_mobile',
+                'channel_partner_mobile'
+            ];
+
+            // Add validation for number-only fields
+            numberOnlyFields.forEach(fieldName => {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    field.addEventListener('input', function(e) {
+                        // Remove any non-numeric characters (except decimal point for price fields)
+                        if (fieldName === 'exclusive_deck_balcony' || fieldName === 'total_purchase_price') {
+                            this.value = this.value.replace(/[^0-9.]/g, '');
+                            // Ensure only one decimal point
+                            const parts = this.value.split('.');
+                            if (parts.length > 2) {
+                                this.value = parts[0] + '.' + parts.slice(1).join('');
+                            }
+                        } else {
+                            this.value = this.value.replace(/[^0-9]/g, '');
+                        }
+                    });
+                    
+                    field.addEventListener('keypress', function(e) {
+                        // Allow decimal point only for certain fields
+                        if (fieldName === 'exclusive_deck_balcony' || fieldName === 'total_purchase_price') {
+                            if (!/[0-9.]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                e.preventDefault();
+                            }
+                        } else {
+                            // Only allow numbers for other fields
+                            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                e.preventDefault();
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Aadhaar number validation - only numbers
+            const aadhaarFields = document.querySelectorAll('input[name*="aadhar"]');
+            aadhaarFields.forEach(field => {
+                field.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
+                
+                field.addEventListener('keypress', function(e) {
+                    if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            // Text-only fields validation
+            const textOnlyFields = [
+                'applicant_1_title',
+                'applicant_1_first_name',
+                'applicant_1_middle_name',
+                'applicant_1_last_name',
+                'applicant_2_title',
+                'applicant_2_first_name',
+                'applicant_2_middle_name',
+                'applicant_2_last_name',
+                'applicant_3_title',
+                'applicant_3_first_name',
+                'applicant_3_middle_name',
+                'applicant_3_last_name',
+                'applicant_4_title',
+                'applicant_4_first_name',
+                'applicant_4_middle_name',
+                'applicant_4_last_name',
+                'applicant_1_city',
+                'applicant_1_state',
+                'applicant_2_city',
+                'applicant_2_state',
+                'applicant_3_city',
+                'applicant_3_state',
+                'applicant_4_city',
+                'applicant_4_state',
+                'channel_partner_name'
+            ];
+
+            // Add validation for text-only fields
+            textOnlyFields.forEach(fieldName => {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    field.addEventListener('input', function(e) {
+                        // Remove any numbers
+                        this.value = this.value.replace(/[0-9]/g, '');
+                    });
+                    
+                    field.addEventListener('keypress', function(e) {
+                        // Prevent numbers from being typed
+                        if (/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            });
+
+            // Hide/Show Date of Anniversary based on Marital Status
+            function toggleAnniversaryFields() {
+                const applicants = ['applicant_1', 'applicant_2', 'applicant_3', 'applicant_4'];
+                
+                applicants.forEach(applicant => {
+                    const marriedRadio = document.querySelector(`input[name="${applicant}_marital_status"][value="married"]`);
+                    const unmarriedRadio = document.querySelector(`input[name="${applicant}_marital_status"][value="unmarried"]`);
+                    const otherRadio = document.querySelector(`input[name="${applicant}_marital_status"][value="other"]`);
+                    
+                    // Find the anniversary fields container for this applicant
+                    const anniversaryContainer = document.querySelector(`input[name="${applicant}_anniversary_d1"]`)?.closest('.inline');
+                    
+                    if (marriedRadio && unmarriedRadio && anniversaryContainer) {
+                        function updateAnniversaryVisibility() {
+                            if (unmarriedRadio.checked) {
+                                anniversaryContainer.style.display = 'none';
+                                // Clear anniversary fields when hidden
+                                const anniversaryFields = anniversaryContainer.querySelectorAll('input[name*="anniversary"]');
+                                anniversaryFields.forEach(field => field.value = '');
+                            } else {
+                                anniversaryContainer.style.display = 'flex';
+                            }
+                        }
+                        
+                        marriedRadio.addEventListener('change', updateAnniversaryVisibility);
+                        unmarriedRadio.addEventListener('change', updateAnniversaryVisibility);
+                        if (otherRadio) otherRadio.addEventListener('change', updateAnniversaryVisibility);
+                        
+                        // Initial check
+                        updateAnniversaryVisibility();
+                    }
+                });
+            }
+
+            // Initialize anniversary field visibility
+            toggleAnniversaryFields();
+
+            // Auto-fetch project name from existing data
+            const projectNameField = document.getElementById('projectName');
+            if (projectNameField) {
+                // Check if there's existing project data to fetch
+                {% if customer.project_name %}
+                    projectNameField.value = '{{ customer.project_name }}';
+                {% elif prefilled_data.project_name and prefilled_data.project_name != 'Project Name' %}
+                    // Keep the prefilled value if it exists and isn't the default
+                {% else %}
+                    // You can add more logic here to fetch project names from other sources
+                    // For now, we'll keep the existing default behavior
+                {% endif %}
+            }
+        });
+
         // Character grid auto-navigation functionality
         (function() {
             const chars = document.querySelectorAll(".char");

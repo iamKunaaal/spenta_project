@@ -3,7 +3,25 @@
     "allow": [
       "Bash(python manage.py:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)"
     ],
     "deny": [],
     "ask": []
