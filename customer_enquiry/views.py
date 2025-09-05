@@ -1230,26 +1230,57 @@ def create_applicants(request, booking_app):
     for i in range(1, 5):  # 1 to 4 applicants
         prefix = f'applicant_{i}_'
         
-        # Check agar is applicant ka data hai
+        # Check agar is applicant ka data hai - check for any meaningful field
         first_name = request.POST.get(f'{prefix}first_name', '').strip()
         last_name = request.POST.get(f'{prefix}last_name', '').strip()
+        title = request.POST.get(f'{prefix}title', '').strip()
+        mobile = request.POST.get(f'{prefix}mobile', '').strip()
+        email = request.POST.get(f'{prefix}email', '').strip()
+        city = request.POST.get(f'{prefix}city', '').strip()
         
-        if first_name or last_name:  # Agar kuch data hai toh applicant create karo
+        # Check for PAN number
+        pan_chars = []
+        for j in range(1, 11):
+            pan_char = request.POST.get(f'{prefix}pan_{j}', '').strip()
+            pan_chars.append(pan_char)
+        pan_filled = any(pan_chars)
+        
+        # Check for Aadhar number
+        aadhar_chars = []
+        for j in range(1, 13):
+            aadhar_char = request.POST.get(f'{prefix}aadhar_{j}', '').strip()
+            aadhar_chars.append(aadhar_char)
+        aadhar_filled = any(aadhar_chars)
+        
+        # Check for DOB
+        dob_fields = [
+            request.POST.get(f'{prefix}dob_d1', '').strip(),
+            request.POST.get(f'{prefix}dob_d2', '').strip(),
+            request.POST.get(f'{prefix}dob_m1', '').strip(),
+            request.POST.get(f'{prefix}dob_m2', '').strip(),
+        ]
+        dob_filled = any(dob_fields)
+        
+        # Create applicant if ANY meaningful data is provided
+        has_applicant_data = any([
+            first_name, last_name, title, mobile, email, city,
+            pan_filled, aadhar_filled, dob_filled,
+            request.POST.get(f'{prefix}residential_address', '').strip(),
+            request.POST.get(f'{prefix}correspondence_address', '').strip()
+        ])
+        
+        if has_applicant_data:  # Agar koi bhi meaningful data hai toh applicant create karo
             try:
-                # Build PAN number from individual character fields
-                pan_chars = []
-                for j in range(1, 11):  # PAN has 10 characters
-                    pan_char = request.POST.get(f'{prefix}pan_{j}', '').strip()
-                    pan_chars.append(pan_char)
-                pan_no = ''.join(pan_chars).strip().upper()  # PAN should be uppercase
+                # Build PAN number (reuse the chars we already collected)
+                pan_no = ''.join([request.POST.get(f'{prefix}pan_{j}', '').strip() for j in range(1, 11)]).strip().upper()
                 
-                # Build Aadhaar number from individual character fields  
-                aadhar_chars = []
-                for j in range(1, 13):  # Aadhaar has 12 digits
+                # Build Aadhaar number (reuse logic but with digit validation)
+                aadhar_chars_clean = []
+                for j in range(1, 13):
                     aadhar_char = request.POST.get(f'{prefix}aadhar_{j}', '').strip()
                     if aadhar_char.isdigit():  # Only accept digits for Aadhaar
-                        aadhar_chars.append(aadhar_char)
-                aadhar_no = ''.join(aadhar_chars).strip()
+                        aadhar_chars_clean.append(aadhar_char)
+                aadhar_no = ''.join(aadhar_chars_clean).strip()
                 
                 # Build date of birth from individual fields
                 dob_d1 = request.POST.get(f'{prefix}dob_d1', '')
