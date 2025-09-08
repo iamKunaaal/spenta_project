@@ -422,11 +422,13 @@
         .actions {
             margin-top: 26px;
             padding-top: 18px;
-            border-top: 1px solid var(--border)
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
         }
 
         .btn {
-            width: 100%;
+            flex: 1;
             display: inline-flex;
             justify-content: center;
             align-items: center;
@@ -442,6 +444,17 @@
             transition: transform .12s, box-shadow .2s, background .2s;
         }
 
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(107, 114, 128, .28);
+        }
+
         .btn:hover {
             background: var(--brand-d);
             transform: translateY(-1px);
@@ -449,16 +462,27 @@
         }
 
         .back-btn {
-            color: #333;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #333333;
+            color: white;
             text-decoration: none;
             font-weight: 600;
             font-size: 14px;
-            margin-bottom: 16px;
-            display: inline-block;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: transform .12s, box-shadow .2s, background .2s;
+            border: 0;
+            cursor: pointer;
         }
 
         .back-btn:hover {
-            text-decoration: underline;
+            background: #4b5563;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(51, 51, 51, .25);
+            text-decoration: none;
         }
 
         /* Responsive Fixes */
@@ -656,6 +680,20 @@
             .btn {
                 padding: 12px 16px;
                 font-size: 14px;
+            }
+
+            .actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .back-btn {
+                font-size: 13px;
+                padding: 8px 12px;
             }
 
             .dec {
@@ -1081,6 +1119,7 @@
                     </div>
 
                     <div class="actions">
+                        <button type="button" class="btn btn-secondary" id="prevBtn">← Previous</button>
                         <button type="button" class="btn" id="nextBtn">Continue →</button>
                     </div>
                 </form>
@@ -1092,7 +1131,8 @@
         let current = 1, total = 5;
         const sections = [...document.querySelectorAll('.section')];
         const steps = [...document.querySelectorAll('.step')];
-        const btn = document.getElementById('nextBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
         const form = document.getElementById('internalAssessment');
 
         function setStep(n) {
@@ -1102,7 +1142,8 @@
                 s.classList.toggle('active', i + 1 === current);
                 s.classList.toggle('done', i + 1 < current);
             });
-            btn.textContent = current === total ? 'Submit Assessment' : 'Continue →';
+            nextBtn.textContent = current === total ? 'Submit Assessment' : 'Continue →';
+            prevBtn.style.display = current === 1 ? 'none' : 'flex';
             document.querySelector('.form').scrollTop = 0;
         }
 
@@ -1154,8 +1195,8 @@
             return isValid;
         }
 
-        // Handle step navigation
-        btn.addEventListener('click', () => {
+        // Next button click handler
+        nextBtn.addEventListener('click', () => {
             if (current === total) {
                 // Validate ALL required fields in the entire form
                 if (validateAllRequiredFields()) {
@@ -1180,6 +1221,13 @@
                 return;
             }
             if (validateFields(current)) setStep(current + 1);
+        });
+
+        // Previous button click handler
+        prevBtn.addEventListener('click', () => {
+            if (current > 1) {
+                setStep(current - 1);
+            }
         });
 
         // Allow navigation between steps

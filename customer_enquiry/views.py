@@ -881,27 +881,65 @@ def booking_form_view(request, customer_id):
         # Handle form submission
         return handle_booking_submission(request, customer)
 
+def get_project_name_from_form_number(form_number):
+    """
+    Get project name from form number using the same mapping logic
+    """
+    if not form_number:
+        return ''
+    
+    # Handle different property code lengths (case insensitive check)
+    form_upper = form_number.upper()
+    property_code = ''
+    
+    if form_upper.startswith('STAR'):
+        property_code = 'STAR'
+    elif form_upper.startswith('ANT'):
+        property_code = 'ANT'
+    elif form_upper.startswith('ORN'):
+        property_code = 'ORN'
+    elif form_upper.startswith('MED'):
+        property_code = 'MED'
+    elif form_upper.startswith('ALT'):
+        property_code = 'ALT'
+    else:
+        property_code = form_number[:3]  # Default to first 3 characters
+    
+    property_names = {
+        'ALT': 'Altavista',
+        'ORN': 'Ornata',
+        'MED': 'Medius',
+        'STAR': 'Spenta Stardeous',
+        'ANT': 'Spenta Anthea'
+    }
+    
+    return property_names.get(property_code, '')
+
+
 def prepare_prefilled_data(customer):
     """
     Customer ke existing data se form pre-fill karo
     """
-    # Try to get project name from customer's related data
-    project_name = 'Project Name'  # Default
+    # Try to get project name from customer's form number (primary source)
+    project_name = get_project_name_from_form_number(customer.form_number)
     
-    # Try to get from customer referral (OneToOneField)
-    try:
-        if hasattr(customer, 'referral') and customer.referral:
-            project_name = customer.referral.project_name
-    except Exception:
-        pass
-    
-    # Try to get from existing bookings
-    try:
-        existing_booking = customer.booking_applications.first() if hasattr(customer, 'booking_applications') else None
-        if existing_booking and existing_booking.project_name:
-            project_name = existing_booking.project_name
-    except Exception:
-        pass
+    # If form number doesn't give us a project name, try other sources
+    if not project_name:
+        # Try to get from customer referral (OneToOneField)
+        try:
+            if hasattr(customer, 'referral') and customer.referral:
+                project_name = customer.referral.project_name
+        except Exception:
+            pass
+        
+        # Try to get from existing bookings
+        if not project_name:
+            try:
+                existing_booking = customer.booking_applications.first() if hasattr(customer, 'booking_applications') else None
+                if existing_booking and existing_booking.project_name and existing_booking.project_name != 'Default Project':
+                    project_name = existing_booking.project_name
+            except Exception:
+                pass
     
     prefilled_data = {
         # Project details

@@ -708,7 +708,7 @@
             <div class="row cols-2" style="align-items: center">
                 <div class="grid-fit">
                     <div class="label">Project Name:</div>
-                    <input class="line" name="project_name" id="projectName" value="{{ prefilled_data.project_name|default:'Project Name' }}" />
+                    <input class="line" name="project_name" id="projectName" value="{{ prefilled_data.project_name }}" placeholder="Project Name" />
                 </div>
                 <div class="hide-from-pdf" style="text-align: right">
                     <span class="red-chip">Customized form will open as per selected project</span>
@@ -1985,7 +1985,7 @@
                 // Check if there's existing project data to fetch
                 {% if customer.project_name %}
                     projectNameField.value = '{{ customer.project_name }}';
-                {% elif prefilled_data.project_name and prefilled_data.project_name != 'Project Name' %}
+                {% elif prefilled_data.project_name %}
                     // Keep the prefilled value if it exists and isn't the default
                 {% else %}
                     // You can add more logic here to fetch project names from other sources
