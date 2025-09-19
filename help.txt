@@ -7,7 +7,7 @@ git add .
 
 # 4. Commit changes
 git commit -m "Description of what you changed"
-
+git commit -m "CIF Changes"
 
 
 

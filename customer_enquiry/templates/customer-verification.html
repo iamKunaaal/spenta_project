@@ -15,10 +15,15 @@
         }
 
         body {
+            font-family: 'Montserrat', sans-serif;
+            background: url('{% static "media/spenta skyline.png" %}');
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed;
             min-height: 100vh;
-            background: url('https://spentacorporation.com/wp-content/uploads/2024/08/Altavista-Homepage-banner.jpg') no-repeat center center/cover;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         main {
@@ -385,7 +390,7 @@
            
         </div>
         <nav class="logo">
-            <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
+            <img src="{% static 'media/spenta grey.png' %}" alt="Spenta Logo">
         </nav>
     </header>
     <main>
