@@ -963,11 +963,10 @@
 <body>
     <div class="card">
         <!-- Property Information Banner (Hidden by default) -->
-        <div id="propertyBanner" class="property-banner">
+        {% comment %} <div id="propertyBanner" class="property-banner">
             <h2 id="propertyName"></h2>
             <p id="propertyLocation"></p>
-            <p><small>Welcome! Phone: <span id="userPhone"></span></small></p>
-        </div>
+        </div> {% endcomment %}
 
         <!-- Updated Header -->
         <header class="header">
@@ -1204,7 +1203,7 @@
 
                     <!-- Step 3: Customer Requirements -->
                     <div class="section" data-step="3">
-                        <h3>Customer's Requirements</h3>
+                        <h3>Unit Requirements</h3>
                         <small style="color: #007bff;">Customized according to the project selected</small>
 
                         <div class="grid cols-2" style="margin-top:16px">
@@ -1253,6 +1252,7 @@
                                     <label><input type="radio" name="purpose_of_buying" value="investment" /> Investment</label>
                                     <label><input type="radio" name="purpose_of_buying" value="second_home" /> Second Home</label>
                                     <label><input type="radio" name="purpose_of_buying" value="gift" /> Gift</label>
+                                    <label><input type="radio" name="purpose_of_buying" value="other" /> Other</label>
                                 </div>
                                 <div class="error-message">Please select purpose of buying</div>
                             </div>
@@ -1263,19 +1263,20 @@
                     <div class="section" data-step="4">
                         <h3>Source of Visit</h3>
 
-                        <label>How did you hear about us?</label>
-                        <div class="checkbox-group">
-                            <label><input type="checkbox" id="channelPartner" name="sources" value="channel_partner" /> Channel Partner</label>
-                            <label><input type="checkbox" id="referral" name="sources" value="referral" /> Referral</label>
-                            <label><input type="checkbox" name="sources" value="whatsapp" /> WhatsApp</label>
-                            <label><input type="checkbox" name="sources" value="social_media" /> Social Media (Facebook, Google, etc.)</label>
-                            <label><input type="checkbox" name="sources" value="website" /> Website</label>
-                            <label><input type="checkbox" name="sources" value="passing_by" /> Passing by</label>
-                            <label><input type="checkbox" name="sources" value="property_portal" /> Property Search Portal</label>
-                            <label><input type="checkbox" name="sources" value="hoarding" /> Hoarding</label>
-                            <label><input type="checkbox" name="sources" value="newspaper_ad" /> Newspaper Ad</label>
-                            <label><input type="checkbox" name="sources" value="exhibition" /> Exhibition</label>
+                        <label class="required">How did you hear about us?</label>
+                        <div class="radio-group cols-2">
+                            <label><input type="radio" id="channelPartner" name="source" value="channel_partner" required /> Channel Partner</label>
+                            <label><input type="radio" id="referral" name="source" value="referral" /> Referral</label>
+                            <label><input type="radio" name="source" value="whatsapp" /> WhatsApp</label>
+                            <label><input type="radio" name="source" value="social_media" /> Social Media (Facebook, Google, etc.)</label>
+                            <label><input type="radio" name="source" value="website" /> Website</label>
+                            <label><input type="radio" name="source" value="passing_by" /> Passing by</label>
+                            <label><input type="radio" name="source" value="property_portal" /> Property Search Portal</label>
+                            <label><input type="radio" name="source" value="hoarding" /> Hoarding</label>
+                            <label><input type="radio" name="source" value="newspaper_ad" /> Newspaper Ad</label>
+                            <label><input type="radio" name="source" value="exhibition" /> Exhibition</label>
                         </div>
+                        <div class="error-message">Please select how you heard about us</div>
 
                         <label for="sourceDetails" style="margin-top:16px">If Newspaper Ad/ Social Media/ Exhibition/ Property Search Portal, Please Specify Details:</label>
                         <textarea class="field" id="sourceDetails" name="source_details" rows="4"
@@ -1377,7 +1378,6 @@
                 
                 document.getElementById('propertyName').textContent = propertyNames[selectedProperty] || selectedProperty;
                 document.getElementById('propertyLocation').textContent = 'Mumbai';
-                document.getElementById('userPhone').textContent = userPhone || 'Not provided';
                 document.getElementById('propertyBanner').style.display = 'block';
                 
                 // Generate form number with property code (uppercase)
@@ -1691,7 +1691,7 @@
             const requiredFields = [
                 'first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status'
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'
             ];
 
             allFields.forEach(field => {
@@ -1717,21 +1717,6 @@
                     radioGroups[field.name].elements.push(field);
                     if (field.checked) {
                         radioGroups[field.name].checked = true;
-                    }
-                } else if (field.type === 'checkbox') {
-                    // Handle sources checkboxes - at least one should be selected
-                    if (field.name === 'sources') {
-                        if (!radioGroups['sources']) {
-                            radioGroups['sources'] = {
-                                checked: false,
-                                elements: [],
-                                section: field.closest('.section')
-                            };
-                        }
-                        radioGroups['sources'].elements.push(field);
-                        if (field.checked) {
-                            radioGroups['sources'].checked = true;
-                        }
                     }
                 } else {
                     // Text fields, selects, textareas
@@ -1875,7 +1860,7 @@
             const currentSection = sections[current - 1];
             const requiredFields = ['first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status'];
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'];
             
             let isValid = true;
             
@@ -1930,28 +1915,32 @@
             return isValid;
         }
 
-        // Show/hide conditional sections
-        document.getElementById('channelPartner').addEventListener('change', function() {
-            const section = document.getElementById('channelPartnerSection');
-            const isVisible = this.checked;
-            section.style.display = isVisible ? 'block' : 'none';
-            
-            // Toggle required fields
-            const requiredFields = section.querySelectorAll('input');
-            requiredFields.forEach(field => {
-                field.required = isVisible;
-            });
-        });
-
-        document.getElementById('referral').addEventListener('change', function() {
-            const section = document.getElementById('referralSection');
-            const isVisible = this.checked;
-            section.style.display = isVisible ? 'block' : 'none';
-            
-            // Toggle required fields
-            const requiredFields = section.querySelectorAll('input');
-            requiredFields.forEach(field => {
-                field.required = isVisible;
+        // Show/hide conditional sections for radio buttons
+        document.querySelectorAll('input[name="source"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Hide all conditional sections first
+                document.getElementById('channelPartnerSection').style.display = 'none';
+                document.getElementById('referralSection').style.display = 'none';
+                
+                // Clear required fields from all sections
+                document.querySelectorAll('#channelPartnerSection input, #referralSection input').forEach(field => {
+                    field.required = false;
+                });
+                
+                // Show relevant section based on selected value
+                if (this.value === 'channel_partner') {
+                    const section = document.getElementById('channelPartnerSection');
+                    section.style.display = 'block';
+                    section.querySelectorAll('input').forEach(field => {
+                        field.required = true;
+                    });
+                } else if (this.value === 'referral') {
+                    const section = document.getElementById('referralSection');
+                    section.style.display = 'block';
+                    section.querySelectorAll('input').forEach(field => {
+                        field.required = true;
+                    });
+                }
             });
         });
 

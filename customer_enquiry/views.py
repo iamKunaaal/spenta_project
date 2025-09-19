@@ -134,13 +134,13 @@ def customer_submit_view(request):
             
             property_name = property_mapping.get(property_code, property_code)
             
-            # Check required fields - UPDATED: Added sex and marital_status
+            # Check required fields - UPDATED: Added sex, marital_status, and source
             required_fields = [
                 'first_name', 'last_name', 'email',
                 'city', 'locality', 'pincode',
                 'nationality', 'employment_type', 'configuration',
                 'budget', 'construction_status', 'purpose_of_buying',
-                'sex', 'marital_status'
+                'sex', 'marital_status', 'source'
             ]
             
             missing_fields = [field for field in required_fields if not data.get(field)]
@@ -228,16 +228,16 @@ def customer_submit_view(request):
                 source_details=data.get('source_details', '')
             )
             
-            # Add sources
-            sources = request.POST.getlist('sources')
-            for source in sources:
+            # Add single source (changed from multiple sources to single source)
+            source = request.POST.get('source')
+            if source:
                 CustomerSource.objects.create(
                     customer=customer,
                     source_type=source
                 )
             
             # Add channel partner if selected
-            if 'channel_partner' in sources:
+            if source == 'channel_partner':
                 partner_data = {
                     'company_name': data.get('partner_company_name'),
                     'partner_name': data.get('partner_name'),
@@ -249,7 +249,7 @@ def customer_submit_view(request):
                     ChannelPartner.objects.create(customer=customer, **partner_data)
             
             # Add referral if selected
-            if 'referral' in sources:
+            if source == 'referral':
                 referral_data = {
                     'referral_name': data.get('referral_name'),
                     'project_name': data.get('referral_project')

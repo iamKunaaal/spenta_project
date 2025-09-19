@@ -77,6 +77,7 @@ class Customer(models.Model):
         ('investment', 'Investment'),
         ('second_home', 'Second Home'),
         ('gift', 'Gift'),
+        ('other', 'Other'),
     ]
     
     # Form Meta Information

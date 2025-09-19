@@ -892,10 +892,7 @@
                                     <strong>Form #:</strong> <span class="form-number-display">{{ customer.form_number }}</span>
                                 </div>
                                 <div>
-                                    <strong>Email:</strong> {{ customer.email }}
-                                </div>
-                                <div>
-                                    <strong>Phone:</strong> {{ customer.get_formatted_phone }}
+                                    <strong>Source of Visit:</strong> {% for source in customer.sources.all %}{{ source.get_source_type_display }}{% if not forloop.last %}, {% endif %}{% empty %}Not specified{% endfor %}
                                 </div>
                                 <div>
                                     <strong>Gender:</strong> {{ customer.get_sex_display|default:"Not specified" }}
@@ -937,22 +934,14 @@
                                 <div class="error-message">Please enter sourcing manager name</div>
                             </div>
                             <div>
-                                <label for="salesManager" class="required">Sales Manager</label>
+                                <label for="salesManager" class="required">Closing Manager</label>
                                 <input class="field" type="text" id="salesManager" name="sales_manager" 
-                                       value="{{ assessment.sales_manager|default:'' }}" placeholder="Enter Sales Manager Name" required>
-                                <div class="error-message">Please enter sales manager name</div>
+                                       value="{{ assessment.sales_manager|default:'' }}" placeholder="Enter Closing Manager Name" required>
+                                <div class="error-message">Please enter closing manager name</div>
                             </div>
                         </div>
 
-                        <div class="grid cols-2" style="margin-top: 16px;">
-                            <div>
-                                <label class="required">Customer Gender</label>
-                                <div class="radio-group cols-2">
-                                    <label><input type="radio" name="customer_gender" value="male" {% if customer.sex == 'male' %}checked{% endif %} required> Male</label>
-                                    <label><input type="radio" name="customer_gender" value="female" {% if customer.sex == 'female' %}checked{% endif %} required> Female</label>
-                                </div>
-                                <div class="error-message">Please select customer gender</div>
-                            </div>
+                        <div style="margin-top: 16px;">
                             <div>
                                 <label class="required">Facilitated by Pre-Sales</label>
                                 <div class="radio-group cols-2">
@@ -972,10 +961,10 @@
                         <div>
                             <label class="required">Lead Classification</label>
                             <div class="radio-group cols-2">
-                                <label><input type="radio" name="lead_classification" value="hot" required> Hot</label>
-                                <label><input type="radio" name="lead_classification" value="warm" required> Warm</label>
-                                <label><input type="radio" name="lead_classification" value="cold" required> Cold</label>
-                                <label><input type="radio" name="lead_classification" value="lost" required> Lost</label>
+                                <label><input type="radio" name="lead_classification" value="hot" {% if assessment.lead_classification == 'hot' %}checked{% endif %} required> Hot</label>
+                                <label><input type="radio" name="lead_classification" value="warm" {% if assessment.lead_classification == 'warm' %}checked{% endif %} required> Warm</label>
+                                <label><input type="radio" name="lead_classification" value="cold" {% if assessment.lead_classification == 'cold' %}checked{% endif %} required> Cold</label>
+                                <label><input type="radio" name="lead_classification" value="lost" {% if assessment.lead_classification == 'lost' %}checked{% endif %} required> Lost</label>
                             </div>
                             <div class="error-message">Please select lead classification</div>
                         </div>
@@ -1049,23 +1038,17 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 16px;">
-                            <label for="plot" class="required">Plot</label>
-                            <input class="field" type="text" id="plot" name="plot" placeholder="Enter plot details" 
-                                   value="{{ assessment.plot|default:'' }}" required>
-                            <div class="error-message">Please enter plot details</div>
-                        </div>
 
                         <div style="margin-top: 16px;">
                             <label class="required">Family Size</label>
                             <div class="radio-group cols-6">
-                                <label><input type="radio" name="family_size" value="1" required> 1</label>
-                                <label><input type="radio" name="family_size" value="2" required> 2</label>
-                                <label><input type="radio" name="family_size" value="3" required> 3</label>
-                                <label><input type="radio" name="family_size" value="4" required> 4</label>
-                                <label><input type="radio" name="family_size" value="5" required> 5</label>
-                                <label><input type="radio" name="family_size" value="6" required> 6</label>
-                                <label><input type="radio" name="family_size" value="6+" required> >6</label>
+                                <label><input type="radio" name="family_size" value="1" {% if assessment.family_size == '1' %}checked{% endif %} required> 1</label>
+                                <label><input type="radio" name="family_size" value="2" {% if assessment.family_size == '2' %}checked{% endif %} required> 2</label>
+                                <label><input type="radio" name="family_size" value="3" {% if assessment.family_size == '3' %}checked{% endif %} required> 3</label>
+                                <label><input type="radio" name="family_size" value="4" {% if assessment.family_size == '4' %}checked{% endif %} required> 4</label>
+                                <label><input type="radio" name="family_size" value="5" {% if assessment.family_size == '5' %}checked{% endif %} required> 5</label>
+                                <label><input type="radio" name="family_size" value="6" {% if assessment.family_size == '6' %}checked{% endif %} required> 6</label>
+                                <label><input type="radio" name="family_size" value="6+" {% if assessment.family_size == '6+' %}checked{% endif %} required> >6</label>
                             </div>
                             <div class="error-message">Please select family size</div>
                         </div>
@@ -1096,9 +1079,9 @@
                                 <label for="ethnicity" class="required">Ethnicity</label>
                                 <select class="field" id="ethnicity" name="ethnicity" required>
                                     <option value="">Select Ethnicity</option>
-                                    <option value="hindu">Hindu</option>
-                                    <option value="maharashtrian">Maharashtrian</option>
-                                    <option value="other">Other</option>
+                                    <option value="hindu" {% if assessment.ethnicity == 'hindu' %}selected{% endif %}>Hindu</option>
+                                    <option value="maharashtrian" {% if assessment.ethnicity == 'maharashtrian' %}selected{% endif %}>Maharashtrian</option>
+                                    <option value="other" {% if assessment.ethnicity == 'other' %}selected{% endif %}>Other</option>
                                 </select>
                                 <div class="error-message">Please select ethnicity</div>
                             </div>
@@ -1113,9 +1096,9 @@
                         <textarea class="field" id="otherProjects" name="other_projects_considered" rows="4" 
                                   placeholder="List other projects the customer is considering...">{{ assessment.other_projects_considered|default:'' }}</textarea>
 
-                        <label for="salesManagerRemarks" style="margin-top:16px">Sales Manager's Remarks</label>
+                        <label for="salesManagerRemarks" style="margin-top:16px">Closing Manager's Remarks</label>
                         <textarea class="field" id="salesManagerRemarks" name="sales_manager_remarks" rows="4" 
-                                  placeholder="Enter sales manager's remarks about the customer...">{{ assessment.sales_manager_remarks|default:'' }}</textarea>
+                                  placeholder="Enter closing manager's remarks about the customer...">{{ assessment.sales_manager_remarks|default:'' }}</textarea>
                     </div>
 
                     <div class="actions">
@@ -1201,26 +1184,25 @@
                 // Validate ALL required fields in the entire form
                 if (validateAllRequiredFields()) {
                     console.log('Form is valid, submitting...');
+                    // Show loading state
+                    nextBtn.disabled = true;
+                    nextBtn.textContent = 'Submitting...';
                     // Submit the form normally
                     form.submit();
                 } else {
                     console.log('Form validation failed');
-                    // Show a more detailed error message
-                    const errorCount = form.querySelectorAll('.error, .has-error').length;
-                    console.log('Error count:', errorCount);
-                    
-                    // Show browser alert
-                    alert(`❌ Cannot submit the assessment!\n\n${errorCount} required field(s) need to be filled out. Please check the error summary above and fill in all required fields marked with a red asterisk (*).`);
-                    
-                    // Scroll to validation summary
-                    const validationSummary = document.getElementById('validationSummary');
-                    if (validationSummary && validationSummary.classList.contains('show')) {
-                        validationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+                    // Focus on first error field instead of showing alert
+                    focusFirstError();
                 }
                 return;
             }
-            if (validateFields(current)) setStep(current + 1);
+            // Validate current step before proceeding
+            if (validateFields(current)) {
+                setStep(current + 1);
+            } else {
+                // Focus on first error in current step instead of showing alert
+                focusFirstErrorInStep(current);
+            }
         });
 
         // Previous button click handler
@@ -1252,18 +1234,8 @@
                 form.submit();
             } else {
                 console.log('Form validation failed');
-                // Show a more detailed error message
-                const errorCount = form.querySelectorAll('.error, .has-error').length;
-                console.log('Error count:', errorCount);
-                
-                // Show browser alert
-                alert(`❌ Cannot submit the assessment!\n\n${errorCount} required field(s) need to be filled out. Please check the error summary above and fill in all required fields marked with a red asterisk (*).`);
-                
-                // Scroll to validation summary
-                const validationSummary = document.getElementById('validationSummary');
-                if (validationSummary && validationSummary.classList.contains('show')) {
-                    validationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                // Focus on first error field instead of showing alert
+                focusFirstError();
             }
         });
 
@@ -1288,6 +1260,19 @@
             validationSummary.classList.remove('show');
 
             allRequiredFields.forEach(field => {
+                // Skip validation for fields in hidden containers
+                const parentContainer = field.closest('[style*="display:none"], [style*="display: none"]');
+                if (parentContainer) {
+                    console.log('Skipping field in hidden container:', field.name);
+                    return;
+                }
+                
+                // Special handling for Lost Reason dropdown
+                if (field.id === 'lostReason' && lostReasonContainer.style.display === 'none') {
+                    console.log('Skipping hidden lost reason field');
+                    return;
+                }
+                
                 if (field.type === 'radio') {
                     if (!radioGroups[field.name]) {
                         radioGroups[field.name] = {
@@ -1331,10 +1316,24 @@
 
             // Validate radio groups
             Object.keys(radioGroups).forEach(groupName => {
+                console.log(`Checking radio group: ${groupName}, checked: ${radioGroups[groupName].checked}`);
+                
+                // Skip validation for conditional fields that are hidden
+                const firstRadio = form.querySelector(`input[name="${groupName}"]`);
+                if (firstRadio) {
+                    const radioContainer = firstRadio.closest('.radio-group');
+                    const parentContainer = radioContainer ? radioContainer.parentElement : null;
+                    
+                    // Skip if this is the lost reason field and it's hidden
+                    if (groupName === 'reason_for_lost' && parentContainer && parentContainer.style.display === 'none') {
+                        console.log('Skipping hidden conditional field:', groupName);
+                        return;
+                    }
+                }
+                
                 if (!radioGroups[groupName].checked) {
                     isValid = false;
                     // Find the radio group container and show error
-                    const firstRadio = form.querySelector(`input[name="${groupName}"]`);
                     if (firstRadio) {
                         // Get field label for error message
                         const label = firstRadio.closest('div').previousElementSibling || firstRadio.closest('div').querySelector('label');
@@ -1412,9 +1411,179 @@
             radio.addEventListener('change', toggleLostReasonDropdown);
         });
 
+        // Function to focus on first error field in entire form
+        function focusFirstError() {
+            // Find first empty required field or field with error class
+            let firstErrorField = form.querySelector('.error');
+            
+            if (!firstErrorField) {
+                // Look for empty text inputs and textareas
+                const emptyTextFields = form.querySelectorAll('input[required][type="text"], textarea[required]');
+                for (let field of emptyTextFields) {
+                    if (!field.value.trim()) {
+                        firstErrorField = field;
+                        break;
+                    }
+                }
+            }
+            
+            if (!firstErrorField) {
+                // Look for unselected required radio groups
+                const radioGroups = {};
+                form.querySelectorAll('input[required][type="radio"]').forEach(radio => {
+                    if (!radioGroups[radio.name]) {
+                        radioGroups[radio.name] = { hasSelection: false, firstRadio: radio };
+                    }
+                    if (radio.checked) {
+                        radioGroups[radio.name].hasSelection = true;
+                    }
+                });
+                
+                // Debug: Log radio groups found
+                console.log('Radio groups found:', Object.keys(radioGroups));
+                
+                for (let groupName in radioGroups) {
+                    if (!radioGroups[groupName].hasSelection) {
+                        console.log('Empty radio group found:', groupName);
+                        firstErrorField = radioGroups[groupName].firstRadio;
+                        break;
+                    }
+                }
+            }
+            
+            if (!firstErrorField) {
+                // Look for unselected required selects (but skip hidden ones)
+                const emptySelects = form.querySelectorAll('select[required]');
+                for (let select of emptySelects) {
+                    // Skip if select is in hidden container
+                    const hiddenContainer = select.closest('[style*="display:none"], [style*="display: none"]');
+                    if (hiddenContainer) {
+                        continue;
+                    }
+                    
+                    if (!select.value) {
+                        firstErrorField = select;
+                        break;
+                    }
+                }
+            }
+            
+            if (firstErrorField) {
+                // Navigate to the step containing this field
+                const errorSection = firstErrorField.closest('.section');
+                if (errorSection) {
+                    const stepNumber = parseInt(errorSection.getAttribute('data-step'));
+                    setStep(stepNumber);
+                }
+                
+                // Focus and highlight the field
+                setTimeout(() => {
+                    if (firstErrorField.type === 'radio') {
+                        // For radio buttons, focus on the first radio in the group and highlight the container
+                        const radioContainer = firstErrorField.closest('.radio-group');
+                        if (radioContainer) {
+                            radioContainer.style.animation = 'shake 0.5s ease-in-out';
+                            radioContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            firstErrorField.focus();
+                        }
+                    } else {
+                        // For other inputs, focus and add highlighting animation
+                        firstErrorField.style.animation = 'shake 0.5s ease-in-out';
+                        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstErrorField.focus();
+                    }
+                }, 300);
+            }
+        }
+
+        // Function to focus on first error field in current step
+        function focusFirstErrorInStep(stepNumber) {
+            const currentSection = sections[stepNumber - 1];
+            const firstErrorField = currentSection.querySelector('.error, input[required]:invalid, select[required]:invalid, textarea[required]:invalid');
+            if (firstErrorField) {
+                // Focus and highlight the field
+                if (firstErrorField.type === 'radio') {
+                    // For radio buttons, focus on the first radio in the group and highlight the container
+                    const radioContainer = firstErrorField.closest('.radio-group');
+                    if (radioContainer) {
+                        radioContainer.style.animation = 'shake 0.5s ease-in-out';
+                        radioContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstErrorField.focus();
+                    }
+                } else {
+                    // For other inputs, focus and add highlighting animation
+                    firstErrorField.style.animation = 'shake 0.5s ease-in-out';
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstErrorField.focus();
+                }
+            }
+        }
+
+        // Real-time validation for text inputs
+        function setupRealTimeValidation() {
+            // Add real-time validation for text inputs
+            const textInputs = form.querySelectorAll('input[type="text"], textarea');
+            textInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.hasAttribute('required') && !this.value.trim()) {
+                        this.classList.add('error');
+                        const errorMsg = this.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'block';
+                    } else {
+                        this.classList.remove('error');
+                        const errorMsg = this.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'none';
+                    }
+                });
+                
+                input.addEventListener('input', function() {
+                    if (this.classList.contains('error') && this.value.trim()) {
+                        this.classList.remove('error');
+                        const errorMsg = this.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'none';
+                    }
+                });
+            });
+
+            // Add real-time validation for radio buttons
+            const radioGroups = {};
+            form.querySelectorAll('input[type="radio"][required]').forEach(radio => {
+                if (!radioGroups[radio.name]) {
+                    radioGroups[radio.name] = [];
+                }
+                radioGroups[radio.name].push(radio);
+            });
+
+            Object.keys(radioGroups).forEach(groupName => {
+                radioGroups[groupName].forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        const radioContainer = this.closest('.radio-group');
+                        if (radioContainer) {
+                            radioContainer.classList.remove('error');
+                            const errorMsg = radioContainer.parentElement.querySelector('.error-message');
+                            if (errorMsg) errorMsg.style.display = 'none';
+                        }
+                    });
+                });
+            });
+
+            // Add real-time validation for select elements
+            const selectElements = form.querySelectorAll('select[required]');
+            selectElements.forEach(select => {
+                select.addEventListener('change', function() {
+                    if (this.value) {
+                        this.classList.remove('error');
+                        const errorMsg = this.parentElement.querySelector('.error-message');
+                        if (errorMsg) errorMsg.style.display = 'none';
+                    }
+                });
+            });
+        }
+
         // Initialize first step and conditional sections
         setStep(1);
         toggleLostReasonDropdown();
+        setupRealTimeValidation();
 
         // Format form numbers to uppercase property codes
         document.querySelectorAll('.form-number-display').forEach(function(el) {

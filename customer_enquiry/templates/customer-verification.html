@@ -403,6 +403,19 @@
             <p class="user-login-subtitle">Please enter your contact number and OTP to continue.</p>
 
             <form id="userLoginForm">
+                <!-- Hide property selection if auto-selected -->
+                <div class="user-form-group {% if selected_property %}hidden{% endif %}">
+                    <label for="propertyName">Select Property / Project Name</label>
+                    <select id="propertyName" name="property_code" {% if not selected_property %}required{% endif %}>
+                        <option value="" disabled selected>Select property or project</option>
+                        <option value="Alt">Altavista</option>
+                        <option value="Orn">Ornata</option>
+                        <option value="Med">Medius</option>
+                        <option value="Star">Spenta Stardeous</option>
+                        <option value="Ant">Spenta Anthea</option>
+                    </select>
+                </div>
+
                 <div class="user-form-group">
                     <label for="contactNo">Contact No.</label>
                     <div class="user-form-inline">
@@ -416,19 +429,6 @@
                 <div class="user-form-group">
                     <label for="otp">OTP Verification</label>
                     <input type="text" id="otp" name="otp" placeholder="Enter OTP" maxlength="6" required>
-                </div>
-
-                <!-- Hide property selection if auto-selected -->
-                <div class="user-form-group {% if selected_property %}hidden{% endif %}">
-                    <label for="propertyName">Select Property / Project Name</label>
-                    <select id="propertyName" name="property_code" {% if not selected_property %}required{% endif %}>
-                        <option value="" disabled selected>Select property or project</option>
-                        <option value="Alt">Altavista</option>
-                        <option value="Orn">Ornata</option>
-                        <option value="Med">Medius</option>
-                        <option value="Star">Spenta Stardeous</option>
-                        <option value="Ant">Spenta Anthea</option>
-                    </select>
                 </div>
 
                 <!-- Hidden input for auto-selected property -->
