@@ -6,7 +6,7 @@ import csv
 from datetime import datetime
 
 from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment
-from .models import BookingApplication, BookingApplicant, BookingChannelPartner
+from .models import BookingApplication, BookingApplicant, BookingChannelPartner, Project
 
 # Inline Admin Classes
 class CustomerSourceInline(admin.TabularInline):
@@ -254,3 +254,69 @@ class BookingApplicantAdmin(admin.ModelAdmin):
 class BookingChannelPartnerAdmin(admin.ModelAdmin):
     list_display = ('name', 'mobile', 'booking_application')
     search_fields = ('name', 'mobile')
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    """Admin configuration for Project model"""
+
+    list_display = [
+        'project_name',
+        'site_name',
+        'project_prefix',
+        'form_number',
+        'company_name',
+        'maharera_no',
+        'is_active',
+        'created_at'
+    ]
+
+    list_filter = [
+        'is_active',
+        'company_name',
+        'created_at'
+    ]
+
+    search_fields = [
+        'project_name',
+        'site_name',
+        'project_prefix',
+        'form_number',
+        'company_name',
+        'maharera_no'
+    ]
+
+    readonly_fields = ['created_at', 'updated_at', 'form_number']
+
+    fieldsets = (
+        ('Project Information', {
+            'fields': (
+                'project_name',
+                'site_name',
+                'address',
+                'project_prefix',
+                'form_number',
+                'project_logo'
+            )
+        }),
+        ('Company Details', {
+            'fields': (
+                'company_name',
+                'maharera_no'
+            )
+        }),
+        ('System Settings', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    list_per_page = 25
+    date_hierarchy = 'created_at'
+
+    def get_readonly_fields(self, request, obj=None):
+        """Form number is always readonly since it's auto-generated"""
+        return self.readonly_fields

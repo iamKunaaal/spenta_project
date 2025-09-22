@@ -413,11 +413,9 @@
                     <label for="propertyName">Select Property / Project Name</label>
                     <select id="propertyName" name="property_code" {% if not selected_property %}required{% endif %}>
                         <option value="" disabled selected>Select property or project</option>
-                        <option value="Alt">Altavista</option>
-                        <option value="Orn">Ornata</option>
-                        <option value="Med">Medius</option>
-                        <option value="Star">Spenta Stardeous</option>
-                        <option value="Ant">Spenta Anthea</option>
+                        {% for project in active_projects %}
+                            <option value="{{ project.form_number }}">{{ project.project_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 

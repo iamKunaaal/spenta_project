@@ -1422,9 +1422,9 @@
                         1) The Applicant/s hereby request to be registered for provisional
                         allotment of a Residential Apartment/Flat (as mentioned in this
                         Booking Application Form) in the Project known as
-                        <b>‘Stardeous situated at Tardeo’</b>, to be developed by
-                        <b>Heston Builders Pvt. Ltd.</b> hereinafter referred to as “The
-                        Promoter” and will be customized as per the project selected.
+                        <b>'{% if project_data %}{{ project_data.name }} situated at {{ project_data.site_name }}{% else %}Stardeous situated at Tardeo{% endif %}'</b>, to be developed by
+                        <b>{% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Pvt. Ltd.{% endif %}</b> hereinafter referred to as "The
+                        Promoter” 
                     </p>
                     <p>
                         2) The Applicant/s has/have clearly understood that this provisional
@@ -1665,7 +1665,7 @@
                     <p style="page-break-before: always;">
                         I/We have fully read, understood and agree to abide by the above
                         mentioned terms and conditions stipulated by
-                        <b>Heston Builders Private Ltd.</b> <span style="color: red">As per selected Project</span>
+                        <b>{% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Private Ltd.{% endif %}</b> <span style="color: red"></span>
                     </p>
     
                     <p>
@@ -1772,10 +1772,10 @@
 
                 <!-- REGISTERED OFFICE INFO -->
                 <div style="border: 1px solid #e21c22; padding: 10px 14px; margin: 40px 0 30px; font: 600 11px/1.6 Arial, sans-serif; text-align: justify;">
-                    Registered Office: Heston Builders Private Ltd. 463, Sant Veer Meghmaya
+                    Registered Office: {% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Private Ltd.{% endif %} 463, Sant Veer Meghmaya
                     Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034.
                     <span style="color: red; font-weight: bold">As per selected Project</span><br />
-                    MahaRERA Registration Number: P51900053358 , Available at website:
+                    MahaRERA Registration Number: {% if project_data %}{{ project_data.maharera_no }}{% else %}P51900053358{% endif %} , Available at website:
                     <a href="http://maharera.mahaonline.gov.in" target="_blank">http://maharera.mahaonline.gov.in</a><br />
                     Disclaimer: The company reserves the right to make modifications,
                     changes or alterations at their sole discretion without any prior
@@ -1791,10 +1791,10 @@
                 <div class="footer-with-QR" style="display: flex; justify-content: space-between; align-items: flex-start; margin: 40px 0; padding: 20px; border: 2px solid #e21c22; background-color: #f9f9f9; gap: 20px;">
                     <div style="flex: 1; font: 11px/1.6 Arial, sans-serif; color: #333; text-align: justify;">
                         <p style="margin: 0 0 10px 0;">
-                            <strong>Registered Office:</strong> Heston Builders Private Ltd. 463, Sant Veer Meghmaya Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034. As per selected Project
+                            <strong>Registered Office:</strong> {% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Private Ltd.{% endif %} 463, Sant Veer Meghmaya Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034. As per selected Project
                         </p>
                         <p style="margin: 0 0 10px 0;">
-                            <strong>MahaRERA Registration Number:</strong> P51900053358, Available at website: <span style="color: #e21c22;">http://maharera.mahaonline.gov.in</span>
+                            <strong>MahaRERA Registration Number:</strong> {% if project_data %}{{ project_data.maharera_no }}{% else %}P51900053358{% endif %}, Available at website: <span style="color: #e21c22;">http://maharera.mahaonline.gov.in</span>
                         </p>
                         <p style="margin: 0; font-style: italic; color: #666;">
                             <strong>Disclaimer:</strong> The company reserves the right to make modifications, changes or alterations at their sole discretion without any prior notice or reference.

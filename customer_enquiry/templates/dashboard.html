@@ -341,11 +341,9 @@
                 <label for="propertyFilter">Property Filter</label>
                 <select id="propertyFilter">
                     <option value="">All Properties</option>
-                    <option value="ALT">Altavista</option>
-                    <option value="ORN">Ornata</option>
-                    <option value="MED">Medius</option>
-                    <option value="STAR">Spenta Stardeous</option>
-                    <option value="ANT">Spenta Anthea</option>
+                    {% for project in active_projects %}
+                        <option value="{{ project.project_prefix }}">{{ project.project_name }}</option>
+                    {% endfor %}
                 </select>
             </div>
             
@@ -519,26 +517,49 @@
         let filteredRows = [];
         let searchTimeout;
         
+        // Dynamic property mapping from database
+        const projectsData = {{ projects_data_json|safe }};
+
         // Property mapping function
         function getPropertyFromFormNumber(formNumber) {
             if (!formNumber) return { code: '', name: 'Unknown' };
-            
-            // Convert to uppercase for consistent checking
-            const upperFormNumber = formNumber.toUpperCase();
-            
-            if (upperFormNumber.startsWith('STAR')) {
-                return { code: 'STAR', name: 'Spenta Stardeous' };
-            } else if (upperFormNumber.startsWith('ANT')) {
-                return { code: 'ANT', name: 'Spenta Anthea' };
-            } else if (upperFormNumber.startsWith('ORN')) {
-                return { code: 'ORN', name: 'Ornata' };
-            } else if (upperFormNumber.startsWith('MED')) {
-                return { code: 'MED', name: 'Medius' };
-            } else if (upperFormNumber.startsWith('ALT')) {
-                return { code: 'ALT', name: 'Altavista' };
+
+            // Extract prefix from form number with support for compound prefixes
+            let prefix = '';
+            if (formNumber.includes('-')) {
+                const parts = formNumber.split('-');
+
+                // For form numbers like "ALT-PHASE1-98141", extract "ALT-PHASE1"
+                if (parts.length >= 3 && !(/^\d+$/.test(parts[1]))) {
+                    prefix = `${parts[0]}-${parts[1]}`.toUpperCase();
+                } else {
+                    // For form numbers like "ALT-12345", extract "ALT"
+                    prefix = parts[0].toUpperCase();
+                }
             } else {
-                return { code: formNumber.substring(0, 3).toUpperCase(), name: 'Unknown Property' };
+                prefix = formNumber.substring(0, 3).toUpperCase();
             }
+
+            // First try exact prefix match
+            if (projectsData[prefix]) {
+                return {
+                    code: projectsData[prefix].code,
+                    name: projectsData[prefix].name
+                };
+            }
+
+            // If no exact match and we have a compound prefix, try just the first part
+            if (prefix.includes('-')) {
+                const simplePrefix = prefix.split('-')[0];
+                if (projectsData[simplePrefix]) {
+                    return {
+                        code: projectsData[simplePrefix].code,
+                        name: projectsData[simplePrefix].name
+                    };
+                }
+            }
+
+            return { code: prefix, name: 'Unknown Property' };
         }
         
         document.addEventListener('DOMContentLoaded', function() {

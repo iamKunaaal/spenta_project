@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator, EmailValidator
 from django.utils import timezone
+import random
 
 
 class Customer(models.Model):
@@ -708,3 +709,110 @@ class BookingApplicationManager(models.Manager):
  
 # Add custom manager to BookingApplication
 BookingApplication.add_to_class('objects', BookingApplicationManager())
+
+
+# Custom Manager for Project model
+class ProjectManager(models.Manager):
+    """
+    Custom manager for Project model
+    """
+
+    def active_projects(self):
+        """Get only active projects"""
+        return self.filter(is_active=True)
+
+    def get_by_code(self, code):
+        """Get project by form number"""
+        return self.get(form_number=code, is_active=True)
+
+    def get_project_choices(self):
+        """Get choices for dropdown/select fields"""
+        return [(project.form_number, project.project_name) for project in self.active_projects()]
+
+    def generate_form_number(self, prefix):
+        """Generate unique form number with given prefix"""
+        # Generate 5-digit random number
+        while True:
+            random_number = random.randint(10000, 99999)
+            form_number = f"{prefix.upper()}-{random_number}"
+
+            # Check if this form number already exists
+            if not self.filter(form_number=form_number).exists():
+                return form_number
+
+
+class Project(models.Model):
+    """
+    Model to store project information dynamically
+    """
+    project_logo = models.ImageField(
+        upload_to='project_logos/',
+        blank=True,
+        null=True,
+        help_text="Upload project logo image"
+    )
+    project_name = models.CharField(
+        max_length=200,
+        help_text="Name of the project (e.g., Altavista, Ornata)"
+    )
+    site_name = models.CharField(
+        max_length=200,
+        help_text="Site/Location name (e.g., Mumbai, Tardeo)"
+    )
+    address = models.TextField(
+        blank=True,
+        default='',
+        help_text="Complete project address"
+    )
+    maharera_no = models.CharField(
+        max_length=50,
+        help_text="MahaRERA Registration Number (e.g., P51900053358)"
+    )
+    company_name = models.CharField(
+        max_length=200,
+        help_text="Builder/Developer company name (e.g., Heston Builders Pvt. Ltd.)"
+    )
+
+    # Additional fields for system functionality
+    project_prefix = models.CharField(
+        max_length=10,
+        blank=True,
+        default='',
+        help_text="Short alphabetic prefix (e.g., ALT, ORN, MED)"
+    )
+    form_number = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Auto-generated form number (e.g., ALT-12345, ORN-67890)"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this project is currently active/available"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Add custom manager
+    objects = ProjectManager()
+
+    class Meta:
+        db_table = 'projects'
+        ordering = ['project_name']
+        verbose_name = 'Project'
+        verbose_name_plural = 'Projects'
+
+    def __str__(self):
+        return f"{self.project_name} - {self.site_name}"
+
+    def get_full_project_name(self):
+        """Return project name with site location"""
+        return f"{self.project_name} situated at {self.site_name}"
+
+    def save(self, *args, **kwargs):
+        """Override save method to auto-generate form number"""
+        if not self.form_number and self.project_prefix:
+            self.form_number = Project.objects.generate_form_number(self.project_prefix)
+        super().save(*args, **kwargs)

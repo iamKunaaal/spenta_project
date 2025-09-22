@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner
+from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project
 from django.shortcuts import get_object_or_404
 import json
 import logging
@@ -34,52 +34,52 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-# Updated property mapping - removed 'CIF' and added new properties
-PROPERTY_MAPPING = {
-    'Alt': {'name': 'Altavista', 'location': 'Mumbai'},
-    'Orn': {'name': 'Ornata', 'location': 'Mumbai'},
-    'Med': {'name': 'Medius', 'location': 'Mumbai'},
-    'Star': {'name': 'Spenta Stardeous', 'location': 'Mumbai'},
-    'Ant': {'name': 'Spenta Anthea', 'location': 'Mumbai'},
-}
+# Helper function to get project data from database
+def get_project_by_code(form_number):
+    """Get project data from database by form number"""
+    try:
+        project = Project.objects.get_by_code(form_number)
+        return {
+            'code': project.form_number,
+            'name': project.project_name,
+            'location': project.site_name,
+            'address': project.address,
+            'company_name': project.company_name,
+            'maharera_no': project.maharera_no,
+            'logo': project.project_logo,
+            'prefix': project.project_prefix
+        }
+    except Project.DoesNotExist:
+        return None
 
 def index(request, property_code=None):
     """
-    Display the customer form - Updated to use the new property mapping
+    Display the customer form - Updated to use dynamic project data from database
     """
     # Get property from URL parameter if provided
     if property_code:
-        # Handle property-specific form - Updated with new properties
-        if property_code in PROPERTY_MAPPING:
-            selected_property = {
-                'code': property_code,
-                'name': PROPERTY_MAPPING[property_code]['name'],
-                'location': PROPERTY_MAPPING[property_code]['location']
-            }
-        else:
-            selected_property = None
+        selected_property = get_project_by_code(property_code)
     else:
         selected_property = None
-    
+
     # Get property from GET parameter (from verification page)
     get_property = request.GET.get('property')
     if get_property and not selected_property:
-        if get_property in PROPERTY_MAPPING:
-            selected_property = {
-                'code': get_property,
-                'name': PROPERTY_MAPPING[get_property]['name'],
-                'location': PROPERTY_MAPPING[get_property]['location']
-            }
-    
+        selected_property = get_project_by_code(get_property)
+
     # Get verified phone number from session
     verified_phone = request.session.get('user_phone')
-    
+
+    # Get all active projects for any dropdowns
+    active_projects = Project.objects.active_projects()
+
     context = {
         'selected_property': selected_property,
         'property_code': property_code or get_property,
         'verified_phone': verified_phone,
+        'active_projects': active_projects,
     }
-    
+
     # Use the new template name that matches your current working form
     return render(request, 'customer_enquiry.html', context)
 
@@ -124,15 +124,10 @@ def customer_submit_view(request):
                     return HttpResponse('Property required', status=400)
             
             # Updated property mapping - removed Default Property
-            property_mapping = {
-                'Alt': 'Altavista',
-                'Orn': 'Ornata',
-                'Med': 'Medius', 
-                'Star': 'Spenta Stardeous',
-                'Ant': 'Spenta Anthea'
-            }
-            
-            property_name = property_mapping.get(property_code, property_code)
+            # Get property name using database lookup
+            property_name = get_project_name_from_form_number(property_code)
+            if not property_name:
+                property_name = property_code
             
             # Check required fields - UPDATED: Added sex, marital_status, and source
             required_fields = [
@@ -190,10 +185,33 @@ def customer_submit_view(request):
                 else:
                     return HttpResponse('Invalid marital status selection', status=400)
             
-            # Generate form number based on property
-            import time
-            timestamp = str(int(time.time()))[-5:]  # Last 5 digits of timestamp
-            form_number = f"{property_code}-{timestamp}"
+            # Generate unique customer form number with project prefix
+            import random
+
+            # Get the project to use its full prefix
+            try:
+                project = Project.objects.get(form_number=property_code, is_active=True)
+                project_prefix = project.project_prefix
+            except Project.DoesNotExist:
+                # Fallback: extract prefix from property_code
+                if '-' in property_code:
+                    # For compound form numbers like "ALT-PHASE1-12345", extract "ALT-PHASE1"
+                    parts = property_code.split('-')
+                    if len(parts) >= 3 and not parts[1].isdigit():
+                        project_prefix = f"{parts[0]}-{parts[1]}"
+                    else:
+                        project_prefix = parts[0]
+                else:
+                    project_prefix = property_code
+
+            # Generate unique customer form number using full project prefix
+            while True:
+                random_number = random.randint(10000, 99999)
+                form_number = f"{project_prefix}-{random_number}"
+
+                # Check if this form number already exists
+                if not Customer.objects.filter(form_number=form_number).exists():
+                    break
             
             # Handle optional date_of_birth field
             date_of_birth = data.get('date_of_birth', '').strip()
@@ -353,7 +371,25 @@ def dashboard(request):
     elif booking_filter == 'pending':
         customers = customers.filter(booking_applications__isnull=True)
     
-    return render(request, 'dashboard.html', {'customers': customers})
+    # Get all active projects for JavaScript property mapping
+    projects = Project.objects.active_projects()
+
+    # Create a dictionary for JavaScript consumption
+    projects_data = {}
+    for project in projects:
+        projects_data[project.project_prefix.upper()] = {
+            'code': project.project_prefix,
+            'name': project.project_name
+        }
+
+    import json
+    projects_data_json = json.dumps(projects_data)
+
+    return render(request, 'dashboard.html', {
+        'customers': customers,
+        'projects_data_json': projects_data_json,
+        'active_projects': projects
+    })
 
 @login_required
 @csrf_exempt
@@ -406,30 +442,10 @@ def export_leads(request):
         # Prepare data for Excel
         data = []
         for customer in customers:
-            # Get property name - Updated with new properties
-            property_code = customer.form_number[:3] if customer.form_number else ''
-            # Handle different property code lengths (case insensitive check, uppercase output)
-            if customer.form_number:
-                form_upper = customer.form_number.upper()
-                if form_upper.startswith('STAR'):
-                    property_code = 'STAR'
-                elif form_upper.startswith('ANT'):
-                    property_code = 'ANT'
-                elif form_upper.startswith('ORN'):
-                    property_code = 'ORN'
-                elif form_upper.startswith('MED'):
-                    property_code = 'MED'
-                elif form_upper.startswith('ALT'):
-                    property_code = 'ALT'
-            
-            property_names = {
-                'ALT': 'Altavista',
-                'ORN': 'Ornata',
-                'MED': 'Medius',
-                'STAR': 'Spenta Stardeous',
-                'ANT': 'Spenta Anthea'
-            }
-            property_name = property_names.get(property_code, property_code)
+            # Get property name using database lookup
+            property_name = get_project_name_from_form_number(customer.form_number)
+            if not property_name:
+                property_name = 'Unknown Property'
             
             # Get sources
             sources = ', '.join([source.get_source_type_display() for source in customer.sources.all()])
@@ -866,6 +882,37 @@ def booking_form_view(request, customer_id):
         except (Referral.DoesNotExist, AttributeError):
             referral = None
 
+        # Get project data for terms and conditions
+        project_data = None
+        try:
+            # Extract prefix from customer's form number
+            if '-' in customer.form_number:
+                parts = customer.form_number.split('-')
+                if len(parts) >= 3 and not parts[1].isdigit():
+                    prefix = f"{parts[0]}-{parts[1]}".upper()
+                else:
+                    prefix = parts[0].upper()
+            else:
+                prefix = customer.form_number[:3].upper()
+
+            # Get project from database
+            project = Project.objects.filter(
+                project_prefix__iexact=prefix,
+                is_active=True
+            ).first()
+
+            if project:
+                project_data = {
+                    'name': project.project_name,
+                    'site_name': project.site_name,
+                    'company_name': project.company_name,
+                    'maharera_no': project.maharera_no,
+                    'address': project.address
+                }
+
+        except Exception as e:
+            logger.error(f"Error getting project data for customer {customer.id}: {e}")
+
         context = {
             'customer': customer,
             'prefilled_data': prefilled_data,
@@ -873,6 +920,7 @@ def booking_form_view(request, customer_id):
             'existing_applicants': prefilled_data.get('existing_applicants', []),
             'channel_partner': channel_partner,
             'referral': referral,
+            'project_data': project_data,
         }
         
         return render(request, 'booking_form.html', context)
@@ -883,37 +931,52 @@ def booking_form_view(request, customer_id):
 
 def get_project_name_from_form_number(form_number):
     """
-    Get project name from form number using the same mapping logic
+    Get project name from form number using database lookup with exact prefix matching
     """
     if not form_number:
         return ''
-    
-    # Handle different property code lengths (case insensitive check)
-    form_upper = form_number.upper()
-    property_code = ''
-    
-    if form_upper.startswith('STAR'):
-        property_code = 'STAR'
-    elif form_upper.startswith('ANT'):
-        property_code = 'ANT'
-    elif form_upper.startswith('ORN'):
-        property_code = 'ORN'
-    elif form_upper.startswith('MED'):
-        property_code = 'MED'
-    elif form_upper.startswith('ALT'):
-        property_code = 'ALT'
-    else:
-        property_code = form_number[:3]  # Default to first 3 characters
-    
-    property_names = {
-        'ALT': 'Altavista',
-        'ORN': 'Ornata',
-        'MED': 'Medius',
-        'STAR': 'Spenta Stardeous',
-        'ANT': 'Spenta Anthea'
-    }
-    
-    return property_names.get(property_code, '')
+
+    try:
+        # Extract full prefix from customer form number
+        if '-' in form_number:
+            # For form numbers like "ALT-PHASE1-98141", we need to extract "ALT-PHASE1"
+            # For form numbers like "ALT-12345", we need to extract "ALT"
+            parts = form_number.split('-')
+
+            # If there are 3 parts (like ALT-PHASE1-98141), take first two as prefix
+            if len(parts) >= 3 and not parts[1].isdigit():
+                prefix = f"{parts[0]}-{parts[1]}".upper()
+            else:
+                # Otherwise, take first part as prefix (like ALT-12345)
+                prefix = parts[0].upper()
+        else:
+            # Handle old format or extract first 3 characters
+            prefix = form_number[:3].upper()
+
+        # First try exact prefix match
+        project = Project.objects.filter(
+            project_prefix__iexact=prefix,
+            is_active=True
+        ).first()
+
+        if project:
+            return project.project_name
+
+        # If no exact match and we have a compound prefix, try just the first part
+        if '-' in prefix:
+            simple_prefix = prefix.split('-')[0]
+            project = Project.objects.filter(
+                project_prefix__iexact=simple_prefix,
+                is_active=True
+            ).first()
+
+            if project:
+                return project.project_name
+
+    except Exception as e:
+        logger.error(f"Error getting project name from form number {form_number}: {e}")
+
+    return ''
 
 
 def prepare_prefilled_data(customer):
@@ -1528,18 +1591,13 @@ def send_otp_view(request):
 
 def property_verification_view(request, property_code):
     """
-    Property-specific verification page with auto-selected property - Updated with new properties
+    Property-specific verification page with auto-selected property - Updated to use database
     """
-    # Updated property mapping
-    if property_code not in PROPERTY_MAPPING:
+    # Get project from database
+    selected_property = get_project_by_code(property_code)
+    if not selected_property:
         # Invalid property code, redirect to main verification
         return redirect('customer_enquiry:verification')
-    
-    selected_property = {
-        'code': property_code,
-        'name': PROPERTY_MAPPING[property_code]['name'],
-        'location': PROPERTY_MAPPING[property_code]['location']
-    }
     
     context = {
         'selected_property': selected_property,
@@ -1578,9 +1636,16 @@ def property_customer_form(request, property_code):
 
 def customer_verification_view(request):
     """
-    Customer verification page (temporary implementation)
+    Customer verification page with dynamic project list
     """
-    return render(request, 'customer-verification.html')
+    # Get all active projects for dropdown
+    active_projects = Project.objects.active_projects()
+
+    context = {
+        'active_projects': active_projects,
+    }
+
+    return render(request, 'customer-verification.html', context)
 
 # Decorator to check user authentication
 def login_required_custom(view_func):
