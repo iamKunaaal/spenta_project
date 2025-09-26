@@ -603,25 +603,45 @@ def edit_customer(request, pk):
     # Get project data from customer's form number prefix
     project_data = None
     if customer.form_number:
-        # Extract prefix from form number (e.g., "MED-49988" -> "MED")
-        prefix = customer.form_number.split('-')[0] if '-' in customer.form_number else customer.form_number[:3]
-        # Find project by prefix
         try:
-            project = Project.objects.filter(
-                project_prefix__icontains=prefix,
-                is_active=True
-            ).first()
+            # Extract prefix from form number with better matching logic
+            form_parts = customer.form_number.split('-')
+            found_project = None
 
-            if project:
+            # Try different prefix matching strategies
+            if len(form_parts) >= 3:
+                # For form numbers like "ALT-phase4-35509", try "ALT-phase4" first
+                compound_prefix = f"{form_parts[0]}-{form_parts[1]}"
+                found_project = Project.objects.filter(
+                    project_prefix__iexact=compound_prefix,
+                    is_active=True
+                ).first()
+
+                if not found_project:
+                    # Fall back to just the first part "ALT"
+                    simple_prefix = form_parts[0]
+                    found_project = Project.objects.filter(
+                        project_prefix__iexact=simple_prefix,
+                        is_active=True
+                    ).first()
+            else:
+                # For simple form numbers like "MED-49988"
+                prefix = form_parts[0] if len(form_parts) > 1 else customer.form_number[:3]
+                found_project = Project.objects.filter(
+                    project_prefix__iexact=prefix,
+                    is_active=True
+                ).first()
+
+            if found_project:
                 project_data = {
-                    'code': project.form_number,
-                    'name': project.project_name,
-                    'location': project.site_name,
-                    'address': project.address,
-                    'company_name': project.company_name,
-                    'maharera_no': project.maharera_no,
-                    'logo': str(project.project_logo) if project.project_logo else None,
-                    'prefix': project.project_prefix
+                    'code': found_project.form_number,
+                    'name': found_project.project_name,
+                    'location': found_project.site_name,
+                    'address': found_project.address,
+                    'company_name': found_project.company_name,
+                    'maharera_no': found_project.maharera_no,
+                    'logo': str(found_project.project_logo) if found_project.project_logo else None,
+                    'prefix': found_project.project_prefix
                 }
         except Exception:
             project_data = None
@@ -909,19 +929,52 @@ def internal_sales_assessment(request, customer_id):
     # Get project data from customer's form number prefix for logo display
     project_data = None
     if customer.form_number:
-        # Extract prefix from form number (e.g., "MED-49988" -> "MED")
-        prefix = customer.form_number.split('-')[0] if '-' in customer.form_number else customer.form_number[:3]
-        # Find project by prefix
         try:
-            project = Project.objects.filter(
-                project_prefix__icontains=prefix,
-                is_active=True
-            ).first()
+            # Extract prefix from form number with better matching logic
+            form_parts = customer.form_number.split('-')
 
-            if project:
-                project_data = project
-        except Exception:
-            project_data = None
+            # Try different prefix matching strategies
+            if len(form_parts) >= 3:
+                # For form numbers like "ALT-phase4-35509", try "ALT-phase4" first
+                compound_prefix = f"{form_parts[0]}-{form_parts[1]}"
+                project = Project.objects.filter(
+                    project_prefix__iexact=compound_prefix,
+                    is_active=True
+                ).first()
+
+                if project:
+                    project_data = project
+                else:
+                    # Fall back to just the first part "ALT"
+                    simple_prefix = form_parts[0]
+                    project = Project.objects.filter(
+                        project_prefix__iexact=simple_prefix,
+                        is_active=True
+                    ).first()
+                    if project:
+                        project_data = project
+            else:
+                # For simple form numbers like "MED-49988"
+                prefix = form_parts[0] if len(form_parts) > 1 else customer.form_number[:3]
+                project = Project.objects.filter(
+                    project_prefix__iexact=prefix,
+                    is_active=True
+                ).first()
+                if project:
+                    project_data = project
+
+        except Exception as e:
+            # If all else fails, try the old logic
+            prefix = customer.form_number.split('-')[0] if '-' in customer.form_number else customer.form_number[:3]
+            try:
+                project = Project.objects.filter(
+                    project_prefix__icontains=prefix,
+                    is_active=True
+                ).first()
+                if project:
+                    project_data = project
+            except Exception:
+                project_data = None
 
     context = {
         'customer': customer,
