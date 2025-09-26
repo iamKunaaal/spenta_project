@@ -36,6 +36,7 @@ urlpatterns = [
     path('customer/<int:customer_id>/assessment/', views.internal_sales_assessment, name='internal_sales_assessment'),
     path('customer/<int:customer_id>/booking/', views.booking_form_view, name='booking_form'),
     path('export-leads/', views.export_leads, name='export_leads'),
+    path('get-project-data/', views.get_project_data, name='get_project_data'),
     
     # Password Reset URLs
     path('password-reset/', views.password_reset_request, name='password_reset'),

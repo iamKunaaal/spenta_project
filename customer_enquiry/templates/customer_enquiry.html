@@ -83,6 +83,19 @@
             width: auto;
         }
 
+        .project-logo {
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .project-logo img {
+            height: 80px;
+            width: auto;
+            max-width: 120px;
+        }
+
         .header-text {
             flex: 1;
             text-align: center;
@@ -528,6 +541,15 @@
                 height: 65px;
             }
 
+            .project-logo {
+                min-width: 100px;
+            }
+
+            .project-logo img {
+                height: 65px;
+                max-width: 100px;
+            }
+
             .title {
                 font-size: 28px;
             }
@@ -640,6 +662,15 @@
 
             .brand-row img {
                 height: 55px;
+            }
+
+            .project-logo {
+                min-width: 80px;
+            }
+
+            .project-logo img {
+                height: 55px;
+                max-width: 80px;
             }
 
             .title {
@@ -763,6 +794,15 @@
             .brand-row img {
                 height: 50px;
                 align-self: center;
+            }
+
+            .project-logo {
+                min-width: 70px;
+            }
+
+            .project-logo img {
+                height: 50px;
+                max-width: 70px;
             }
 
             .title {
@@ -971,11 +1011,21 @@
         <!-- Updated Header -->
         <header class="header">
             <div class="brand-row">
+                <!-- Left side: Project Logo -->
+                <div class="project-logo">
+                    {% if selected_property and selected_property.logo %}
+                        <img src="{{ selected_property.logo.url }}" alt="{{ selected_property.name }} Logo" onerror="this.style.display='none';">
+                    {% endif %}
+                </div>
+
+                <!-- Center: Title and Subtitle -->
                 <div class="header-text">
                     <div class="title">Customer Information Form</div>
                     <div class="subtitle">Please fill the form below to know more about the property</div>
                 </div>
             </div>
+
+            <!-- Right side: Spenta Logo -->
             <div class="dec">
                 <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
             </div>
@@ -1348,6 +1398,28 @@
         const prevBtn = document.getElementById('prevBtn');
         const form = document.getElementById('propertyInquiryForm');
 
+        // Function to fetch project data dynamically
+        function fetchAndDisplayProjectData(propertyCode) {
+            fetch(`/get-project-data/?property_code=${propertyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.project) {
+                        const project = data.project;
+
+                        // Update project logo if it exists
+                        if (project.logo_url) {
+                            const logoContainer = document.querySelector('.project-logo');
+                            if (logoContainer) {
+                                logoContainer.innerHTML = `<img src="${project.logo_url}" alt="${project.name} Logo" onerror="this.style.display='none';">`;
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.log('Could not fetch project data:', error);
+                });
+        }
+
         // Set current date automatically
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('currentDate').value = today;
@@ -1357,10 +1429,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             const selectedProperty = localStorage.getItem('selectedProperty') || getUrlParameter('property');
             const userPhone = localStorage.getItem('userPhone');
-            
+
             if (selectedProperty) {
                 // Set property information
                 document.getElementById('hiddenPropertyCode').value = selectedProperty;
+
+                // Check if backend provided project data, if not fetch it dynamically
+                const hasBackendProjectData = {{ selected_property|yesno:"true,false" }};
+                if (!hasBackendProjectData) {
+                    fetchAndDisplayProjectData(selectedProperty);
+                }
                 
                 if (userPhone) {
                     document.getElementById('hiddenUserPhone').value = userPhone;

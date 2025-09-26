@@ -112,7 +112,8 @@
       "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry/**)",
       "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry/**)",
       "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
-      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)"
+      "Read(/C:\\Users\\kunal\\Downloads\\Spenta-bkp 2\\Spenta-bkp\\Spenta\\customer_enquiry\\templates/**)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
