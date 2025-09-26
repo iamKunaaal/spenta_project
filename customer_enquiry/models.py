@@ -751,6 +751,12 @@ class Project(models.Model):
         null=True,
         help_text="Upload project logo image"
     )
+    project_qr_code = models.ImageField(
+        upload_to='project_qr_codes/',
+        blank=True,
+        null=True,
+        help_text="Upload project QR code image"
+    )
     project_name = models.CharField(
         max_length=200,
         help_text="Name of the project (e.g., Altavista, Ornata)"

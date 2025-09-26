@@ -35,10 +35,39 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 # Helper function to get project data from database
-def get_project_by_code(form_number):
-    """Get project data from database by form number"""
+def get_project_by_code(code):
+    """Get project data from database by form number or URL code"""
     try:
-        project = Project.objects.get_by_code(form_number)
+        # First try to get by exact form number
+        project = Project.objects.get(form_number=code, is_active=True)
+    except Project.DoesNotExist:
+        try:
+            # If not found, try to match by prefix (for URL codes like 'Alt', 'Med', etc.)
+            # Map URL codes to prefixes
+            url_code_mapping = {
+                'Alt': 'ALT',
+                'Med': 'MED',
+                'Orn': 'ORN',
+                'Star': 'STAR',
+                'Ant': 'ANT'
+            }
+
+            if code in url_code_mapping:
+                prefix = url_code_mapping[code]
+                # Get the first active project with matching prefix
+                project = Project.objects.filter(
+                    project_prefix__icontains=prefix,
+                    is_active=True
+                ).first()
+
+                if not project:
+                    return None
+            else:
+                return None
+        except Project.DoesNotExist:
+            return None
+
+    if project:
         return {
             'code': project.form_number,
             'name': project.project_name,
@@ -46,11 +75,11 @@ def get_project_by_code(form_number):
             'address': project.address,
             'company_name': project.company_name,
             'maharera_no': project.maharera_no,
-            'logo': project.project_logo,
+            'logo': str(project.project_logo) if project.project_logo else None,
             'prefix': project.project_prefix
         }
-    except Project.DoesNotExist:
-        return None
+
+    return None
 
 def index(request, property_code=None):
     """
@@ -67,6 +96,12 @@ def index(request, property_code=None):
     if get_property and not selected_property:
         selected_property = get_project_by_code(get_property)
 
+    # If still no property found, check session for stored property code
+    if not selected_property:
+        session_property = request.session.get('selected_property_code')
+        if session_property:
+            selected_property = get_project_by_code(session_property)
+
     # Get verified phone number from session
     verified_phone = request.session.get('user_phone')
 
@@ -75,7 +110,7 @@ def index(request, property_code=None):
 
     context = {
         'selected_property': selected_property,
-        'property_code': property_code or get_property,
+        'property_code': property_code or get_property or request.session.get('selected_property_code'),
         'verified_phone': verified_phone,
         'active_projects': active_projects,
     }
@@ -565,12 +600,39 @@ def edit_customer(request, pk):
     except Referral.DoesNotExist:
         referral = None
 
+    # Get project data from customer's form number prefix
+    project_data = None
+    if customer.form_number:
+        # Extract prefix from form number (e.g., "MED-49988" -> "MED")
+        prefix = customer.form_number.split('-')[0] if '-' in customer.form_number else customer.form_number[:3]
+        # Find project by prefix
+        try:
+            project = Project.objects.filter(
+                project_prefix__icontains=prefix,
+                is_active=True
+            ).first()
+
+            if project:
+                project_data = {
+                    'code': project.form_number,
+                    'name': project.project_name,
+                    'location': project.site_name,
+                    'address': project.address,
+                    'company_name': project.company_name,
+                    'maharera_no': project.maharera_no,
+                    'logo': str(project.project_logo) if project.project_logo else None,
+                    'prefix': project.project_prefix
+                }
+        except Exception:
+            project_data = None
+
     context = {
         'customer': customer,
         'current_sources': current_sources,
         'channel_partner': channel_partner,
         'referral': referral,
         'view_only': True,  # Flag to indicate this is view-only mode
+        'selected_property': project_data,
     }
     
     return render(request, 'edit_customer.html', context)
@@ -844,11 +906,29 @@ def internal_sales_assessment(request, customer_id):
             return redirect('customer_enquiry:internal_sales_assessment', customer_id=customer_id)
 
     # GET request
+    # Get project data from customer's form number prefix for logo display
+    project_data = None
+    if customer.form_number:
+        # Extract prefix from form number (e.g., "MED-49988" -> "MED")
+        prefix = customer.form_number.split('-')[0] if '-' in customer.form_number else customer.form_number[:3]
+        # Find project by prefix
+        try:
+            project = Project.objects.filter(
+                project_prefix__icontains=prefix,
+                is_active=True
+            ).first()
+
+            if project:
+                project_data = project
+        except Exception:
+            project_data = None
+
     context = {
         'customer': customer,
         'assessment': assessment,
+        'selected_property': project_data,  # Add project data for logo display
     }
-    
+
     return render(request, 'internal_sales_assessment.html', context)
 
 # BOOKING FORM VIEWS
@@ -1609,29 +1689,29 @@ def property_verification_view(request, property_code):
 
 def property_customer_form(request, property_code):
     """
-    Property-specific customer form with auto-selected property - Updated with new properties
+    Property-specific customer form with auto-selected property - Updated to use database
     """
-    # Updated property mapping
-    if property_code not in PROPERTY_MAPPING:
+    # Get project data from database using the property code
+    selected_property = get_project_by_code(property_code)
+
+    if not selected_property:
         # Invalid property code, redirect to main form
         return redirect('customer_enquiry:customer_form')
-    
-    selected_property = {
-        'code': property_code,
-        'name': PROPERTY_MAPPING[property_code]['name'],
-        'location': PROPERTY_MAPPING[property_code]['location']
-    }
-    
+
     # Get verified phone number from session
     verified_phone = request.session.get('user_phone')
-    
+
+    # Get all active projects for any dropdowns
+    active_projects = Project.objects.active_projects()
+
     context = {
         'selected_property': selected_property,
         'property_code': property_code,
         'auto_selected': True,  # Flag to indicate auto-selection
         'verified_phone': verified_phone,
+        'active_projects': active_projects,
     }
-    
+
     return render(request, 'customer_enquiry.html', context)
 
 def customer_verification_view(request):
@@ -1646,6 +1726,24 @@ def customer_verification_view(request):
     }
 
     return render(request, 'customer-verification.html', context)
+
+@require_http_methods(["GET"])
+def get_project_data(request):
+    """
+    AJAX endpoint to get project data by property code
+    """
+    property_code = request.GET.get('property_code')
+    if not property_code:
+        return JsonResponse({'error': 'Property code is required'}, status=400)
+
+    project_data = get_project_by_code(property_code)
+    if project_data:
+        # Convert logo to URL if it exists
+        if project_data.get('logo'):
+            project_data['logo_url'] = f"/media/{project_data['logo']}"
+        return JsonResponse({'success': True, 'project': project_data})
+    else:
+        return JsonResponse({'error': 'Project not found'}, status=404)
 
 # Decorator to check user authentication
 def login_required_custom(view_func):
@@ -1748,4 +1846,4 @@ def password_reset_complete(request):
     """
     Display success message after password has been reset
     """
-    return render(request, 'password_reset_complete.html') 
+    return render(request, 'password_reset_complete.html')

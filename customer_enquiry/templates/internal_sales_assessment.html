@@ -54,6 +54,24 @@
             z-index: 2;
         }
 
+        .brand-row img {
+            height: 80px;
+            width: auto;
+        }
+
+        .project-logo {
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .project-logo img {
+            height: 80px;
+            width: auto;
+            max-width: 120px;
+        }
+
         .dec img {
             height: 80px;
             width: auto;
@@ -540,6 +558,15 @@
                 height: 65px;
             }
 
+            .project-logo {
+                min-width: 100px;
+            }
+
+            .project-logo img {
+                height: 65px;
+                max-width: 100px;
+            }
+
             .title {
                 font-size: 28px;
             }
@@ -627,6 +654,15 @@
 
             .brand-row img {
                 height: 55px;
+            }
+
+            .project-logo {
+                min-width: 80px;
+            }
+
+            .project-logo img {
+                height: 55px;
+                max-width: 80px;
             }
 
             .title {
@@ -743,6 +779,15 @@
                 align-self: center;
             }
 
+            .project-logo {
+                min-width: 70px;
+            }
+
+            .project-logo img {
+                height: 50px;
+                max-width: 70px;
+            }
+
             .title {
                 font-size: 22px;
                 text-align: center;
@@ -826,13 +871,23 @@
         <!-- Updated Header -->
         <header class="header">
             <div class="brand-row">
+                <!-- Left side: Project Logo -->
+                <div class="project-logo">
+                    {% if selected_property and selected_property.project_logo %}
+                        <img src="{{ selected_property.project_logo.url }}" alt="{{ selected_property.project_name }} Logo" onerror="this.style.display='none';">
+                    {% endif %}
+                </div>
+
+                <!-- Center: Title and Subtitle -->
                 <div class="header-text">
                     <div class="title">Internal Sales Assessment</div>
                     <div class="subtitle">Complete assessment for customer enquiry</div>
                 </div>
             </div>
+
+            <!-- Right side: Spenta Logo -->
             <div class="dec">
-                <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo">
+                <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
             </div>
         </header>
 

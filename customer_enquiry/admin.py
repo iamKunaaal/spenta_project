@@ -296,7 +296,8 @@ class ProjectAdmin(admin.ModelAdmin):
                 'address',
                 'project_prefix',
                 'form_number',
-                'project_logo'
+                'project_logo',
+                'project_qr_code'
             )
         }),
         ('Company Details', {

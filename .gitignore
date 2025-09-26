@@ -10,3 +10,17 @@ venv/
 .env
 
 help.txt
+
+# Windows-specific files
+nul
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+
+# Migration files (optional - uncomment if you don't want to track migrations)
+# */migrations/*.py
+# !*/migrations/__init__.py
