@@ -1040,7 +1040,8 @@ def booking_form_view(request, customer_id):
                     'site_name': project.site_name,
                     'company_name': project.company_name,
                     'maharera_no': project.maharera_no,
-                    'address': project.address
+                    'address': project.address,
+                    'qr_code': project.project_qr_code.url if project.project_qr_code else None
                 }
 
         except Exception as e:

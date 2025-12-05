@@ -1788,7 +1788,7 @@
                     <span class="underline-holder" style="max-width: 100px;"></span>
                 </div>
                 <!-- REGISTERED OFFICE INFORMATION WITH QR CODE -->
-                <div class="footer-with-QR" style="display: flex; justify-content: space-between; align-items: flex-start; margin: 40px 0; padding: 20px; border: 2px solid #e21c22; background-color: #f9f9f9; gap: 20px;">
+                <div class="footer-with-QR" style="display: flex; justify-content: space-between; align-items: flex-start; margin: 40px 0; padding: 20px;  background-color: #f9f9f9; gap: 20px;">
                     <div style="flex: 1; font: 11px/1.6 Arial, sans-serif; color: #333; text-align: justify;">
                         <p style="margin: 0 0 10px 0;">
                             <strong>Registered Office:</strong> {% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Private Ltd.{% endif %} 463, Sant Veer Meghmaya Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034. As per selected Project
@@ -1801,13 +1801,17 @@
                         </p>
                     </div>
                     <div style="flex-shrink: 0; text-align: center;">
-                        <div style="font: bold 12px Arial, sans-serif; color: #e21c22; margin-bottom: 8px;">
+                        {% comment %} <div style="font: bold 12px Arial, sans-serif; color: #e21c22; margin-bottom: 8px;">
                             📱 QR CODE
-                        </div>
+                        </div> {% endcomment %}
                         <!-- QR Code placeholder - replace with actual QR code generation -->
+                        {% if project_data.qr_code %}
+                        <img src="{{ project_data.qr_code }}" alt="Project QR Code" style="width: 100px; height: 100px;  background: white;">
+                        {% else %}
                         <div style="width: 100px; height: 100px; border: 2px dashed #e21c22; display: flex; align-items: center; justify-content: center; font: 10px Arial, sans-serif; text-align: center; color: #e21c22; background: white;">
                             QR<br>{{ customer.id }}
                         </div>
+                        {% endif %}
                         <div style="font: 9px Arial, sans-serif; color: #666; margin-top: 5px; text-align: center;">
                             Scan for<br>quick access
                         </div>
