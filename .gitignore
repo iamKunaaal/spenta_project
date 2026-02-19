@@ -10,6 +10,7 @@ venv/
 .env
 
 help.txt
+testsprite_tests
 
 # Windows-specific files
 nul

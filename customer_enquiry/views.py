@@ -31,6 +31,7 @@ from django.urls import reverse_lazy
 from django.contrib.auth.views import PasswordResetView
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -349,12 +350,26 @@ def login_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
+        
+        # Try authentication with username
         user = authenticate(request, username=username, password=password)
+        
+        # If username fails, try with email
+        if user is None:
+            try:
+                # Check if the username is actually an email
+                user_obj = User.objects.get(email=username)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                user = None
+        
         if user is not None:
             login(request, user)
             return redirect('customer_enquiry:dashboard')  # Redirect to GRE dashboard
         else:
             messages.error(request, "Invalid username or password")
+            # Debug: print what was tried
+            print(f"Login attempt with username: {username}")
     return render(request, 'login.html')
 
 def logout_view(request):
@@ -1836,18 +1851,20 @@ def password_reset_request(request):
                 # Send email (for development, we'll show the link in messages)
                 # In production, you would send an actual email
                 try:
-                    send_mail(
+                    result = send_mail(
                         'Password Reset Request',
-                        f'Click the following link to reset your password: {reset_link}',
-                        'noreply@spenta.com',
+                        f'Click following link to reset your password: {reset_link}',
+                        settings.DEFAULT_FROM_EMAIL,
                         [email],
                         fail_silently=False,
                     )
+                    print(f"Email send result: {result}")  # Debug line
                     messages.success(request, 'Password reset email has been sent to your email address.')
                 except Exception as e:
-                    # For development - show the reset link in messages
+                    # For development - show reset link in messages
                     messages.success(request, f'Password reset link (for development): {reset_link}')
                     logger.error(f"Email sending failed: {str(e)}")
+                    print(f"Email error: {str(e)}")  # Debug line
                 
                 return redirect('customer_enquiry:password_reset_done')
                 
