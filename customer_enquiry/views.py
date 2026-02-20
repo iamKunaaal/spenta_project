@@ -1857,27 +1857,21 @@ def password_reset_request(request):
                     f"/password-reset-confirm/{uid}/{token}/"
                 )
                 
-                # Send email (for development, we'll show the link in messages)
-                # In production, you would send an actual email
+                # Send password reset email
                 try:
-                    result = send_mail(
-                        'Password Reset Request',
-                        f'Click following link to reset your password: {reset_link}',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [email],
+                    send_mail(
+                        subject='Password Reset Request - Spenta CRM',
+                        message=f'Click the following link to reset your password:\n\n{reset_link}\n\nThis link will expire in 1 hour.\n\nIf you did not request a password reset, please ignore this email.',
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[email],
                         fail_silently=False,
                     )
-                    print(f"Email send result: {result}")  # Debug line
                     messages.success(request, 'Password reset email has been sent to your email address.')
+                    return redirect('customer_enquiry:password_reset_done')
                 except Exception as e:
-                    # For development - show reset link in messages
-                    messages.success(request, f'Password reset link (for development): {reset_link}')
                     logger.error(f"Email sending failed: {str(e)}")
-                    print(f"Email error: {str(e)}")  # Debug line
-                    # Don't fail the entire request if email fails
-                    pass
-                
-                return redirect('customer_enquiry:password_reset_done')
+                    messages.error(request, 'Failed to send reset email. Please try again or contact your administrator.')
+                    return render(request, 'password_reset_form.html', {'form': form})
                 
             except User.DoesNotExist:
                 messages.error(request, 'No user found with this email address.')
