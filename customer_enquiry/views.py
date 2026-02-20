@@ -1865,6 +1865,8 @@ def password_reset_request(request):
                     messages.success(request, f'Password reset link (for development): {reset_link}')
                     logger.error(f"Email sending failed: {str(e)}")
                     print(f"Email error: {str(e)}")  # Debug line
+                    # Don't fail the entire request if email fails
+                    pass
                 
                 return redirect('customer_enquiry:password_reset_done')
                 

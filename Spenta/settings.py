@@ -118,7 +118,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Debug settings
-DEBUG = True
+DEBUG = True  # Keep True for development, set to False in production
 
 # Logging configuration
 LOGGING = {
