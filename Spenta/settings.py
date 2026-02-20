@@ -188,9 +188,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 10  # Timeout in seconds — prevents SMTP hang from blocking the request
 EMAIL_HOST_USER = 'projects@spentacorporation.com'  # Replace with your Gmail
 EMAIL_HOST_PASSWORD = 'nyls ylrn pavn vvel'  # Replace with your 16-digit app password
-DEFAULT_FROM_EMAIL = 'Spenta CRM <noreply@spenta.com>'
+DEFAULT_FROM_EMAIL = 'Spenta CRM <projects@spentacorporation.com>'  # Must match EMAIL_HOST_USER for Gmail
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
