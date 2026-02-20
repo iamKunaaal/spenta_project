@@ -1832,12 +1832,21 @@ def password_reset_request(request):
     """
     Handle password reset request
     """
+    print(f"DEBUG: password_reset_request called with method: {request.method}")
+    
     if request.method == 'POST':
+        print(f"DEBUG: Processing POST request")
         form = PasswordResetForm(request.POST)
+        print(f"DEBUG: Form created: {form}")
+        
         if form.is_valid():
+            print(f"DEBUG: Form is valid")
             email = form.cleaned_data.get('email')
+            print(f"DEBUG: Email from form: {email}")
+            
             try:
                 user = User.objects.get(email=email)
+                print(f"DEBUG: User found: {user.username}")
                 
                 # Generate token and UID
                 token = default_token_generator.make_token(user)
