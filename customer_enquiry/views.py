@@ -1870,7 +1870,7 @@ def password_reset_request(request):
                     return redirect('customer_enquiry:password_reset_done')
                 except Exception as e:
                     logger.error(f"Email sending failed: {str(e)}")
-                    messages.error(request, 'Failed to send reset email. Please try again or contact your administrator.')
+                    messages.error(request, f'Email error: {str(e)}')
                     return render(request, 'password_reset_form.html', {'form': form})
                 
             except User.DoesNotExist:
