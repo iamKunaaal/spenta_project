@@ -193,6 +193,23 @@ EMAIL_HOST_USER = 'projects@spentacorporation.com'  # Replace with your Gmail
 EMAIL_HOST_PASSWORD = 'nyls ylrn pavn vvel'  # Replace with your 16-digit app password
 DEFAULT_FROM_EMAIL = 'Spenta CRM <projects@spentacorporation.com>'  # Must match EMAIL_HOST_USER for Gmail
 
+# Cache configuration (file-based — persists across server restarts)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.path.join(BASE_DIR, 'django_cache'),
+        'TIMEOUT': 3600,  # 1 hour default
+    }
+}
+
+# OTP Rate Limiting
+OTP_MAX_PER_PHONE = 3   # Max OTP requests per phone number per hour
+OTP_MAX_PER_IP = 5      # Max OTP requests per IP per hour
+OTP_BLOCK_DURATION = 3600  # Block duration in seconds (1 hour)
+
+# Interakt WhatsApp API
+INTERAKT_API_KEY = 'ajNyXzdUdzVWbURuZmZWX3o3cmYxTy1jVU5Dd3ZXRlBWN25JSHMxbFZDWTo='
+
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
 

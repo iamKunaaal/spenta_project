@@ -8,10 +8,13 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project
+from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile
 from django.shortcuts import get_object_or_404
 import json
 import logging
+import random
+import requests as http_client
+from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse, HttpResponseRedirect
@@ -1698,45 +1701,150 @@ def user_login_view(request):
         messages.success(request, 'Login successful!')
         return redirect('customer_enquiry:property_form', property_code=property_code)
 
+def get_client_ip(request):
+    """Get real IP address of the client"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_otp_view(request):
     """
-    Send OTP to user's phone number
+    Generate OTP on backend and send via Interakt WhatsApp API with rate limiting
     """
     try:
         data = json.loads(request.body)
         phone_number = data.get('phone_number')
-        otp = data.get('otp')
-        
-        # Validate phone number
+
         if not phone_number or len(phone_number) != 10 or not phone_number.isdigit():
+            return JsonResponse({'success': False, 'message': 'Invalid phone number format'})
+
+        client_ip = get_client_ip(request)
+
+        # --- Rate limit by phone number ---
+        phone_cache_key = f'otp_count_phone_{phone_number}'
+        phone_count = cache.get(phone_cache_key, 0)
+
+        if phone_count >= settings.OTP_MAX_PER_PHONE:
+            logger.warning(f"OTP rate limit hit for phone {phone_number}")
             return JsonResponse({
                 'success': False,
-                'message': 'Invalid phone number format'
+                'message': f'Too many OTP requests for this number. Please try again after 1 hour.'
             })
-        
-        # Store OTP in session (in production, send via SMS API)
-        request.session['otp'] = otp
-        request.session['otp_phone'] = phone_number
-        request.session['otp_timestamp'] = int(timezone.now().timestamp())
-        
-        # In production, integrate with SMS API like Twilio, MSG91, etc.
-        # For now, we're just storing in session for demo
-        
-        logger.info(f"OTP {otp} generated for phone {phone_number}")
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'OTP sent successfully'
-        })
-        
+
+        # --- Rate limit by IP address ---
+        ip_cache_key = f'otp_count_ip_{client_ip}'
+        ip_count = cache.get(ip_cache_key, 0)
+
+        if ip_count >= settings.OTP_MAX_PER_IP:
+            logger.warning(f"OTP rate limit hit for IP {client_ip}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Too many requests from your network. Please try again after 1 hour.'
+            })
+
+        # Generate OTP on backend (secure)
+        otp = str(random.randint(100000, 999999))
+
+        # Send via Interakt WhatsApp API
+        response = http_client.post(
+            'https://api.interakt.ai/v1/public/message/',
+            headers={
+                'Authorization': f'Basic {settings.INTERAKT_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'countryCode': '+91',
+                'phoneNumber': phone_number,
+                'callbackData': 'otp_verification',
+                'type': 'Template',
+                'template': {
+                    'name': 'otp_verification',
+                    'languageCode': 'en',
+                    'bodyValues': [otp],
+                    'buttonValues': {'0': [otp]}
+                }
+            },
+            timeout=10
+        )
+
+        if response.status_code in (200, 201):
+            # Increment counters only on successful send
+            cache.set(phone_cache_key, phone_count + 1, settings.OTP_BLOCK_DURATION)
+            cache.set(ip_cache_key, ip_count + 1, settings.OTP_BLOCK_DURATION)
+
+            request.session['otp'] = otp
+            request.session['otp_phone'] = phone_number
+            request.session['otp_timestamp'] = int(timezone.now().timestamp())
+            logger.info(f"OTP sent via WhatsApp for phone {phone_number} (attempt {phone_count + 1})")
+            return JsonResponse({'success': True, 'message': 'OTP sent to your WhatsApp number'})
+        else:
+            logger.error(f"Interakt API error: {response.status_code} - {response.text}")
+            return JsonResponse({'success': False, 'message': 'Failed to send OTP. Please try again.'})
+
     except Exception as e:
         logger.error(f"Error sending OTP: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Failed to send OTP'
-        })
+        return JsonResponse({'success': False, 'message': 'Failed to send OTP. Please try again.'})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def verify_otp_view(request):
+    """
+    Verify OTP entered by user against session-stored OTP
+    """
+    try:
+        data = json.loads(request.body)
+        phone_number = data.get('phone_number')
+        entered_otp = data.get('otp')
+        property_code = data.get('property_code')
+
+        if not all([phone_number, entered_otp, property_code]):
+            return JsonResponse({'success': False, 'message': 'All fields are required.'})
+
+        stored_otp = request.session.get('otp')
+        stored_phone = request.session.get('otp_phone')
+        otp_timestamp = request.session.get('otp_timestamp')
+
+        if not stored_otp or stored_phone != phone_number:
+            return JsonResponse({'success': False, 'message': 'Please send OTP first.'})
+
+        # Check OTP expiry (10 minutes)
+        if otp_timestamp:
+            elapsed = int(timezone.now().timestamp()) - otp_timestamp
+            if elapsed > 600:
+                return JsonResponse({'success': False, 'message': 'OTP has expired. Please request a new one.'})
+
+        if entered_otp != stored_otp:
+            return JsonResponse({'success': False, 'message': 'Invalid OTP. Please try again.'})
+
+        # Clear OTP from session
+        request.session.pop('otp', None)
+        request.session.pop('otp_phone', None)
+        request.session.pop('otp_timestamp', None)
+
+        # Mark user as authenticated
+        request.session['user_authenticated'] = True
+        request.session['user_phone'] = phone_number
+
+        # Determine redirect URL based on property_code
+        property_url_map = {
+            'Alt': '/altavista/customer-form/',
+            'Orn': '/ornata/customer-form/',
+            'Med': '/medius/customer-form/',
+            'Star': '/spenta-stardeous/customer-form/',
+            'Ant': '/spenta-anthea/customer-form/',
+        }
+        redirect_url = property_url_map.get(property_code, '/customer-form/')
+
+        return JsonResponse({'success': True, 'redirect_url': redirect_url})
+
+    except Exception as e:
+        logger.error(f"Error verifying OTP: {str(e)}")
+        return JsonResponse({'success': False, 'message': 'Verification failed. Please try again.'})
 
 def property_verification_view(request, property_code):
     """
@@ -1827,99 +1935,142 @@ def login_required_custom(view_func):
     return wrapper
 
 
-# PASSWORD RESET FUNCTIONALITY
+# PASSWORD RESET VIA WHATSAPP OTP
+
 def password_reset_request(request):
     """
-    Handle password reset request
+    Step 1: User enters username — OTP is sent to their registered WhatsApp number
     """
-    print(f"DEBUG: password_reset_request called with method: {request.method}")
-    
     if request.method == 'POST':
-        print(f"DEBUG: Processing POST request")
-        form = PasswordResetForm(request.POST)
-        print(f"DEBUG: Form created: {form}")
-        
-        if form.is_valid():
-            print(f"DEBUG: Form is valid")
-            email = form.cleaned_data.get('email')
-            print(f"DEBUG: Email from form: {email}")
-            
-            try:
-                user = User.objects.get(email=email)
-                print(f"DEBUG: User found: {user.username}")
-                
-                # Generate token and UID
-                token = default_token_generator.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                
-                # Create reset link
-                reset_link = request.build_absolute_uri(
-                    f"/password-reset-confirm/{uid}/{token}/"
-                )
-                
-                # Send password reset email
-                try:
-                    send_mail(
-                        subject='Password Reset Request - Spenta CRM',
-                        message=f'Click the following link to reset your password:\n\n{reset_link}\n\nThis link will expire in 1 hour.\n\nIf you did not request a password reset, please ignore this email.',
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[email],
-                        fail_silently=False,
-                    )
-                    messages.success(request, 'Password reset email has been sent to your email address.')
-                    return redirect('customer_enquiry:password_reset_done')
-                except Exception as e:
-                    logger.error(f"Email sending failed: {str(e)}")
-                    messages.error(request, f'Email error: {str(e)}')
-                    return render(request, 'password_reset_form.html', {'form': form})
-                
-            except User.DoesNotExist:
-                messages.error(request, 'No user found with this email address.')
-                
-    else:
-        form = PasswordResetForm()
-    
-    return render(request, 'password_reset_form.html', {'form': form})
+        username = request.POST.get('username', '').strip()
 
-def password_reset_done(request):
-    """
-    Display success message after password reset email is sent
-    """
-    return render(request, 'password_reset_done.html')
+        if not username:
+            messages.error(request, 'Please enter your username.')
+            return render(request, 'password_reset_form.html')
 
-def password_reset_confirm(request, uidb64, token):
-    """
-    Handle password reset confirmation with token
-    """
-    try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
-    
-    if user is not None and default_token_generator.check_token(user, token):
-        if request.method == 'POST':
-            form = SetPasswordForm(user, request.POST)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Your password has been reset successfully!')
-                return redirect('customer_enquiry:login')
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            messages.error(request, 'No account found with this username.')
+            return render(request, 'password_reset_form.html')
+
+        try:
+            profile = user.profile
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'No WhatsApp number registered for this account. Please contact your administrator.')
+            return render(request, 'password_reset_form.html')
+
+        # Generate OTP
+        otp = str(random.randint(100000, 999999))
+
+        # Send via Interakt WhatsApp API
+        try:
+            response = http_client.post(
+                'https://api.interakt.ai/v1/public/message/',
+                headers={
+                    'Authorization': f'Basic {settings.INTERAKT_API_KEY}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'countryCode': '+91',
+                    'phoneNumber': profile.whatsapp_number,
+                    'callbackData': 'password_reset_otp',
+                    'type': 'Template',
+                    'template': {
+                        'name': 'otp_verification',
+                        'languageCode': 'en',
+                        'bodyValues': [otp],
+                        'buttonValues': {'0': [otp]}
+                    }
+                },
+                timeout=10
+            )
+
+            if response.status_code in (200, 201):
+                request.session['reset_otp'] = otp
+                request.session['reset_username'] = username
+                request.session['reset_otp_timestamp'] = int(timezone.now().timestamp())
+                messages.success(request, f'OTP sent to your registered WhatsApp number.')
+                return redirect('customer_enquiry:password_reset_verify')
             else:
-                # Debug: Print form errors
-                logger.error(f"Form errors: {form.errors}")
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        messages.error(request, f"{field}: {error}")
-        else:
-            form = SetPasswordForm(user)
-        
-        return render(request, 'password_reset_confirm.html', {'form': form, 'validlink': True})
-    else:
-        messages.error(request, 'The password reset link is invalid or has expired.')
+                logger.error(f"Interakt error: {response.status_code} - {response.text}")
+                messages.error(request, 'Failed to send OTP. Please try again.')
+
+        except Exception as e:
+            logger.error(f"OTP send error: {str(e)}")
+            messages.error(request, 'Failed to send OTP. Please try again.')
+
+    return render(request, 'password_reset_form.html')
+
+
+def password_reset_verify(request):
+    """
+    Step 2: User enters the OTP received on WhatsApp
+    """
+    if request.method == 'POST':
+        entered_otp = request.POST.get('otp', '').strip()
+        stored_otp = request.session.get('reset_otp')
+        otp_timestamp = request.session.get('reset_otp_timestamp')
+
+        if not stored_otp:
+            messages.error(request, 'Session expired. Please start again.')
+            return redirect('customer_enquiry:password_reset')
+
+        # Check expiry (10 minutes)
+        if otp_timestamp and (int(timezone.now().timestamp()) - otp_timestamp) > 600:
+            messages.error(request, 'OTP has expired. Please request a new one.')
+            return redirect('customer_enquiry:password_reset')
+
+        if entered_otp != stored_otp:
+            messages.error(request, 'Invalid OTP. Please try again.')
+            return render(request, 'password_reset_verify.html')
+
+        # OTP correct — mark as verified
+        request.session['reset_otp_verified'] = True
+        request.session.pop('reset_otp', None)
+        return redirect('customer_enquiry:password_reset_new')
+
+    return render(request, 'password_reset_verify.html')
+
+
+def password_reset_new(request):
+    """
+    Step 3: User sets a new password after OTP verification
+    """
+    if not request.session.get('reset_otp_verified'):
+        messages.error(request, 'Please complete OTP verification first.')
         return redirect('customer_enquiry:password_reset')
 
+    username = request.session.get('reset_username')
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        messages.error(request, 'Session expired. Please start again.')
+        return redirect('customer_enquiry:password_reset')
+
+    if request.method == 'POST':
+        form = SetPasswordForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            # Clear all reset session data
+            request.session.pop('reset_otp_verified', None)
+            request.session.pop('reset_username', None)
+            request.session.pop('reset_otp_timestamp', None)
+            messages.success(request, 'Your password has been reset successfully!')
+            return redirect('customer_enquiry:password_reset_done')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, error)
+    else:
+        form = SetPasswordForm(user)
+
+    return render(request, 'password_reset_confirm.html', {'form': form, 'validlink': True})
+
+
+def password_reset_done(request):
+    return render(request, 'password_reset_done.html')
+
+
 def password_reset_complete(request):
-    """
-    Display success message after password has been reset
-    """
     return render(request, 'password_reset_complete.html')

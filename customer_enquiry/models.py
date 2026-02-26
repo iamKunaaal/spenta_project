@@ -1,7 +1,28 @@
 from django.db import models
 from django.core.validators import RegexValidator, EmailValidator
 from django.utils import timezone
+from django.contrib.auth.models import User
 import random
+
+
+class UserProfile(models.Model):
+    """
+    Extended profile for staff/admin users — stores WhatsApp number for OTP password reset
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    whatsapp_number = models.CharField(
+        max_length=10,
+        validators=[RegexValidator(regex=r'^\d{10}$', message='Enter a valid 10-digit WhatsApp number')],
+        help_text="10-digit WhatsApp number for OTP password reset"
+    )
+
+    class Meta:
+        db_table = 'user_profiles'
+        verbose_name = 'User Profile'
+        verbose_name_plural = 'User Profiles'
+
+    def __str__(self):
+        return f"{self.user.username} — {self.whatsapp_number}"
 
 
 class Customer(models.Model):

@@ -37,10 +37,13 @@ urlpatterns = [
     path('customer/<int:customer_id>/booking/', views.booking_form_view, name='booking_form'),
     path('export-leads/', views.export_leads, name='export_leads'),
     path('get-project-data/', views.get_project_data, name='get_project_data'),
+    path('send-otp/', views.send_otp_view, name='send_otp'),
+    path('verify-otp/', views.verify_otp_view, name='verify_otp'),
     
-    # Password Reset URLs
+    # Password Reset via WhatsApp OTP
     path('password-reset/', views.password_reset_request, name='password_reset'),
+    path('password-reset-verify/', views.password_reset_verify, name='password_reset_verify'),
+    path('password-reset-new/', views.password_reset_new, name='password_reset_new'),
     path('password-reset-done/', views.password_reset_done, name='password_reset_done'),
-    path('password-reset-confirm/<uidb64>/<token>/', views.password_reset_confirm, name='password_reset_confirm'),
     path('password-reset-complete/', views.password_reset_complete, name='password_reset_complete'),
 ]

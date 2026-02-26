@@ -510,136 +510,148 @@
         </div>
     </footer> {% endcomment %}
     <script>
-        let generatedOTP = "";
         let otpSent = false;
         let countdown = 0;
-        
-        function sendOTP() {  
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                document.cookie.split(';').forEach(function(cookie) {
+                    cookie = cookie.trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    }
+                });
+            }
+            return cookieValue;
+        }
+
+        function sendOTP() {
             const contact = document.getElementById("contactNo").value;
             const otpMessage = document.getElementById("otpMessage");
             const sendBtn = document.getElementById("sendOtpBtn");
-        
-            // Validate phone number
+
             if (!contact || contact.length !== 10 || !/^\d{10}$/.test(contact)) {
                 otpMessage.className = "user-otp-message error";
                 otpMessage.textContent = "Please enter a valid 10-digit contact number.";
                 return;
             }
-        
-            // TEMPORARY: Generate OTP locally (skip server call)
-            generatedOTP = "123456"; // Fixed OTP for testing
-        
-            // Show success message
-            otpMessage.className = "user-otp-message success";
-            otpMessage.textContent = `OTP sent successfully! Your OTP is: ${generatedOTP}`;
-            otpSent = true;
-        
-            // Disable button temporarily
+
             sendBtn.disabled = true;
-            countdown = 60;
-            updateCountdown();
+            sendBtn.textContent = "Sending...";
+            otpMessage.className = "user-otp-message";
+            otpMessage.textContent = "";
+
+            fetch('/send-otp/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ phone_number: contact })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    otpMessage.className = "user-otp-message success";
+                    otpMessage.textContent = "OTP sent to your WhatsApp number.";
+                    otpSent = true;
+                    countdown = 60;
+                    updateCountdown();
+                } else {
+                    otpMessage.className = "user-otp-message error";
+                    otpMessage.textContent = data.message || "Failed to send OTP. Please try again.";
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = "Send OTP";
+                }
+            })
+            .catch(() => {
+                otpMessage.className = "user-otp-message error";
+                otpMessage.textContent = "Network error. Please try again.";
+                sendBtn.disabled = false;
+                sendBtn.textContent = "Send OTP";
+            });
         }
-        
+
         function updateCountdown() {
             const sendBtn = document.getElementById("sendOtpBtn");
-            
             if (countdown > 0) {
-                sendBtn.textContent = `Resend (${countdown})`;
+                sendBtn.textContent = `Resend (${countdown}s)`;
                 countdown--;
                 setTimeout(updateCountdown, 1000);
             } else {
-                sendBtn.textContent = "Send OTP";
+                sendBtn.textContent = "Resend OTP";
                 sendBtn.disabled = false;
+                otpSent = false;
             }
         }
-        
-        function handleVerificationSuccess(selectedProperty, phoneNumber) {
-            // Store verification data in localStorage
-            localStorage.setItem('selectedProperty', selectedProperty);
-            localStorage.setItem('userPhone', phoneNumber);
-            localStorage.setItem('verificationTimestamp', new Date().getTime().toString());
-            
-            // Show success message briefly
-            const messageDiv = document.createElement('div');
-            messageDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #22c55e;
-                color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
-                font-weight: 600;
-                z-index: 1000;
-                box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-            `;
-            messageDiv.textContent = 'Verification successful! Redirecting to form...';
-            document.body.appendChild(messageDiv);
-            
-            // Redirect based on property selection
-            setTimeout(() => {
-                // UPDATED: Redirect to property-specific form URLs
-                const propertyUrls = {
-                    'Alt': '/altavista/customer-form/',
-                    'Orn': '/ornata/customer-form/',
-                    'Med': '/medius/customer-form/',
-                    'Star': '/spenta-stardeous/customer-form/',
-                    'Ant': '/spenta-anthea/customer-form/'
-                };
-                
-                const redirectUrl = propertyUrls[selectedProperty] || '/customer-form/';
-                window.location.href = redirectUrl;
-            }, 1000);
-        }
-        
+
         document.getElementById('userLoginForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const contact = document.getElementById('contactNo').value;
             const enteredOTP = document.getElementById('otp').value;
-            
-            // Get property code - either from hidden input (auto-selected) or dropdown
             const propertyCodeInput = document.querySelector('input[name="property_code"]');
             const propertyCodeSelect = document.querySelector('select[name="property_code"]');
             const propertyCode = propertyCodeInput ? propertyCodeInput.value : propertyCodeSelect.value;
-        
-            // Basic validation
+            const submitBtn = document.getElementById('submitBtn');
+
             if (!otpSent) {
                 alert("Please send OTP first.");
                 return;
             }
-        
             if (!enteredOTP || enteredOTP.length !== 6) {
                 alert("Please enter a valid 6-digit OTP.");
                 return;
             }
-        
-            // TEMPORARY: Check fixed OTP
-            if (enteredOTP !== "123456") {
-                alert("Invalid OTP. Please enter: 123456");
-                return;
-            }
-        
             if (!propertyCode) {
                 alert("Please select a property.");
                 return;
             }
-        
-            // Call the success handler
-            handleVerificationSuccess(propertyCode, contact);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Verifying...";
+
+            fetch('/verify-otp/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    phone_number: contact,
+                    otp: enteredOTP,
+                    property_code: propertyCode
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('selectedProperty', propertyCode);
+                    localStorage.setItem('userPhone', contact);
+                    localStorage.setItem('verificationTimestamp', new Date().getTime().toString());
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.message || "Verification failed. Please try again.");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Submit";
+                }
+            })
+            .catch(() => {
+                alert("Network error. Please try again.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Submit";
+            });
         });
-        
-        // Auto-focus next field
+
         document.getElementById('contactNo').addEventListener('input', function() {
             if (this.value.length === 10) {
                 document.getElementById('sendOtpBtn').focus();
             }
         });
-        
+
         document.getElementById('otp').addEventListener('input', function() {
             if (this.value.length === 6) {
-                // Focus on property dropdown only if it's visible
                 const propertySelect = document.querySelector('select[name="property_code"]');
                 if (propertySelect && !propertySelect.closest('.user-form-group').classList.contains('hidden')) {
                     propertySelect.focus();

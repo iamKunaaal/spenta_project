@@ -6,7 +6,7 @@ import csv
 from datetime import datetime
 
 from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment
-from .models import BookingApplication, BookingApplicant, BookingChannelPartner, Project
+from .models import BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile
 
 # Inline Admin Classes
 class CustomerSourceInline(admin.TabularInline):
@@ -321,3 +321,9 @@ class ProjectAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         """Form number is always readonly since it's auto-generated"""
         return self.readonly_fields
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'whatsapp_number')
+    search_fields = ('user__username', 'user__email', 'whatsapp_number')
