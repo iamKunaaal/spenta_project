@@ -239,7 +239,7 @@
         }
 
         .applicant-box {
-            border: 1px solid var(--red);
+            border: 1px solid #ccc;
             padding: 10px 12px;
             margin: 10px 0;
         }
@@ -253,7 +253,7 @@
         }
 
         .applicant-head .note {
-            color: var(--red);
+            display: none;
             font: 700 11px Arial, sans-serif;
         }
 
@@ -1684,8 +1684,8 @@
                         <tbody>
                             <tr>
                                 <td>Favouring</td>
-                                <td style="color: red; font-weight: bold">
-                                    Auto filled as per selected Project
+                                <td>
+                                    {% if project_data %}{{ project_data.company_name }}{% endif %}
                                 </td>
                                 <td></td>
                             </tr>
@@ -1771,10 +1771,9 @@
                 </div>
 
                 <!-- REGISTERED OFFICE INFO -->
-                <div style="border: 1px solid #e21c22; padding: 10px 14px; margin: 40px 0 30px; font: 600 11px/1.6 Arial, sans-serif; text-align: justify;">
+                <div style="border: 1px solid #ccc; padding: 10px 14px; margin: 40px 0 30px; font: 600 11px/1.6 Arial, sans-serif; text-align: justify;">
                     Registered Office: {% if project_data %}{{ project_data.company_name }}{% else %}Heston Builders Private Ltd.{% endif %} 463, Sant Veer Meghmaya
-                    Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034.
-                    <span style="color: red; font-weight: bold">As per selected Project</span><br />
+                    Road, Bhatt Chawl, Bane Compound, Tardeo, Mumbai- 400034.<br />
                     MahaRERA Registration Number: {% if project_data %}{{ project_data.maharera_no }}{% else %}P51900053358{% endif %} , Available at website:
                     <a href="http://maharera.mahaonline.gov.in" target="_blank">http://maharera.mahaonline.gov.in</a><br />
                     Disclaimer: The company reserves the right to make modifications,
