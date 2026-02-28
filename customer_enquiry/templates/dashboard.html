@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GRE Dashboard</title>
     <style>
         body {
@@ -70,6 +71,27 @@
         .dec img {
             height: 80px;
             width: auto;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%);
+            padding: 8px 18px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            z-index: 3;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.25);
         }
 
         /* Subtle pattern overlay */
@@ -298,17 +320,212 @@
             padding: 20px;
         }
         
+        /* ── Tablet landscape (≤1024px) ── */
+        @media (max-width: 1024px) {
+            body {
+                margin: 15px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                min-width: 700px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+
+            /* Form Number column — more breathing room between tag and text */
+            table td:first-child {
+                line-height: 2;
+            }
+
+            .title {
+                font-size: 26px;
+            }
+
+            .dec img {
+                height: 60px;
+            }
+        }
+
+        /* ── Tablet portrait + large mobile (≤768px) ── */
         @media (max-width: 768px) {
+            body {
+                margin: 10px;
+            }
+
+            .header {
+                padding: 18px 20px;
+            }
+
+            .brand-row {
+                padding: 0 90px;
+            }
+
+            .title {
+                font-size: 20px;
+            }
+
+            .subtitle {
+                font-size: 12px;
+            }
+
+            .dec {
+                display: none;
+            }
+
+            .logout-btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
+            .filters-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .action-buttons-top {
+                flex-wrap: wrap;
+            }
+
+            .action-buttons-top .btn {
+                flex: 1 1 calc(50% - 5px);
+                text-align: center;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                min-width: 650px;
+            }
+
+            th, td {
+                padding: 8px 6px;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .btn {
+                padding: 5px 8px;
+                font-size: 11px;
+            }
+        }
+
+        /* ── Small mobile (≤480px) ── */
+        @media (max-width: 480px) {
+            body {
+                margin: 8px;
+            }
+
+            .header {
+                padding: 14px 16px;
+            }
+
+            .brand-row {
+                padding: 0 80px 0 80px;
+                margin-bottom: 0;
+            }
+
+            .title {
+                font-size: 17px;
+            }
+
+            .subtitle {
+                display: none;
+            }
+
+            .logout-btn {
+                font-size: 11px;
+                padding: 5px 10px;
+                left: 16px;
+            }
+
             .filters-container {
                 grid-template-columns: 1fr;
             }
-            
-            .action-buttons-top {
-                flex-direction: column;
+
+            .action-buttons-top .btn {
+                flex: 1 1 100%;
             }
-            
+
             .stats-container {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stat-number {
+                font-size: 1.5em;
+            }
+
+            .stat-label {
+                font-size: 12px;
+            }
+
+            /* Hide less critical columns — Property, City, Lead Source, Date */
+            table th:nth-child(3),
+            table td:nth-child(3),
+            table th:nth-child(5),
+            table td:nth-child(5),
+            table th:nth-child(6),
+            table td:nth-child(6),
+            table th:nth-child(7),
+            table td:nth-child(7) {
+                display: none;
+            }
+
+            /* Min-width ensures buttons don't get cut — horizontal scroll handles overflow */
+            table {
+                min-width: 480px;
+            }
+
+            th, td {
+                white-space: normal;
+                padding: 8px 6px;
+            }
+
+            /* Form number cell — stack tag above form number cleanly */
+            td:first-child {
+                display: table-cell;
+                vertical-align: middle;
+            }
+
+            .property-tag {
+                display: inline-block;
+                font-size: 9px;
+                padding: 1px 5px;
+                margin-bottom: 3px;
+            }
+
+            .form-number-display {
+                display: block;
+                font-size: 11px;
+                word-break: break-all;
+            }
+
+            /* Actions column — stack buttons vertically, full width */
+            .btn {
+                display: block;
+                width: 100%;
+                text-align: center;
+                margin-bottom: 4px;
+                white-space: nowrap;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 4px;
+                min-width: 110px;
             }
         }
     </style>
@@ -316,6 +533,7 @@
 <body>
     <!-- Standard header from other pages -->
     <header class="header">
+        <a href="{% url 'customer_enquiry:logout' %}" class="logout-btn">Logout</a>
         <div class="brand-row">
             <div class="header-text">
                 <div class="title">Customer Enquiry</div>
