@@ -569,6 +569,24 @@
 
         /* Responsive Fixes */
         @media (max-width: 1024px) {
+            /* Header — reduce title, add right padding to prevent SPENTA logo overlap */
+            .title {
+                font-size: 20px;
+            }
+
+            .subtitle {
+                font-size: 13px;
+            }
+
+            .brand-row {
+                padding-right: 110px;
+            }
+
+            .project-logo img {
+                height: 55px;
+                max-width: 90px;
+            }
+
             .main {
                 grid-template-columns: 1fr;
             }
@@ -583,12 +601,14 @@
                 display: flex;
                 flex-direction: row;
                 justify-content: center;
-                overflow-x: hidden !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
             }
 
             .step {
-                min-width: auto !important;
-                width: 100% !important;
+                flex: 1 1 0 !important;
+                min-width: 120px !important;
+                width: auto !important;
             }
 
             .grid.cols-3,
