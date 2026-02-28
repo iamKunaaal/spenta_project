@@ -505,6 +505,11 @@
 
         /* Responsive Fixes */
         @media (max-width: 1024px) {
+            /* Prevent full-page horizontal scroll */
+            html, body {
+                overflow-x: hidden !important;
+            }
+
             /* Header — reduce title, add right padding to prevent SPENTA logo overlap */
             .title {
                 font-size: 20px;
@@ -533,17 +538,34 @@
                 padding: 16px 20px;
             }
 
+            /* Steps horizontal scrollbar — always visible so user knows it's scrollable */
             .steps-wrap {
                 display: flex;
                 flex-direction: row;
-                justify-content: center;
-                overflow-x: auto !important;
+                justify-content: flex-start;
+                overflow-x: scroll !important;
                 -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+                scrollbar-color: #ccc transparent;
+                padding-bottom: 6px;
+            }
+
+            .steps-wrap::-webkit-scrollbar {
+                height: 4px;
+            }
+
+            .steps-wrap::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .steps-wrap::-webkit-scrollbar-thumb {
+                background: #ccc;
+                border-radius: 4px;
             }
 
             .step {
-                flex: 1 1 0 !important;
-                min-width: 120px !important;
+                flex: 0 0 auto !important;
+                min-width: 130px !important;
                 width: auto !important;
             }
 
