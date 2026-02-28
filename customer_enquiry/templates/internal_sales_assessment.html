@@ -519,12 +519,14 @@
                 display: flex;
                 flex-direction: row;
                 justify-content: center;
-                overflow-x: hidden !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
             }
 
             .step {
-                min-width: auto !important;
-                width: 100% !important;
+                flex: 1 1 0 !important;
+                min-width: 120px !important;
+                width: auto !important;
             }
 
             .grid.cols-3,
