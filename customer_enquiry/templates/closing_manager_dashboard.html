@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GRE Dashboard</title>
+    <title>Closing Manager Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,8 +11,7 @@
             background-color: #f5f5f5;
             zoom: 0.9;
         }
-        
-        /* Standard header styles from other pages */
+
         .header {
             position: relative;
             padding: 24px 36px;
@@ -29,11 +28,6 @@
             margin-bottom: 12px;
             position: relative;
             z-index: 2;
-        }
-
-        .brand-row img {
-            height: 80px;
-            width: auto;
         }
 
         .header-text {
@@ -58,7 +52,6 @@
             margin: 0;
         }
 
-        /* Updated decorative elements */
         .dec {
             position: absolute;
             right: 30px;
@@ -95,36 +88,32 @@
             background: rgba(255,255,255,0.25);
         }
 
-        /* Subtle pattern overlay */
         .header::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.03"><circle cx="30" cy="30" r="1"/></g></svg>');
             pointer-events: none;
         }
-        
+
         .filters-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
         .filter-group {
             display: flex;
             flex-direction: column;
         }
-        
+
         .filter-group label {
             font-weight: bold;
             margin-bottom: 5px;
             color: #333;
         }
-        
+
         .filter-group input,
         .filter-group select {
             padding: 8px 12px;
@@ -132,21 +121,21 @@
             border-radius: 4px;
             font-size: 14px;
         }
-        
+
         .action-buttons-top {
             display: flex;
             gap: 10px;
             margin-top: 15px;
             flex-wrap: wrap;
         }
-        
+
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
         .stat-card {
             background: white;
             padding: 15px;
@@ -154,30 +143,30 @@
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         .stat-number {
             font-size: 2em;
             font-weight: bold;
             color: #007bff;
         }
-        
+
         .stat-label {
             color: #666;
             font-size: 14px;
         }
-        
+
         .table-container {
             background: white;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         th {
             background-color: #f8f9fa;
             padding: 12px;
@@ -185,22 +174,22 @@
             font-weight: bold;
             border-bottom: 2px solid #dee2e6;
         }
-        
+
         td {
             padding: 12px;
             border-bottom: 1px solid #dee2e6;
         }
-        
+
         tr:hover {
             background-color: #f8f9fa;
         }
-        
+
         .action-buttons {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
         }
-        
+
         .btn {
             padding: 6px 12px;
             border-radius: 4px;
@@ -211,54 +200,28 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
-        .btn-primary {
-            background: #007bff;
-            color: white;
-        }
-        
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        
-        .btn-warning {
-            background: #ffc107;
-            color: #212529;
-        }
-        
-        .btn-info {
-            background: #17a2b8;
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        
+
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
         .btn:hover {
             opacity: 0.9;
             transform: translateY(-1px);
         }
-        
+
         .assessment-status {
             font-size: 11px;
             padding: 2px 6px;
             border-radius: 3px;
             margin-left: 4px;
         }
-        
-        .assessment-complete {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .assessment-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
+
+        .assessment-complete { background: #d4edda; color: #155724; }
+        .assessment-pending  { background: #fff3cd; color: #856404; }
+
         .property-tag {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -267,19 +230,19 @@
             font-size: 11px;
             font-weight: bold;
         }
-        
+
         .phone-number {
             font-weight: 500;
             color: #495057;
         }
-        
+
         .no-results {
             text-align: center;
             padding: 40px;
             color: #666;
             font-style: italic;
         }
-        
+
         .filter-info {
             background: #e9f7ef;
             border: 1px solid #27ae60;
@@ -290,249 +253,78 @@
             color: #1e8449;
             display: none;
         }
-        
-        .filter-info.active {
-            display: block;
-        }
-        
+
+        .filter-info.active { display: block; }
+
         .no-results-container {
             text-align: center;
             padding: 60px 20px;
             color: #666;
         }
-        
-        .no-results-container h3 {
-            color: #888;
-            margin-bottom: 10px;
-        }
-        
-        .no-results-container p {
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-        
-        .no-results-container .btn {
-            margin: 0 5px;
-        }
-        
+
+        .no-results-container h3 { color: #888; margin-bottom: 10px; }
+        .no-results-container p { margin-bottom: 20px; line-height: 1.5; }
+        .no-results-container .btn { margin: 0 5px; }
+
         .loading {
             display: none;
             text-align: center;
             padding: 20px;
         }
-        
-        /* ── Tablet landscape (≤1024px) ── */
+
         @media (max-width: 1024px) {
-            body {
-                margin: 15px;
-            }
-
-            .table-container {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            table {
-                min-width: 700px;
-            }
-
-            th, td {
-                padding: 10px 8px;
-                font-size: 13px;
-            }
-
-            /* Form Number column — more breathing room between tag and text */
-            table td:first-child {
-                line-height: 2;
-            }
-
-            .title {
-                font-size: 26px;
-            }
-
-            .dec img {
-                height: 60px;
-            }
+            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 700px; }
+            th, td { padding: 10px 8px; font-size: 13px; }
+            .title { font-size: 26px; }
+            .dec img { height: 60px; }
         }
 
-        /* ── Tablet portrait + large mobile (≤768px) ── */
         @media (max-width: 768px) {
-            body {
-                margin: 10px;
-            }
-
-            .header {
-                padding: 18px 20px;
-            }
-
-            .brand-row {
-                padding: 0 90px;
-            }
-
-            .title {
-                font-size: 20px;
-            }
-
-            .subtitle {
-                font-size: 12px;
-            }
-
-            .logout-btn {
-                font-size: 11px;
-                padding: 6px 12px;
-            }
-
-            .filters-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .action-buttons-top {
-                flex-wrap: wrap;
-            }
-
-            .action-buttons-top .btn {
-                flex: 1 1 calc(50% - 5px);
-                text-align: center;
-            }
-
-            .stats-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .table-container {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            table {
-                min-width: 650px;
-            }
-
-            th, td {
-                padding: 8px 6px;
-                font-size: 12px;
-                white-space: nowrap;
-            }
-
-            .btn {
-                padding: 5px 8px;
-                font-size: 11px;
-            }
+            body { margin: 10px; }
+            .header { padding: 18px 20px; }
+            .brand-row { padding: 0 90px; }
+            .title { font-size: 20px; }
+            .subtitle { font-size: 12px; }
+            .logout-btn { font-size: 11px; padding: 6px 12px; }
+            .filters-container { grid-template-columns: repeat(2, 1fr); }
+            .action-buttons-top { flex-wrap: wrap; }
+            .action-buttons-top .btn { flex: 1 1 calc(50% - 5px); text-align: center; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 650px; }
+            th, td { padding: 8px 6px; font-size: 12px; white-space: nowrap; }
+            .btn { padding: 5px 8px; font-size: 11px; }
         }
 
-        /* ── Small mobile (≤480px) ── */
         @media (max-width: 480px) {
-            body {
-                margin: 8px;
-            }
-
-            .dec img {
-                height: 35px;
-            }
-
-            .header {
-                padding: 14px 16px;
-            }
-
-            .brand-row {
-                padding: 0 80px 0 80px;
-                margin-bottom: 0;
-            }
-
-            .title {
-                font-size: 17px;
-            }
-
-            .subtitle {
-                display: none;
-            }
-
-            .logout-btn {
-                font-size: 11px;
-                padding: 5px 10px;
-                left: 16px;
-            }
-
-            .filters-container {
-                grid-template-columns: 1fr;
-            }
-
-            .action-buttons-top .btn {
-                flex: 1 1 100%;
-            }
-
-            .stats-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .stat-number {
-                font-size: 1.5em;
-            }
-
-            .stat-label {
-                font-size: 12px;
-            }
-
-            /* Hide less critical columns — Property, City, Lead Source, Date */
-            table th:nth-child(3),
-            table td:nth-child(3),
-            table th:nth-child(5),
-            table td:nth-child(5),
-            table th:nth-child(6),
-            table td:nth-child(6),
-            table th:nth-child(7),
-            table td:nth-child(7) {
-                display: none;
-            }
-
-            /* Min-width ensures buttons don't get cut — horizontal scroll handles overflow */
-            table {
-                min-width: 480px;
-            }
-
-            th, td {
-                white-space: normal;
-                padding: 8px 6px;
-            }
-
-            /* Form number cell — stack tag above form number cleanly */
-            td:first-child {
-                display: table-cell;
-                vertical-align: middle;
-            }
-
-            .property-tag {
-                display: inline-block;
-                font-size: 9px;
-                padding: 1px 5px;
-                margin-bottom: 3px;
-            }
-
-            .form-number-display {
-                display: block;
-                font-size: 11px;
-                word-break: break-all;
-            }
-
-            /* Actions column — stack buttons vertically, full width */
-            .btn {
-                display: block;
-                width: 100%;
-                text-align: center;
-                margin-bottom: 4px;
-                white-space: nowrap;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-                gap: 4px;
-                min-width: 110px;
-            }
+            body { margin: 8px; }
+            .dec img { height: 35px; }
+            .header { padding: 14px 16px; }
+            .brand-row { padding: 0 80px; margin-bottom: 0; }
+            .title { font-size: 17px; }
+            .subtitle { display: none; }
+            .logout-btn { font-size: 11px; padding: 5px 10px; left: 16px; }
+            .filters-container { grid-template-columns: 1fr; }
+            .action-buttons-top .btn { flex: 1 1 100%; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .stat-number { font-size: 1.5em; }
+            .stat-label { font-size: 12px; }
+            table th:nth-child(3), table td:nth-child(3),
+            table th:nth-child(5), table td:nth-child(5),
+            table th:nth-child(6), table td:nth-child(6),
+            table th:nth-child(7), table td:nth-child(7) { display: none; }
+            table { min-width: 480px; }
+            th, td { white-space: normal; padding: 8px 6px; }
+            td:first-child { display: table-cell; vertical-align: middle; }
+            .property-tag { display: inline-block; font-size: 9px; padding: 1px 5px; margin-bottom: 3px; }
+            .form-number-display { display: block; font-size: 11px; word-break: break-all; }
+            .btn { display: block; width: 100%; text-align: center; margin-bottom: 4px; white-space: nowrap; }
+            .action-buttons { flex-direction: column; gap: 4px; min-width: 110px; }
         }
     </style>
 </head>
 <body>
-    <!-- Standard header from other pages -->
     <header class="header">
         <a href="{% url 'customer_enquiry:logout' %}" class="logout-btn">Logout</a>
         <div class="brand-row">
@@ -540,8 +332,7 @@
                 <div class="title">Customer Enquiry</div>
                 <div class="subtitle">
                     Welcome, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
-                    &nbsp;·&nbsp;
-                    {% if request.user.profile.role %}{{ request.user.profile.get_role_display }}{% else %}Admin{% endif %}
+                    &nbsp;·&nbsp; Closing Manager
                 </div>
             </div>
         </div>
@@ -549,27 +340,17 @@
             <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
         </div>
     </header>
-    
-    <!-- Admin Nav Bar -->
-    {% if request.user.profile.role in 'admin,super_admin' or request.user.is_superuser %}
-    <div style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);padding:12px 20px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-        <strong style="color:#333;margin-right:4px;">Admin:</strong>
-        <a href="{% url 'customer_enquiry:manage_users' %}" class="btn btn-primary" style="font-size:13px;">👥 Manage Users</a>
-        <a href="{% url 'customer_enquiry:audit_trail' %}" class="btn btn-secondary" style="font-size:13px;">📋 Audit Trail</a>
-        <a href="{% url 'customer_enquiry:manage_channel_partners' %}" class="btn btn-info" style="font-size:13px;">🤝 Channel Partners</a>
-    </div>
-    {% endif %}
 
     <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <h2 style="margin: 0 0 20px 0;">All Leads Dashboard</h2>
-        
+        <h2 style="margin: 0 0 20px 0;">My Assigned Leads</h2>
+
         <!-- Filters -->
         <div class="filters-container">
             <div class="filter-group">
                 <label for="searchInput">Search</label>
                 <input type="text" id="searchInput" placeholder="Search by name, email, phone, form number...">
             </div>
-            
+
             <div class="filter-group">
                 <label for="propertyFilter">Property Filter</label>
                 <select id="propertyFilter">
@@ -579,17 +360,17 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="dateFrom">Date From</label>
                 <input type="date" id="dateFrom">
             </div>
-            
+
             <div class="filter-group">
                 <label for="dateTo">Date To</label>
                 <input type="date" id="dateTo">
             </div>
-            
+
             <div class="filter-group">
                 <label for="assessmentFilter">Assessment Status</label>
                 <select id="assessmentFilter">
@@ -598,7 +379,7 @@
                     <option value="pending">Pending</option>
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="bookingFilter">Booking Status</label>
                 <select id="bookingFilter">
@@ -608,7 +389,7 @@
                 </select>
             </div>
         </div>
-        
+
         <!-- Action Buttons -->
         <div class="action-buttons-top">
             <button class="btn btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
@@ -617,10 +398,10 @@
             <button class="btn btn-info" onclick="refreshData()">♻️ Refresh</button>
         </div>
     </div>
-    
+
     <!-- Filter Information -->
     <div class="filter-info" id="filterInfo"></div>
-    
+
     <!-- Statistics -->
     <div class="stats-container">
         <div class="stat-card">
@@ -632,28 +413,20 @@
             <div class="stat-label">Filtered Results</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="completedAssessments">
-                {% for customer in customers %}
-                    {% if customer.sales_assessment %}1{% endif %}
-                {% empty %}0{% endfor %}
-            </div>
+            <div class="stat-number" id="completedAssessments">0</div>
             <div class="stat-label">Assessments Done</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="completedBookings">
-                {% for customer in customers %}
-                    {% if customer.booking_applications.exists %}1{% endif %}
-                {% empty %}0{% endfor %}
-            </div>
+            <div class="stat-number" id="completedBookings">0</div>
             <div class="stat-label">Bookings Done</div>
         </div>
     </div>
-    
+
     <!-- Loading Indicator -->
     <div class="loading" id="loadingIndicator">
         <p>Loading...</p>
     </div>
-    
+
     <!-- Table -->
     <div class="table-container">
         <table id="leadsTable">
@@ -671,14 +444,14 @@
             </thead>
             <tbody id="leadsTableBody">
                 {% for customer in customers %}
-                <tr data-property="" 
+                <tr data-property=""
                     data-date="{{ customer.created_at|date:'Y-m-d' }}"
-                    data-assessment="{% if request.user.profile.role == 'gre' %}{% if customer.sales_assessment %}completed{% else %}pending{% endif %}{% else %}{% if customer.sales_assessment and customer.sales_assessment.lead_classification %}completed{% else %}pending{% endif %}{% endif %}"
+                    data-assessment="{% if customer.sales_assessment and customer.sales_assessment.lead_classification %}completed{% else %}pending{% endif %}"
                     data-booking="{% if customer.booking_applications.exists %}completed{% else %}pending{% endif %}"
                     data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}"
                     data-form-number="{{ customer.form_number }}"
                     style="display: table-row;">
-                    
+
                     <td>
                         <span class="property-tag property-tag-js">{{ customer.form_number|slice:':3' }}</span> <span class="form-number-display">{{ customer.form_number }}</span>
                     </td>
@@ -686,58 +459,38 @@
                         <strong>{{ customer.get_full_name }}</strong>
                         <br><small style="color: #666;">{{ customer.email }}</small>
                     </td>
-                    <td class="property-name-js">
-                        Loading...
-                    </td>
+                    <td class="property-name-js">Loading...</td>
                     <td>
                         <span class="phone-number">{{ customer.phone_number|default:'Not Provided' }}</span>
                     </td>
                     <td>{{ customer.city }}</td>
-                    
                     <td>
                         {% for source in customer.sources.all %}
                             {% with display_text=source.get_source_type_display %}
-                                {% if 'Social Media' in display_text %}
-                                    Social Media
-                                {% else %}
-                                    {{ display_text }}
-                                {% endif %}{% if not forloop.last %}, {% endif %}
+                                {% if 'Social Media' in display_text %}Social Media
+                                {% else %}{{ display_text }}{% endif %}{% if not forloop.last %}, {% endif %}
                             {% endwith %}
                         {% endfor %}
                         {% if customer.additional_channel_partners.exists %}
                             <br><span style="background:#fff3cd;color:#856404;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;border:1px solid #ffc107;">⚠ Under Review</span>
                         {% endif %}
                     </td>
-
                     <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
                     <td class="action-buttons">
-                        <!-- Edit/View Customer Button (role-based) -->
-                        {% if request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.profile.role == 'closing_manager' %}
+                        <!-- Edit Customer -->
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-primary">Edit</a>
-                        {% else %}
-                        <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info" style="background:#17a2b8;color:#fff;">View</a>
-                        {% endif %}
-                        
-                        <!-- Internal Assessment Button -->
+
+                        <!-- Assessment -->
                         <a href="{% url 'customer_enquiry:internal_sales_assessment' customer.pk %}" class="btn btn-success">
                             Assessment
-                            {% if request.user.profile.role == 'gre' %}
-                                {% if customer.sales_assessment %}
-                                    <span class="assessment-status assessment-complete">✓</span>
-                                {% else %}
-                                    <span class="assessment-status assessment-pending">⚠</span>
-                                {% endif %}
+                            {% if customer.sales_assessment and customer.sales_assessment.lead_classification %}
+                                <span class="assessment-status assessment-complete">✓</span>
                             {% else %}
-                                {% if customer.sales_assessment and customer.sales_assessment.lead_classification %}
-                                    <span class="assessment-status assessment-complete">✓</span>
-                                {% else %}
-                                    <span class="assessment-status assessment-pending">⚠</span>
-                                {% endif %}
+                                <span class="assessment-status assessment-pending">⚠</span>
                             {% endif %}
                         </a>
-            
-                        <!-- Booking Form Button (hidden for GRE) -->
-                        {% if not request.user.profile.role == 'gre' %}
+
+                        <!-- Booking -->
                         <a href="{% url 'customer_enquiry:booking_form' customer.pk %}" class="btn btn-warning">
                             Booking
                             {% if customer.booking_applications.exists %}
@@ -747,593 +500,25 @@
                             {% endif %}
                         </a>
 
-                        <!-- Revisit Button (hidden for GRE) -->
+                        <!-- Revisit -->
                         <button type="button" class="btn btn-info" onclick="openRevisitModal({{ customer.pk }}, '{{ customer.get_full_name }}')" style="font-size:11px;">
                             Revisit
                             {% with rcount=customer.revisits.count %}{% if rcount %}<span class="assessment-status assessment-complete">{{ rcount }}</span>{% endif %}{% endwith %}
                         </button>
-                        {% endif %}
-
-                        <!-- Assign Button (admin only) -->
-                        {% if request.user.profile.role in 'admin,super_admin' or request.user.is_superuser %}
-                        <a href="{% url 'customer_enquiry:assign_customer' customer.pk %}" class="btn btn-secondary" style="font-size:11px;">Assign</a>
-                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="no-results">No leads found.</td>
+                    <td colspan="8" class="no-results">No leads assigned to you yet.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <script>
-        // Global variables
-        let allRows = [];
-        let filteredRows = [];
-        let searchTimeout;
-        
-        // Dynamic property mapping from database
-        const projectsData = {{ projects_data_json|safe }};
-
-        // Property mapping function
-        function getPropertyFromFormNumber(formNumber) {
-            if (!formNumber) return { code: '', name: 'Unknown' };
-
-            // Extract prefix from form number with support for compound prefixes
-            let prefix = '';
-            if (formNumber.includes('-')) {
-                const parts = formNumber.split('-');
-
-                // For form numbers like "ALT-PHASE1-98141", extract "ALT-PHASE1"
-                if (parts.length >= 3 && !(/^\d+$/.test(parts[1]))) {
-                    prefix = `${parts[0]}-${parts[1]}`.toUpperCase();
-                } else {
-                    // For form numbers like "ALT-12345", extract "ALT"
-                    prefix = parts[0].toUpperCase();
-                }
-            } else {
-                prefix = formNumber.substring(0, 3).toUpperCase();
-            }
-
-            // First try exact prefix match
-            if (projectsData[prefix]) {
-                return {
-                    code: projectsData[prefix].code,
-                    name: projectsData[prefix].name
-                };
-            }
-
-            // If no exact match and we have a compound prefix, try just the first part
-            if (prefix.includes('-')) {
-                const simplePrefix = prefix.split('-')[0];
-                if (projectsData[simplePrefix]) {
-                    return {
-                        code: projectsData[simplePrefix].code,
-                        name: projectsData[simplePrefix].name
-                    };
-                }
-            }
-
-            return { code: prefix, name: 'Unknown Property' };
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            // Store all table rows for filtering and populate property data
-            const allTableRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
-            
-            // Filter out any existing no-results rows and store only data rows
-            allRows = allTableRows.filter(row => {
-                return row.dataset.formNumber && !row.querySelector('.no-results');
-            });
-            
-            console.log(`Found ${allRows.length} data rows for filtering`);
-            
-            // Debug: Check search data for first few rows
-            allRows.slice(0, 3).forEach((row, index) => {
-                console.log(`Row ${index} search data:`, row.dataset.search);
-            });
-            
-            // Populate property information using JavaScript
-            allRows.forEach((row, index) => {
-                const formNumber = row.dataset.formNumber;
-                
-                if (formNumber) {
-                    const property = getPropertyFromFormNumber(formNumber);
-                    
-                    // Set data attribute for filtering
-                    row.dataset.property = property.code;
-                    
-                    // Update property tag
-                    const propertyTag = row.querySelector('.property-tag-js');
-                    if (propertyTag) {
-                        propertyTag.textContent = property.code;
-                    }
-                    
-                    // Update property name
-                    const propertyName = row.querySelector('.property-name-js');
-                    if (propertyName) {
-                        propertyName.textContent = property.name;
-                    }
-
-                    // Format form number display to uppercase
-                    const formNumberDisplay = row.querySelector('.form-number-display');
-                    if (formNumberDisplay) {
-                        let formNumber = formNumberDisplay.textContent.trim();
-                        if (formNumber.includes('-')) {
-                            const parts = formNumber.split('-');
-                            parts[0] = parts[0].toUpperCase();
-                            formNumberDisplay.textContent = parts.join('-');
-                        }
-                    }
-                }
-            });
-            
-            // Initialize filtered rows
-            filteredRows = [...allRows];
-            
-            // Add event listeners for real-time search
-            const searchInput = document.getElementById('searchInput');
-            
-            // Single event listener that handles both typing and clearing
-            searchInput.addEventListener('input', function(e) {
-                const currentValue = e.target.value.trim();
-                console.log('Search input changed:', `"${currentValue}"`);
-                
-                // Clear any existing timeout
-                clearTimeout(searchTimeout);
-                
-                if (currentValue === '') {
-                    // If search is empty, apply other filters immediately (but skip search filter)
-                    console.log('Search is empty - applying non-search filters');
-                    applyFiltersExceptSearch();
-                    
-                    // Force an immediate table display update as failsafe
-                    setTimeout(() => {
-                        console.log('Failsafe: Force updating table display');
-                        updateTableDisplay();
-                    }, 10);
-                } else {
-                    // If search has content, debounce the filtering
-                    searchTimeout = setTimeout(() => {
-                        console.log('Applying debounced search filter');
-                        applyFilters();
-                    }, 300);
-                }
-            });
-            document.getElementById('propertyFilter').addEventListener('change', applyFilters);
-            document.getElementById('dateFrom').addEventListener('change', applyFilters);
-            document.getElementById('dateTo').addEventListener('change', applyFilters);
-            document.getElementById('assessmentFilter').addEventListener('change', applyFilters);
-            document.getElementById('bookingFilter').addEventListener('change', applyFilters);
-            
-            // Show all rows initially
-            updateTableDisplay();
-            updateStatistics();
-            updateFilterInfo();
-        });
-        
-        // Debounce function for search input
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-        
-        function applyFiltersExceptSearch() {
-            // Apply all filters except search (for when search is cleared)
-            const propertyFilter = document.getElementById('propertyFilter').value;
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const assessmentFilter = document.getElementById('assessmentFilter').value;
-            const bookingFilter = document.getElementById('bookingFilter').value;
-            
-            console.log('Applying filters except search:', {
-                propertyFilter,
-                dateFrom,
-                dateTo,
-                assessmentFilter,
-                bookingFilter
-            });
-            
-            // Always start filtering from all rows
-            filteredRows = allRows.filter(row => {
-                // Skip if row doesn't have required data
-                if (!row.dataset || !row.cells || row.cells.length < 8) {
-                    return false;
-                }
-                
-                const property = row.dataset.property || '';
-                const date = row.dataset.date || '';
-                const assessment = row.dataset.assessment || '';
-                const booking = row.dataset.booking || '';
-                
-                // Skip search filter - only apply other filters
-                
-                // Property filter
-                if (propertyFilter && property !== propertyFilter) {
-                    return false;
-                }
-                
-                // Date filter
-                if (dateFrom && date < dateFrom) {
-                    return false;
-                }
-                if (dateTo && date > dateTo) {
-                    return false;
-                }
-                
-                // Assessment filter
-                if (assessmentFilter && assessment !== assessmentFilter) {
-                    return false;
-                }
-                
-                // Booking filter
-                if (bookingFilter && booking !== bookingFilter) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            console.log(`Filtered (without search) from ${allRows.length} to ${filteredRows.length} rows`);
-            
-            // Update display
-            updateTableDisplay();
-            updateStatistics();
-            updateFilterInfo();
-        }
-        
-        function applyFilters() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            const propertyFilter = document.getElementById('propertyFilter').value;
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const assessmentFilter = document.getElementById('assessmentFilter').value;
-            const bookingFilter = document.getElementById('bookingFilter').value;
-            
-            console.log('Applying filters:', {
-                searchTerm: `"${searchTerm}"`,
-                searchTermLength: searchTerm.length,
-                propertyFilter,
-                dateFrom,
-                dateTo,
-                assessmentFilter,
-                bookingFilter
-            });
-            
-            // Always start filtering from all rows to ensure consistency
-            filteredRows = allRows.filter(row => {
-                // Skip if row doesn't have required data
-                if (!row.dataset || !row.cells || row.cells.length < 8) {
-                    return false;
-                }
-                
-                const searchData = row.dataset.search || '';
-                const property = row.dataset.property || '';
-                const date = row.dataset.date || '';
-                const assessment = row.dataset.assessment || '';
-                const booking = row.dataset.booking || '';
-                
-                // Search filter
-                if (searchTerm && searchTerm.length > 0) {
-                    if (!searchData.includes(searchTerm)) {
-                        return false;
-                    }
-                }
-                
-                // Property filter
-                if (propertyFilter && property !== propertyFilter) {
-                    return false;
-                }
-                
-                // Date filter
-                if (dateFrom && date < dateFrom) {
-                    return false;
-                }
-                if (dateTo && date > dateTo) {
-                    return false;
-                }
-                
-                // Assessment filter
-                if (assessmentFilter && assessment !== assessmentFilter) {
-                    return false;
-                }
-                
-                // Booking filter
-                if (bookingFilter && booking !== bookingFilter) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            console.log(`Filtered from ${allRows.length} to ${filteredRows.length} rows`);
-            
-            if (filteredRows.length === 0) {
-                console.log('No rows passed filter - checking why...');
-                // Debug: show why first few rows were filtered out
-                allRows.slice(0, 3).forEach((row, index) => {
-                    const searchData = row.dataset.search || '';
-                    const property = row.dataset.property || '';
-                    console.log(`Row ${index} - searchData: "${searchData}", property: "${property}"`);
-                });
-            }
-            
-            // Update display and show active filters
-            updateTableDisplay();
-            updateStatistics();
-            updateFilterInfo();
-        }
-        
-        function updateTableDisplay() {
-            const tbody = document.getElementById('leadsTableBody');
-            console.log(`Updating table display with ${filteredRows.length} filtered rows`);
-            
-            // First, remove any existing no-results rows
-            const noResultsRows = tbody.querySelectorAll('.no-results-container, .no-results');
-            noResultsRows.forEach(noResultElement => {
-                const noResultRow = noResultElement.closest('tr');
-                if (noResultRow) {
-                    noResultRow.remove();
-                }
-            });
-            
-            // Hide ALL rows initially (more reliable approach)
-            const allTableRows = tbody.querySelectorAll('tr');
-            allTableRows.forEach(row => {
-                row.style.display = 'none';
-            });
-            
-            // Show filtered rows or display no-results message
-            if (filteredRows.length === 0) {
-                console.log('No filtered rows - showing no results message');
-                // Create and insert enhanced no-results row
-                const noResultsRow = document.createElement('tr');
-                noResultsRow.innerHTML = `
-                    <td colspan="8" class="no-results-container">
-                        <h3>🔍 No Results Found</h3>
-                        <p>We couldn't find any leads matching your current filter criteria.</p>
-                        <p>Try adjusting your filters or clearing them to see more results.</p>
-                        <button class="btn btn-primary" onclick="clearFilters()">🔄 Clear All Filters</button>
-                        <button class="btn btn-secondary" onclick="refreshData()">♻️ Refresh Data</button>
-                    </td>
-                `;
-                tbody.appendChild(noResultsRow);
-            } else {
-                console.log(`Showing ${filteredRows.length} filtered rows`);
-                // Show filtered rows - more robust approach
-                filteredRows.forEach((row, index) => {
-                    console.log(`Showing row ${index}:`, row.dataset.formNumber);
-                    row.style.display = 'table-row';
-                    
-                    // Ensure the row is properly attached to tbody if it got detached
-                    if (row.parentNode !== tbody) {
-                        tbody.appendChild(row);
-                    }
-                });
-                console.log('All filtered rows should now be visible');
-            }
-        }
-        
-        function updateStatistics() {
-            document.getElementById('filteredLeads').textContent = filteredRows.length;
-            
-            let completedAssessments = 0;
-            let completedBookings = 0;
-            
-            filteredRows.forEach(row => {
-                if (row.dataset.assessment === 'completed') completedAssessments++;
-                if (row.dataset.booking === 'completed') completedBookings++;
-            });
-            
-            document.getElementById('completedAssessments').textContent = completedAssessments;
-            document.getElementById('completedBookings').textContent = completedBookings;
-        }
-        
-        function updateFilterInfo() {
-            const filterInfo = document.getElementById('filterInfo');
-            const activeFilters = [];
-            
-            const searchTerm = document.getElementById('searchInput').value;
-            const propertyFilter = document.getElementById('propertyFilter').value;
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const assessmentFilter = document.getElementById('assessmentFilter').value;
-            const bookingFilter = document.getElementById('bookingFilter').value;
-            
-            if (searchTerm) activeFilters.push(`Search: "${searchTerm}"`);
-            if (propertyFilter) {
-                const propertyName = document.getElementById('propertyFilter').options[document.getElementById('propertyFilter').selectedIndex].text;
-                activeFilters.push(`Property: ${propertyName}`);
-            }
-            if (dateFrom) activeFilters.push(`From: ${dateFrom}`);
-            if (dateTo) activeFilters.push(`To: ${dateTo}`);
-            if (assessmentFilter) activeFilters.push(`Assessment: ${assessmentFilter}`);
-            if (bookingFilter) activeFilters.push(`Booking: ${bookingFilter}`);
-            
-            if (activeFilters.length > 0) {
-                filterInfo.innerHTML = `🔍 Active Filters: ${activeFilters.join(' • ')} <button class="btn btn-secondary btn-sm" onclick="clearFilters()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px;">Clear All</button>`;
-                filterInfo.classList.add('active');
-            } else {
-                filterInfo.classList.remove('active');
-            }
-        }
-        
-        function clearFilters() {
-            console.log('Clearing all filters');
-            
-            // Clear all filter inputs
-            document.getElementById('searchInput').value = '';
-            document.getElementById('propertyFilter').value = '';
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
-            document.getElementById('assessmentFilter').value = '';
-            document.getElementById('bookingFilter').value = '';
-            
-            // Force clear any search timeouts
-            clearTimeout(searchTimeout);
-            
-            // Reset filtered rows to all rows
-            filteredRows = [...allRows];
-            
-            console.log(`Reset to ${filteredRows.length} rows from total ${allRows.length}`);
-            
-            // Update display immediately
-            updateTableDisplay();
-            updateStatistics();
-            updateFilterInfo();
-        }
-        
-        function refreshData() {
-            document.getElementById('loadingIndicator').style.display = 'block';
-            window.location.reload();
-        }
-        
-        function exportToExcel() {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            loadingIndicator.style.display = 'block';
-            
-            // Get current filters
-            const searchTerm = document.getElementById('searchInput').value;
-            const propertyFilter = document.getElementById('propertyFilter').value;
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const assessmentFilter = document.getElementById('assessmentFilter').value;
-            const bookingFilter = document.getElementById('bookingFilter').value;
-            
-            // Create form data
-            const formData = new FormData();
-            formData.append('search', searchTerm);
-            formData.append('property', propertyFilter);
-            formData.append('date_from', dateFrom);
-            formData.append('date_to', dateTo);
-            formData.append('assessment', assessmentFilter);
-            formData.append('booking', bookingFilter);
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-            
-            // Send request to export endpoint
-            fetch('/export-leads/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.blob();
-                }
-                throw new Error('Export failed');
-            })
-            .then(blob => {
-                // Create download link
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                
-                // Generate filename with timestamp
-                const now = new Date();
-                const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
-                const propertyName = propertyFilter ? `_${propertyFilter}` : '_All';
-                a.download = `leads_export${propertyName}_${timestamp}.xlsx`;
-                
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                loadingIndicator.style.display = 'none';
-                alert('Export completed successfully!');
-            })
-            .catch(error => {
-                console.error('Export error:', error);
-                loadingIndicator.style.display = 'none';
-                alert('Export failed. Please try again.');
-            });
-        }
-        
-        // Debug function - you can call this from browser console
-        function debugFilterState() {
-            console.log('=== FILTER DEBUG INFO ===');
-            console.log('Total rows:', allRows.length);
-            console.log('Filtered rows:', filteredRows.length);
-            console.log('Search input value:', `"${document.getElementById('searchInput').value}"`);
-            console.log('Search input trimmed:', `"${document.getElementById('searchInput').value.trim()}"`);
-            console.log('Property filter:', document.getElementById('propertyFilter').value);
-            
-            // Check table display state
-            const tbody = document.getElementById('leadsTableBody');
-            const visibleRows = tbody.querySelectorAll('tr[style*="table-row"]');
-            const hiddenRows = tbody.querySelectorAll('tr[style*="none"]');
-            console.log('Visible rows in DOM:', visibleRows.length);
-            console.log('Hidden rows in DOM:', hiddenRows.length);
-            
-            console.log('First 3 filtered rows display status:');
-            filteredRows.slice(0, 3).forEach((row, index) => {
-                console.log(`Filtered Row ${index}:`, {
-                    formNumber: row.dataset.formNumber,
-                    display: row.style.display,
-                    parentNode: row.parentNode === tbody ? 'correct parent' : 'wrong parent',
-                    inDOM: document.body.contains(row)
-                });
-            });
-            
-            console.log('First 3 all rows display status:');
-            allRows.slice(0, 3).forEach((row, index) => {
-                console.log(`All Row ${index}:`, {
-                    formNumber: row.dataset.formNumber,
-                    display: row.style.display,
-                    parentNode: row.parentNode === tbody ? 'correct parent' : 'wrong parent'
-                });
-            });
-            
-            console.log('========================');
-        }
-        
-        // Emergency function to force show all rows - call this from browser console if needed
-        function forceShowAllRows() {
-            console.log('Emergency: Force showing all rows');
-            const tbody = document.getElementById('leadsTableBody');
-            
-            // Remove any no-results rows
-            const noResultsRows = tbody.querySelectorAll('.no-results-container, .no-results');
-            noResultsRows.forEach(noResultElement => {
-                const noResultRow = noResultElement.closest('tr');
-                if (noResultRow) {
-                    noResultRow.remove();
-                }
-            });
-            
-            // Reset filtered rows to all rows
-            filteredRows = [...allRows];
-            
-            // Force display all rows
-            allRows.forEach((row, index) => {
-                console.log(`Emergency showing row ${index}:`, row.dataset.formNumber);
-                row.style.display = 'table-row';
-                if (row.parentNode !== tbody) {
-                    tbody.appendChild(row);
-                }
-            });
-            
-            // Update statistics
-            updateStatistics();
-            updateFilterInfo();
-            
-            console.log(`Emergency: Showed ${allRows.length} rows`);
-        }
-    </script>
-    
-    <!-- CSRF Token for AJAX requests -->
     {% csrf_token %}
 
-    <!-- ── Revisit Modal ───────────────────────────────────────────────── -->
+    <!-- Revisit Modal -->
     <div id="revisitModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:10px;padding:28px;width:90%;max-width:480px;position:relative;">
             <h3 id="revisitModalTitle" style="margin:0 0 16px 0;font-size:18px;color:#333;">Add Revisit</h3>
@@ -1358,6 +543,269 @@
     </div>
 
     <script>
+        let allRows = [];
+        let filteredRows = [];
+        let searchTimeout;
+
+        const projectsData = {{ projects_data_json|safe }};
+
+        function getPropertyFromFormNumber(formNumber) {
+            if (!formNumber) return { code: '', name: 'Unknown' };
+            let prefix = '';
+            if (formNumber.includes('-')) {
+                const parts = formNumber.split('-');
+                if (parts.length >= 3 && !(/^\d+$/.test(parts[1]))) {
+                    prefix = `${parts[0]}-${parts[1]}`.toUpperCase();
+                } else {
+                    prefix = parts[0].toUpperCase();
+                }
+            } else {
+                prefix = formNumber.substring(0, 3).toUpperCase();
+            }
+            if (projectsData[prefix]) return { code: projectsData[prefix].code, name: projectsData[prefix].name };
+            if (prefix.includes('-')) {
+                const simplePrefix = prefix.split('-')[0];
+                if (projectsData[simplePrefix]) return { code: projectsData[simplePrefix].code, name: projectsData[simplePrefix].name };
+            }
+            return { code: prefix, name: 'Unknown Property' };
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const allTableRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            allRows = allTableRows.filter(row => row.dataset.formNumber && !row.querySelector('.no-results'));
+
+            allRows.forEach(row => {
+                const formNumber = row.dataset.formNumber;
+                if (formNumber) {
+                    const property = getPropertyFromFormNumber(formNumber);
+                    row.dataset.property = property.code;
+                    const propertyTag = row.querySelector('.property-tag-js');
+                    if (propertyTag) propertyTag.textContent = property.code;
+                    const propertyName = row.querySelector('.property-name-js');
+                    if (propertyName) propertyName.textContent = property.name;
+                    const formNumberDisplay = row.querySelector('.form-number-display');
+                    if (formNumberDisplay && formNumberDisplay.textContent.includes('-')) {
+                        const parts = formNumberDisplay.textContent.trim().split('-');
+                        parts[0] = parts[0].toUpperCase();
+                        formNumberDisplay.textContent = parts.join('-');
+                    }
+                }
+            });
+
+            filteredRows = [...allRows];
+
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function(e) {
+                const currentValue = e.target.value.trim();
+                clearTimeout(searchTimeout);
+                if (currentValue === '') {
+                    applyFiltersExceptSearch();
+                    setTimeout(() => updateTableDisplay(), 10);
+                } else {
+                    searchTimeout = setTimeout(() => applyFilters(), 300);
+                }
+            });
+            document.getElementById('propertyFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateFrom').addEventListener('change', applyFilters);
+            document.getElementById('dateTo').addEventListener('change', applyFilters);
+            document.getElementById('assessmentFilter').addEventListener('change', applyFilters);
+            document.getElementById('bookingFilter').addEventListener('change', applyFilters);
+
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        });
+
+        function applyFiltersExceptSearch() {
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            filteredRows = allRows.filter(row => {
+                if (!row.dataset || !row.cells || row.cells.length < 8) return false;
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                if (propertyFilter && property !== propertyFilter) return false;
+                if (dateFrom && date < dateFrom) return false;
+                if (dateTo && date > dateTo) return false;
+                if (assessmentFilter && assessment !== assessmentFilter) return false;
+                if (bookingFilter && booking !== bookingFilter) return false;
+                return true;
+            });
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            filteredRows = allRows.filter(row => {
+                if (!row.dataset || !row.cells || row.cells.length < 8) return false;
+                const searchData = row.dataset.search || '';
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                if (searchTerm && !searchData.includes(searchTerm)) return false;
+                if (propertyFilter && property !== propertyFilter) return false;
+                if (dateFrom && date < dateFrom) return false;
+                if (dateTo && date > dateTo) return false;
+                if (assessmentFilter && assessment !== assessmentFilter) return false;
+                if (bookingFilter && booking !== bookingFilter) return false;
+                return true;
+            });
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function updateTableDisplay() {
+            const tbody = document.getElementById('leadsTableBody');
+            const noResultsRows = tbody.querySelectorAll('.no-results-container, .no-results');
+            noResultsRows.forEach(el => { const row = el.closest('tr'); if (row) row.remove(); });
+            tbody.querySelectorAll('tr').forEach(row => row.style.display = 'none');
+
+            if (filteredRows.length === 0) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = `
+                    <td colspan="8" class="no-results-container">
+                        <h3>🔍 No Results Found</h3>
+                        <p>We couldn't find any leads matching your current filter criteria.</p>
+                        <button class="btn btn-primary" onclick="clearFilters()">🔄 Clear All Filters</button>
+                        <button class="btn btn-secondary" onclick="refreshData()">♻️ Refresh Data</button>
+                    </td>`;
+                tbody.appendChild(noResultsRow);
+            } else {
+                filteredRows.forEach(row => {
+                    row.style.display = 'table-row';
+                    if (row.parentNode !== tbody) tbody.appendChild(row);
+                });
+            }
+        }
+
+        function updateStatistics() {
+            document.getElementById('filteredLeads').textContent = filteredRows.length;
+            let completedAssessments = 0;
+            let completedBookings = 0;
+            filteredRows.forEach(row => {
+                if (row.dataset.assessment === 'completed') completedAssessments++;
+                if (row.dataset.booking === 'completed') completedBookings++;
+            });
+            document.getElementById('completedAssessments').textContent = completedAssessments;
+            document.getElementById('completedBookings').textContent = completedBookings;
+        }
+
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            const activeFilters = [];
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            if (searchTerm) activeFilters.push(`Search: "${searchTerm}"`);
+            if (propertyFilter) {
+                const sel = document.getElementById('propertyFilter');
+                activeFilters.push(`Property: ${sel.options[sel.selectedIndex].text}`);
+            }
+            if (dateFrom) activeFilters.push(`From: ${dateFrom}`);
+            if (dateTo) activeFilters.push(`To: ${dateTo}`);
+            if (assessmentFilter) activeFilters.push(`Assessment: ${assessmentFilter}`);
+            if (bookingFilter) activeFilters.push(`Booking: ${bookingFilter}`);
+
+            if (activeFilters.length > 0) {
+                filterInfo.innerHTML = `🔍 Active Filters: ${activeFilters.join(' • ')} <button class="btn btn-secondary" onclick="clearFilters()" style="margin-left:10px;padding:2px 8px;font-size:11px;">Clear All</button>`;
+                filterInfo.classList.add('active');
+            } else {
+                filterInfo.classList.remove('active');
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('propertyFilter').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('assessmentFilter').value = '';
+            document.getElementById('bookingFilter').value = '';
+            clearTimeout(searchTimeout);
+            filteredRows = [...allRows];
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function refreshData() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            window.location.reload();
+        }
+
+        function exportToExcel() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            // Collect IDs of currently visible (filtered) rows to export only assigned leads
+            const visibleFormNumbers = filteredRows.map(row => row.dataset.formNumber).filter(Boolean);
+
+            const formData = new FormData();
+            formData.append('search', searchTerm);
+            formData.append('property', propertyFilter);
+            formData.append('date_from', dateFrom);
+            formData.append('date_to', dateTo);
+            formData.append('assessment', assessmentFilter);
+            formData.append('booking', bookingFilter);
+            formData.append('form_numbers', visibleFormNumbers.join(','));
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('/export-leads/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) return response.blob();
+                throw new Error('Export failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const now = new Date();
+                const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+                const propertyName = propertyFilter ? `_${propertyFilter}` : '_Assigned';
+                a.download = `leads_export${propertyName}_${timestamp}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                loadingIndicator.style.display = 'none';
+                alert('Export completed successfully!');
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                loadingIndicator.style.display = 'none';
+                alert('Export failed. Please try again.');
+            });
+        }
+
+        // Revisit modal
         let currentRevisitCustomerId = null;
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
@@ -1417,11 +865,9 @@
             const visitDate = document.getElementById('revisitDate').value;
             const remark = document.getElementById('revisitRemark').value;
             if (!visitDate) { alert('Please select a date.'); return; }
-
             const formData = new FormData();
             formData.append('visit_date', visitDate);
             formData.append('remark', remark);
-
             fetch(`/customer/${currentRevisitCustomerId}/revisit/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken },
@@ -1439,7 +885,6 @@
             });
         }
 
-        // Close on backdrop click
         document.getElementById('revisitModal').addEventListener('click', function(e) {
             if (e.target === this) closeRevisitModal();
         });

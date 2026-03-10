@@ -28,10 +28,14 @@ urlpatterns = [
     path('verification/', views.customer_verification_view, name='customer_verification'),
     path('user-login/', views.customer_verification_view, name='user_login'),
     path('submit/', views.customer_submit_view, name='submit'),
+    path('save-step/', views.save_step_view, name='save_step'),
     path('thank-you/', views.thank_you, name='thank_you'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('panel/admin/dashboard/', views.dashboard, name='admin_dashboard'),
+    path('panel/super-admin/dashboard/', views.dashboard, name='super_admin_dashboard'),
+    path('panel/gre/dashboard/', views.dashboard, name='gre_dashboard'),
     path('customer/<int:pk>/edit/', views.edit_customer, name='edit_customer'),
     path('customer/<int:customer_id>/assessment/', views.internal_sales_assessment, name='internal_sales_assessment'),
     path('customer/<int:customer_id>/booking/', views.booking_form_view, name='booking_form'),
@@ -46,4 +50,29 @@ urlpatterns = [
     path('password-reset-new/', views.password_reset_new, name='password_reset_new'),
     path('password-reset-done/', views.password_reset_done, name='password_reset_done'),
     path('password-reset-complete/', views.password_reset_complete, name='password_reset_complete'),
+
+    # Role-based dashboards
+    path('sourcing-dashboard/', views.sourcing_manager_dashboard, name='sourcing_manager_dashboard'),
+    path('closing-dashboard/', views.closing_manager_dashboard, name='closing_manager_dashboard'),
+
+    # Admin: User management
+    path('manage-users/', views.manage_users, name='manage_users'),
+
+    # Admin: Assign customer to managers
+    path('customer/<int:customer_id>/assign/', views.assign_customer, name='assign_customer'),
+
+    # Audit trail
+    path('audit-trail/', views.audit_trail, name='audit_trail'),
+
+    # Revisit
+    path('customer/<int:customer_id>/revisit/', views.add_revisit, name='add_revisit'),
+    path('customer/<int:customer_id>/revisit-history/', views.revisit_history, name='revisit_history'),
+
+    # Additional Channel Partner removal / add
+    path('additional-cp/<int:cp_id>/remove/', views.remove_additional_cp, name='remove_additional_cp'),
+    path('customer/<int:customer_id>/add-cp/', views.add_additional_cp, name='add_additional_cp'),
+
+    # Master Channel Partners directory
+    path('manage-channel-partners/', views.manage_channel_partners, name='manage_channel_partners'),
+    path('api/channel-partners/', views.channel_partners_api, name='channel_partners_api'),
 ]

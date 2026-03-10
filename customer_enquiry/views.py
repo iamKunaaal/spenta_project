@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile
+from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile, AdditionalChannelPartner, CustomerAssignment, CustomerRevisit, AuditLog, ChannelPartnerMaster
 from django.shortcuts import get_object_or_404
 import json
 import logging
@@ -37,6 +37,63 @@ from django.utils import timezone
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Role helpers ────────────────────────────────────────────────────────────
+
+def get_user_role(user):
+    """Return role string for a user, defaults to 'admin' if no profile."""
+    try:
+        return user.profile.role
+    except Exception:
+        return 'admin'
+
+
+def role_redirect(user):
+    """Return the correct dashboard URL name based on user role."""
+    role = get_user_role(user)
+    mapping = {
+        'super_admin':      'customer_enquiry:super_admin_dashboard',
+        'admin':            'customer_enquiry:admin_dashboard',
+        'gre':              'customer_enquiry:gre_dashboard',
+        'sourcing_manager': 'customer_enquiry:sourcing_manager_dashboard',
+        'closing_manager':  'customer_enquiry:closing_manager_dashboard',
+    }
+    return mapping.get(role, 'customer_enquiry:dashboard')
+
+
+def require_role(*roles):
+    """Decorator: allow only users with given roles. Others → 403."""
+    def decorator(view_func):
+        @login_required
+        def wrapper(request, *args, **kwargs):
+            role = get_user_role(request.user)
+            if role not in roles:
+                from django.http import HttpResponseForbidden
+                return HttpResponseForbidden("You do not have permission to access this page.")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def log_action(user, action, model_name='', object_id=None, object_repr='', changes='', request=None):
+    """Helper to create an AuditLog entry."""
+    ip = None
+    if request:
+        x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+        ip = x_forwarded.split(',')[0] if x_forwarded else request.META.get('REMOTE_ADDR')
+    try:
+        AuditLog.objects.create(
+            user=user,
+            action=action,
+            model_name=model_name,
+            object_id=object_id,
+            object_repr=object_repr,
+            changes=changes,
+            ip_address=ip,
+        )
+    except Exception as e:
+        logger.error(f"AuditLog creation failed: {e}")
 
 # Helper function to get project data from database
 def get_project_by_code(code):
@@ -112,11 +169,19 @@ def index(request, property_code=None):
     # Get all active projects for any dropdowns
     active_projects = Project.objects.active_projects()
 
+    # Channel partner master list for auto-fill
+    import json as _json
+    cp_master = list(ChannelPartnerMaster.objects.filter(is_active=True).values(
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+    ))
+    cp_master_json = _json.dumps(cp_master)
+
     context = {
         'selected_property': selected_property,
         'property_code': property_code or get_property or request.session.get('selected_property_code'),
         'verified_phone': verified_phone,
         'active_projects': active_projects,
+        'cp_master_json': cp_master_json,
     }
 
     # Use the new template name that matches your current working form
@@ -143,6 +208,103 @@ def thank_you(request):
 
 
 @require_http_methods(["POST"])
+@require_http_methods(["POST"])
+def save_step_view(request):
+    """
+    AJAX endpoint: save partial customer form data for a given step.
+    Creates or updates a Customer record. Returns form_number + customer_id.
+    """
+    try:
+        data = request.POST
+        step = int(data.get('step', 1))
+        customer_id = data.get('customer_id', '').strip()
+        property_code = data.get('property_code', '').strip()
+
+        # Resolve project prefix for form_number generation
+        project_prefix = property_code
+        try:
+            project = Project.objects.get(form_number=property_code, is_active=True)
+            project_prefix = project.project_prefix
+        except Project.DoesNotExist:
+            if '-' in property_code:
+                parts = property_code.split('-')
+                project_prefix = parts[0] if parts[1].isdigit() else f"{parts[0]}-{parts[1]}"
+
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+            except Customer.DoesNotExist:
+                customer = None
+        else:
+            customer = None
+
+        # Build update dict based on step
+        update_fields = {}
+
+        if step >= 1:
+            update_fields.update({
+                'first_name': data.get('first_name', ''),
+                'middle_name': data.get('middle_name', ''),
+                'last_name': data.get('last_name', ''),
+                'email': data.get('email', ''),
+                'phone_number': data.get('phone_number') or None,
+                'sex': data.get('sex', ''),
+                'marital_status': data.get('marital_status', ''),
+                'date_of_birth': data.get('date_of_birth') or None,
+                'residential_address': data.get('residential_address', ''),
+                'city': data.get('city', ''),
+                'locality': data.get('locality', ''),
+                'pincode': data.get('pincode', ''),
+                'nationality': data.get('nationality', ''),
+            })
+
+        if step >= 2:
+            update_fields.update({
+                'employment_type': data.get('employment_type', ''),
+                'company_name': data.get('company_name', ''),
+                'designation': data.get('designation', ''),
+                'industry': data.get('industry', ''),
+            })
+
+        if step >= 3:
+            update_fields.update({
+                'configuration': data.get('configuration', ''),
+                'budget': data.get('budget', ''),
+                'construction_status': data.get('construction_status', ''),
+                'purpose_of_buying': data.get('purpose_of_buying', ''),
+            })
+
+        if step >= 4:
+            update_fields.update({
+                'source_details': data.get('source_details', ''),
+            })
+
+        if customer:
+            for k, v in update_fields.items():
+                setattr(customer, k, v)
+            customer.save()
+        else:
+            # Generate form number
+            while True:
+                form_number = f"{project_prefix}-{random.randint(10000, 99999)}"
+                if not Customer.objects.filter(form_number=form_number).exists():
+                    break
+            update_fields['form_number'] = form_number
+            update_fields.setdefault('form_date', timezone.now().date())
+            customer = Customer.objects.create(**update_fields)
+
+        return JsonResponse({
+            'success': True,
+            'customer_id': customer.id,
+            'form_number': customer.form_number,
+            'step': step,
+        })
+
+    except Exception as e:
+        logger.error(f"save_step error: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 def customer_submit_view(request):
     """Handle customer form submission with property support, phone number, sex, and marital status"""
     try:
@@ -311,10 +473,33 @@ def customer_submit_view(request):
                     'referral_name': data.get('referral_name'),
                     'project_name': data.get('referral_project')
                 }
-                
                 if all(referral_data.values()):
                     Referral.objects.create(customer=customer, **referral_data)
-            
+
+            # Handle additional channel partners (cp_company_name_2, cp_company_name_3, ...)
+            if source == 'channel_partner':
+                extra_cp_count = int(data.get('additional_cp_count', 0))
+                for i in range(2, extra_cp_count + 2):
+                    extra_company = data.get(f'cp_company_name_{i}', '').strip()
+                    extra_name = data.get(f'cp_partner_name_{i}', '').strip()
+                    extra_mobile = data.get(f'cp_mobile_{i}', '').strip()
+                    extra_rera = data.get(f'cp_rera_{i}', '').strip()
+                    if extra_company and extra_name and extra_mobile:
+                        AdditionalChannelPartner.objects.create(
+                            customer=customer,
+                            company_name=extra_company,
+                            partner_name=extra_name,
+                            mobile_number=extra_mobile,
+                            rera_number=extra_rera,
+                        )
+
+            # Mark form as complete
+            customer.is_complete = True
+            customer.current_step = 4
+            customer.save()
+
+            log_action(None, 'submit', 'Customer', customer.id, str(customer), request=request)
+
             # Store customer data in session for thank you page
             request.session['customer_data'] = {
                 'form_number': customer.form_number,
@@ -368,14 +553,15 @@ def login_view(request):
         
         if user is not None:
             login(request, user)
-            return redirect('customer_enquiry:dashboard')  # Redirect to GRE dashboard
+            log_action(user, 'login', request=request)
+            return redirect(role_redirect(user))
         else:
             messages.error(request, "Invalid username or password")
-            # Debug: print what was tried
-            print(f"Login attempt with username: {username}")
     return render(request, 'login.html')
 
 def logout_view(request):
+    if request.user.is_authenticated:
+        log_action(request.user, 'logout', request=request)
     logout(request)
     return redirect('customer_enquiry:login')
 
@@ -384,9 +570,9 @@ def dashboard(request):
     """Enhanced dashboard with filtering capabilities"""
     # Get all customers with related data
     customers = Customer.objects.select_related('sales_assessment').prefetch_related(
-        'sources', 'booking_applications'
+        'sources', 'booking_applications', 'additional_channel_partners'
     ).order_by('-created_at')
-    
+
     # Apply filters if provided (for AJAX requests)
     search = request.GET.get('search', '')
     property_filter = request.GET.get('property', '')
@@ -456,12 +642,19 @@ def export_leads(request):
         date_to = request.POST.get('date_to', '')
         assessment_filter = request.POST.get('assessment', '')
         booking_filter = request.POST.get('booking', '')
-        
+        form_numbers_str = request.POST.get('form_numbers', '')
+
         # Get filtered customers
         customers = Customer.objects.select_related('sales_assessment').prefetch_related(
             'sources', 'booking_applications'
         ).order_by('-created_at')
-        
+
+        # If specific form numbers are provided (e.g. from closing manager), restrict to those
+        if form_numbers_str:
+            form_numbers_list = [fn.strip() for fn in form_numbers_str.split(',') if fn.strip()]
+            if form_numbers_list:
+                customers = customers.filter(form_number__in=form_numbers_list)
+
         # Apply filters
         if search:
             customers = customers.filter(
@@ -586,94 +779,229 @@ def export_leads(request):
         filename = f'leads_export{property_suffix}_{timestamp}.xlsx'
         
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
+        log_action(request.user, 'export', 'Customer', None,
+                   f'Exported {len(data)} leads — {filename}', request=request)
         return response
-    
+
     return HttpResponse('Method not allowed', status=405)
 
 
 def edit_customer(request, pk):
-    """View customer information - display only, no editing allowed"""
+    """Edit or view customer information based on user role"""
     customer = get_object_or_404(Customer, pk=pk)
+    user_role = get_user_role(request.user)
+    can_edit = user_role in ('admin', 'super_admin', 'closing_manager')
 
-    # Only allow GET requests - no form submission/editing
-    if request.method == 'POST':
-        # Redirect back to view mode if someone tries to submit
-        messages.info(request, 'This form is view-only. Customer information cannot be edited.')
-        return redirect('customer_enquiry:edit_customer', pk=pk)
+    if request.method == 'POST' and can_edit:
+        try:
+            with transaction.atomic():
+                customer.first_name = request.POST.get('first_name', customer.first_name)
+                customer.middle_name = request.POST.get('middle_name', '')
+                customer.last_name = request.POST.get('last_name', customer.last_name)
+                customer.email = request.POST.get('email', customer.email)
 
-    # GET request - prepare context for template (view-only)
-    # Get current sources
+                phone_number = request.POST.get('phone_number', '').strip()
+                if phone_number and (len(phone_number) != 10 or not phone_number.isdigit()):
+                    messages.error(request, 'Please enter a valid 10-digit phone number')
+                    return redirect('customer_enquiry:edit_customer', pk=pk)
+                customer.phone_number = phone_number if phone_number else customer.phone_number
+
+                sex = request.POST.get('sex', '')
+                if sex in ('male', 'female', 'other'):
+                    customer.sex = sex
+
+                marital_status = request.POST.get('marital_status', '')
+                if marital_status in ('single', 'married', 'divorced', 'widowed', 'other'):
+                    customer.marital_status = marital_status
+
+                dob = request.POST.get('date_of_birth', '').strip()
+                if dob:
+                    customer.date_of_birth = dob
+
+                customer.residential_address = request.POST.get('residential_address', customer.residential_address)
+                customer.city = request.POST.get('city', customer.city)
+                customer.locality = request.POST.get('locality', customer.locality)
+
+                pincode = request.POST.get('pincode', '').strip()
+                if pincode:
+                    if len(pincode) != 6 or not pincode.isdigit():
+                        messages.error(request, 'Please enter a valid 6-digit pincode')
+                        return redirect('customer_enquiry:edit_customer', pk=pk)
+                    customer.pincode = pincode
+
+                customer.nationality = request.POST.get('nationality', customer.nationality)
+                customer.employment_type = request.POST.get('employment_type', customer.employment_type)
+                customer.company_name = request.POST.get('company_name', customer.company_name)
+                customer.designation = request.POST.get('designation', customer.designation)
+                customer.industry = request.POST.get('industry', customer.industry)
+                customer.configuration = request.POST.get('configuration', customer.configuration)
+                customer.budget = request.POST.get('budget', customer.budget)
+                customer.construction_status = request.POST.get('construction_status', customer.construction_status)
+                customer.purpose_of_buying = request.POST.get('purpose_of_buying', customer.purpose_of_buying)
+                customer.source_details = request.POST.get('source_details', customer.source_details)
+                customer.save()
+
+                # Update sources
+                customer.sources.all().delete()
+                for source in request.POST.getlist('sources'):
+                    CustomerSource.objects.create(customer=customer, source_type=source)
+
+                # Update channel partner
+                try:
+                    customer.channel_partner.delete()
+                except ChannelPartner.DoesNotExist:
+                    pass
+                if 'channel_partner' in request.POST.getlist('sources'):
+                    cp_company = request.POST.get('partner_company_name', '')
+                    cp_name = request.POST.get('partner_name', '')
+                    cp_mobile = request.POST.get('partner_mobile', '')
+                    cp_rera = request.POST.get('partner_rera', '')
+                    if cp_name or cp_company:
+                        ChannelPartner.objects.create(
+                            customer=customer,
+                            company_name=cp_company,
+                            partner_name=cp_name,
+                            mobile_number=cp_mobile,
+                            rera_number=cp_rera
+                        )
+
+                # Update referral
+                try:
+                    customer.referral.delete()
+                except Referral.DoesNotExist:
+                    pass
+                if 'referral' in request.POST.getlist('sources'):
+                    ref_name = request.POST.get('referral_name', '')
+                    ref_project = request.POST.get('referral_project', '')
+                    if ref_name:
+                        Referral.objects.create(
+                            customer=customer,
+                            referral_name=ref_name,
+                            project_name=ref_project
+                        )
+
+                log_action(request.user, 'edit', 'Customer', customer.id, str(customer), request=request)
+                messages.success(request, 'Customer information updated successfully!')
+                return redirect('customer_enquiry:dashboard')
+
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('customer_enquiry:edit_customer', pk=pk)
+
+    # GET — prepare context
     current_sources = list(customer.sources.values_list('source_type', flat=True))
-    
-    # Get channel partner if exists
+
     try:
         channel_partner = customer.channel_partner
     except ChannelPartner.DoesNotExist:
         channel_partner = None
-    
-    # Get referral if exists
+
+    additional_channel_partners = customer.additional_channel_partners.all()
+
     try:
         referral = customer.referral
     except Referral.DoesNotExist:
         referral = None
 
-    # Get project data from customer's form number prefix
     project_data = None
     if customer.form_number:
         try:
-            # Extract prefix from form number with better matching logic
             form_parts = customer.form_number.split('-')
             found_project = None
-
-            # Try different prefix matching strategies
             if len(form_parts) >= 3:
-                # For form numbers like "ALT-phase4-35509", try "ALT-phase4" first
                 compound_prefix = f"{form_parts[0]}-{form_parts[1]}"
-                found_project = Project.objects.filter(
-                    project_prefix__iexact=compound_prefix,
-                    is_active=True
-                ).first()
-
+                found_project = Project.objects.filter(project_prefix__iexact=compound_prefix, is_active=True).first()
                 if not found_project:
-                    # Fall back to just the first part "ALT"
-                    simple_prefix = form_parts[0]
-                    found_project = Project.objects.filter(
-                        project_prefix__iexact=simple_prefix,
-                        is_active=True
-                    ).first()
+                    found_project = Project.objects.filter(project_prefix__iexact=form_parts[0], is_active=True).first()
             else:
-                # For simple form numbers like "MED-49988"
                 prefix = form_parts[0] if len(form_parts) > 1 else customer.form_number[:3]
-                found_project = Project.objects.filter(
-                    project_prefix__iexact=prefix,
-                    is_active=True
-                ).first()
-
+                found_project = Project.objects.filter(project_prefix__iexact=prefix, is_active=True).first()
             if found_project:
                 project_data = {
                     'code': found_project.form_number,
                     'name': found_project.project_name,
-                    'location': found_project.site_name,
-                    'address': found_project.address,
-                    'company_name': found_project.company_name,
-                    'maharera_no': found_project.maharera_no,
                     'logo': str(found_project.project_logo) if found_project.project_logo else None,
-                    'prefix': found_project.project_prefix
                 }
         except Exception:
             project_data = None
+
+    cp_master = ChannelPartnerMaster.objects.filter(is_active=True).values(
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+    )
+    cp_master_json = json.dumps(list(cp_master))
 
     context = {
         'customer': customer,
         'current_sources': current_sources,
         'channel_partner': channel_partner,
+        'additional_channel_partners': additional_channel_partners,
         'referral': referral,
-        'view_only': True,  # Flag to indicate this is view-only mode
+        'view_only': not can_edit,
         'selected_property': project_data,
+        'cp_master_json': cp_master_json,
     }
-    
     return render(request, 'edit_customer.html', context)
+
+
+@login_required
+def remove_additional_cp(request, cp_id):
+    """Remove an additional channel partner (admin/super_admin/closing_manager only)."""
+    from django.http import JsonResponse
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin', 'closing_manager'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
+
+    cp = get_object_or_404(AdditionalChannelPartner, pk=cp_id)
+    customer_pk = cp.customer_id
+    cp_repr = f"{cp.company_name} — {cp.partner_name}" if cp.company_name else f"CP #{cp_id}"
+    cp.delete()
+    log_action(request.user, 'cp_remove', 'AdditionalChannelPartner', cp_id,
+               f'Additional CP removed for customer #{customer_pk}: {cp_repr}', request=request)
+    return JsonResponse({'success': True, 'customer_pk': customer_pk})
+
+
+@login_required
+def add_additional_cp(request, customer_id):
+    """Add a new additional channel partner to a customer (admin/super_admin/closing_manager only)."""
+    from django.http import JsonResponse
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin', 'closing_manager'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
+
+    customer = get_object_or_404(Customer, pk=customer_id)
+    company_name = request.POST.get('company_name', '').strip()
+    partner_name = request.POST.get('partner_name', '').strip()
+    mobile_number = request.POST.get('mobile_number', '').strip()
+    rera_number = request.POST.get('rera_number', '').strip()
+
+    if not company_name or not partner_name or not mobile_number:
+        return JsonResponse({'success': False, 'error': 'Company name, partner name, and mobile are required.'})
+    if len(mobile_number) != 10 or not mobile_number.isdigit():
+        return JsonResponse({'success': False, 'error': 'Mobile number must be exactly 10 digits.'})
+
+    acp = AdditionalChannelPartner.objects.create(
+        customer=customer,
+        company_name=company_name,
+        partner_name=partner_name,
+        mobile_number=mobile_number,
+        rera_number=rera_number,
+    )
+    log_action(request.user, 'cp_add', 'AdditionalChannelPartner', acp.id,
+               f'{company_name} — {partner_name} added to {customer.form_number}', request=request)
+    return JsonResponse({
+        'success': True,
+        'acp_id': acp.pk,
+        'company_name': company_name,
+        'partner_name': partner_name,
+        'mobile_number': mobile_number,
+        'rera_number': rera_number,
+    })
+
 
 # def edit_customer(request, pk):
 #     """Edit customer with phone number, sex, and marital status support"""
@@ -882,55 +1210,77 @@ def internal_sales_assessment(request, customer_id):
             assessment.family_size = '2'  # Default assumption
         print(f"Mapped family size based on marital status {customer.marital_status}: {assessment.family_size}")
         
-        # 6. Set default lead classification as 'warm' for new assessments
-        assessment.lead_classification = 'warm'
-        print(f"Set default lead classification: {assessment.lead_classification}")
-        
         print("Auto-population completed")
+
+    user_role = get_user_role(request.user)
 
     if request.method == 'POST':
         try:
             with transaction.atomic():
                 # Get or create assessment
                 if assessment:
-                    # Update existing
                     assessment_obj = assessment
                 else:
-                    # Create new
                     assessment_obj = InternalSalesAssessment(customer=customer)
 
-                # Update fields - GRE Section
+                # Step 1 fields — GRE can fill these
                 assessment_obj.sourcing_manager = request.POST.get('sourcing_manager', '')
                 assessment_obj.sales_manager = request.POST.get('sales_manager', '')
                 assessment_obj.customer_gender = request.POST.get('customer_gender', '')
                 assessment_obj.facilitated_by_pre_sales = request.POST.get('facilitated_by_pre_sales', 'false') == 'true'
                 assessment_obj.executive_name = request.POST.get('executive_name', '')
-                
-                # Sales Manager Section - Updated fields
-                assessment_obj.lead_classification = request.POST.get('lead_classification', '')
-                assessment_obj.reason_for_lost = request.POST.get('reason_for_lost', '')
-                
-                # Legacy fields (for backward compatibility)
-                assessment_obj.customer_classification = request.POST.get('customer_classification', '')
-                assessment_obj.reason_for_closed = request.POST.get('reason_for_closed', '')
-                
-                # Current Residence Section
-                assessment_obj.current_residence_config = request.POST.get('current_residence_config', '')
-                assessment_obj.current_residence_ownership = request.POST.get('current_residence_ownership', '')
-                assessment_obj.plot = request.POST.get('plot', '')
-                assessment_obj.family_size = request.POST.get('family_size', '')
-                
-                # Customer's Desired Requirement Section
-                assessment_obj.area_looking = request.POST.get('area_looking', '')
-                assessment_obj.desired_flat_area = request.POST.get('desired_flat_area', '')  # Legacy
-                assessment_obj.source_of_funding = request.POST.get('source_of_funding', '')
-                assessment_obj.ethnicity = request.POST.get('ethnicity', '')
-                
-                # Additional Information Section
-                assessment_obj.other_projects_considered = request.POST.get('other_projects_considered', '')
-                assessment_obj.sales_manager_remarks = request.POST.get('sales_manager_remarks', '')
+
+                # Auto-assign to managers based on dropdown selection
+                sourcing_id = request.POST.get('sourcing_manager_id')
+                closing_id = request.POST.get('sales_manager_id')
+                sourcing_user = User.objects.filter(id=sourcing_id).first() if sourcing_id else None
+                closing_user = User.objects.filter(id=closing_id).first() if closing_id else None
+
+                if sourcing_user or closing_user:
+                    assignment_obj, _ = CustomerAssignment.objects.get_or_create(
+                        customer=customer,
+                        defaults={'assigned_by': request.user}
+                    )
+                    if sourcing_user:
+                        assignment_obj.sourcing_manager = sourcing_user
+                    if closing_user:
+                        assignment_obj.closing_manager = closing_user
+                    assignment_obj.assigned_by = request.user
+                    assignment_obj.save()
+
+                    log_action(
+                        request.user, 'assign', 'Customer', customer.id,
+                        str(customer),
+                        changes=json.dumps({
+                            'sourcing_manager': sourcing_user.get_full_name() if sourcing_user else None,
+                            'closing_manager': closing_user.get_full_name() if closing_user else None,
+                        }),
+                        request=request
+                    )
+
+                # Steps 2-5 — only non-GRE roles can update these
+                if user_role != 'gre':
+                    assessment_obj.lead_classification = request.POST.get('lead_classification', '')
+                    assessment_obj.reason_for_lost = request.POST.get('reason_for_lost', '')
+                    assessment_obj.customer_classification = request.POST.get('customer_classification', '')
+                    assessment_obj.reason_for_closed = request.POST.get('reason_for_closed', '')
+                    assessment_obj.current_residence_config = request.POST.get('current_residence_config', '')
+                    assessment_obj.current_residence_ownership = request.POST.get('current_residence_ownership', '')
+                    assessment_obj.plot = request.POST.get('plot', '')
+                    assessment_obj.family_size = request.POST.get('family_size', '')
+                    assessment_obj.area_looking = request.POST.get('area_looking', '')
+                    assessment_obj.desired_flat_area = request.POST.get('desired_flat_area', '')
+                    assessment_obj.source_of_funding = request.POST.get('source_of_funding', '')
+                    assessment_obj.ethnicity = request.POST.get('ethnicity', '')
+                    assessment_obj.other_projects_considered = request.POST.get('other_projects_considered', '')
+                    assessment_obj.sales_manager_remarks = request.POST.get('sales_manager_remarks', '')
 
                 assessment_obj.save()
+                log_action(request.user, 'assessment', 'InternalSalesAssessment', assessment_obj.id,
+                           f"Assessment for {customer.get_full_name()} ({customer.form_number})",
+                           changes=json.dumps({'action': 'updated' if assessment else 'created',
+                                               'lead_classification': assessment_obj.lead_classification}),
+                           request=request)
 
                 if assessment:
                     messages.success(request, 'Internal sales assessment updated successfully!')
@@ -994,10 +1344,25 @@ def internal_sales_assessment(request, customer_id):
             except Exception:
                 project_data = None
 
+    # Get managers for dropdown
+    sourcing_managers = User.objects.filter(profile__role='sourcing_manager').order_by('first_name')
+    closing_managers = User.objects.filter(profile__role='closing_manager').order_by('first_name')
+
+    # Get existing assignment if any
+    try:
+        assignment = customer.assignment
+    except CustomerAssignment.DoesNotExist:
+        assignment = None
+
     context = {
         'customer': customer,
         'assessment': assessment,
-        'selected_property': project_data,  # Add project data for logo display
+        'selected_property': project_data,
+        'user_role': user_role,
+        'gre_only': user_role == 'gre',
+        'sourcing_managers': sourcing_managers,
+        'closing_managers': closing_managers,
+        'assignment': assignment,
     }
 
     return render(request, 'internal_sales_assessment.html', context)
@@ -1419,7 +1784,10 @@ def handle_booking_submission(request, customer):
                         setattr(existing_booking, field, value)
                 existing_booking.save()
                 booking_app = existing_booking
-                
+                log_action(request.user, 'booking', 'BookingApplication', existing_booking.id,
+                           f"Booking updated for {customer.get_full_name()} ({customer.form_number})",
+                           request=request)
+
                 # Clear existing applicants and channel partner
                 booking_app.applicants.all().delete()
                 if hasattr(booking_app, 'channel_partner'):
@@ -1430,6 +1798,9 @@ def handle_booking_submission(request, customer):
             else:
                 # Create new booking
                 booking_app = BookingApplication.objects.create(**booking_data)
+                log_action(request.user, 'booking', 'BookingApplication', booking_app.id,
+                           f"Booking created for {customer.get_full_name()} ({customer.form_number})",
+                           request=request)
                 action_message = 'created'
                 logger.debug(f"Booking created successfully: {booking_app.id}")
             
@@ -1881,12 +2252,19 @@ def property_customer_form(request, property_code):
     # Get all active projects for any dropdowns
     active_projects = Project.objects.active_projects()
 
+    import json as _json
+    cp_master = list(ChannelPartnerMaster.objects.filter(is_active=True).values(
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+    ))
+    cp_master_json = _json.dumps(cp_master)
+
     context = {
         'selected_property': selected_property,
         'property_code': property_code,
-        'auto_selected': True,  # Flag to indicate auto-selection
+        'auto_selected': True,
         'verified_phone': verified_phone,
         'active_projects': active_projects,
+        'cp_master_json': cp_master_json,
     }
 
     return render(request, 'customer_enquiry.html', context)
@@ -1948,9 +2326,27 @@ def password_reset_request(request):
             messages.error(request, 'Please enter your username.')
             return render(request, 'password_reset_form.html')
 
+        # --- Rate limit by username ---
+        username_cache_key = f'pwd_reset_count_user_{username}'
+        username_count = cache.get(username_cache_key, 0)
+        if username_count >= settings.OTP_MAX_PER_PHONE:
+            messages.error(request, 'Too many password reset attempts for this account. Please try again after 1 hour.')
+            return render(request, 'password_reset_form.html')
+
+        # --- Rate limit by IP ---
+        client_ip = get_client_ip(request)
+        ip_cache_key = f'pwd_reset_count_ip_{client_ip}'
+        ip_count = cache.get(ip_cache_key, 0)
+        if ip_count >= settings.OTP_MAX_PER_IP:
+            messages.error(request, 'Too many password reset attempts from your network. Please try again after 1 hour.')
+            return render(request, 'password_reset_form.html')
+
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
+            # Still increment counters to prevent username enumeration
+            cache.set(username_cache_key, username_count + 1, settings.OTP_BLOCK_DURATION)
+            cache.set(ip_cache_key, ip_count + 1, settings.OTP_BLOCK_DURATION)
             messages.error(request, 'No account found with this username.')
             return render(request, 'password_reset_form.html')
 
@@ -1987,10 +2383,15 @@ def password_reset_request(request):
             )
 
             if response.status_code in (200, 201):
+                # Increment rate limit counters on successful send
+                cache.set(username_cache_key, username_count + 1, settings.OTP_BLOCK_DURATION)
+                cache.set(ip_cache_key, ip_count + 1, settings.OTP_BLOCK_DURATION)
                 request.session['reset_otp'] = otp
                 request.session['reset_username'] = username
                 request.session['reset_otp_timestamp'] = int(timezone.now().timestamp())
                 messages.success(request, f'OTP sent to your registered WhatsApp number.')
+                log_action(user, 'password_reset', 'User', user.id,
+                           f'Password reset OTP sent for {username}', request=request)
                 return redirect('customer_enquiry:password_reset_verify')
             else:
                 logger.error(f"Interakt error: {response.status_code} - {response.text}")
@@ -2074,3 +2475,398 @@ def password_reset_done(request):
 
 def password_reset_complete(request):
     return render(request, 'password_reset_complete.html')
+
+
+# ─── Sourcing Manager Dashboard ───────────────────────────────────────────────
+
+@login_required
+def sourcing_manager_dashboard(request):
+    """Dashboard for Sourcing Manager — view only, shows assigned leads."""
+    role = get_user_role(request.user)
+    if role not in ('sourcing_manager', 'admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    if role == 'sourcing_manager':
+        customers = Customer.objects.filter(
+            assignment__sourcing_manager=request.user
+        ).select_related('sales_assessment').prefetch_related(
+            'sources', 'booking_applications', 'additional_channel_partners'
+        ).order_by('-created_at')
+    else:
+        customers = Customer.objects.select_related('sales_assessment').prefetch_related(
+            'sources', 'booking_applications', 'additional_channel_partners'
+        ).order_by('-created_at')
+
+    # Get all active projects for JavaScript property mapping
+    projects = Project.objects.active_projects()
+    projects_data = {}
+    for project in projects:
+        projects_data[project.project_prefix.upper()] = {
+            'code': project.project_prefix,
+            'name': project.project_name
+        }
+
+    import json
+    projects_data_json = json.dumps(projects_data)
+
+    return render(request, 'sourcing_manager_dashboard.html', {
+        'customers': customers,
+        'user_role': role,
+        'projects_data_json': projects_data_json,
+        'active_projects': projects,
+    })
+
+
+# ─── Closing Manager Dashboard ────────────────────────────────────────────────
+
+@login_required
+def closing_manager_dashboard(request):
+    """Dashboard for Closing Manager — view + edit, shows assigned leads."""
+    role = get_user_role(request.user)
+    if role not in ('closing_manager', 'admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    if role == 'closing_manager':
+        customers = Customer.objects.filter(
+            assignment__closing_manager=request.user
+        ).select_related('sales_assessment').prefetch_related(
+            'sources', 'booking_applications', 'revisits', 'additional_channel_partners'
+        ).order_by('-created_at')
+    else:
+        customers = Customer.objects.select_related('sales_assessment').prefetch_related(
+            'sources', 'booking_applications', 'revisits', 'additional_channel_partners'
+        ).order_by('-created_at')
+
+    # Get all active projects for JavaScript property mapping
+    projects = Project.objects.active_projects()
+    projects_data = {}
+    for project in projects:
+        projects_data[project.project_prefix.upper()] = {
+            'code': project.project_prefix,
+            'name': project.project_name
+        }
+
+    import json
+    projects_data_json = json.dumps(projects_data)
+
+    return render(request, 'closing_manager_dashboard.html', {
+        'customers': customers,
+        'user_role': role,
+        'projects_data_json': projects_data_json,
+        'active_projects': projects,
+    })
+
+
+# ─── Admin: Manage Users (Managers) ──────────────────────────────────────────
+
+@login_required
+def manage_users(request):
+    """Admin page: list all managers, create new ones."""
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create_user':
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip()
+            whatsapp = request.POST.get('whatsapp_number', '').strip()
+            new_role = request.POST.get('role', 'gre')
+            password = request.POST.get('password', '').strip()
+
+            if not first_name or not email or not password:
+                messages.error(request, "First name, email, and password are required.")
+            elif User.objects.filter(email=email).exists():
+                messages.error(request, "A user with this email already exists.")
+            else:
+                username = email.split('@')[0]
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+
+                new_user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                )
+                UserProfile.objects.create(
+                    user=new_user,
+                    whatsapp_number=whatsapp,
+                    role=new_role,
+                )
+                log_action(
+                    request.user, 'create', 'User',
+                    new_user.id, f"{first_name} {last_name} ({new_role})",
+                    request=request
+                )
+                messages.success(request, f"User '{username}' created successfully with role '{new_role}'.")
+                return redirect('customer_enquiry:manage_users')
+
+        elif action == 'delete_user':
+            user_id = request.POST.get('user_id')
+            try:
+                target_user = User.objects.get(id=user_id)
+                if target_user == request.user:
+                    messages.error(request, "You cannot delete your own account.")
+                else:
+                    log_action(request.user, 'delete', 'User', target_user.id, str(target_user), request=request)
+                    target_user.delete()
+                    messages.success(request, "User deleted successfully.")
+            except User.DoesNotExist:
+                messages.error(request, "User not found.")
+            return redirect('customer_enquiry:manage_users')
+
+    # List all staff users with profiles
+    profiles = UserProfile.objects.select_related('user').order_by('role', 'user__first_name')
+    return render(request, 'manage_users.html', {
+        'profiles': profiles,
+        'role_choices': UserProfile.ROLE_CHOICES,
+        'user_role': role,
+    })
+
+
+# ─── Admin: Assign Customer to Managers ──────────────────────────────────────
+
+@login_required
+def assign_customer(request, customer_id):
+    """Assign a customer to sourcing/closing manager."""
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    sourcing_managers = User.objects.filter(profile__role='sourcing_manager')
+    closing_managers = User.objects.filter(profile__role='closing_manager')
+
+    try:
+        assignment = customer.assignment
+    except CustomerAssignment.DoesNotExist:
+        assignment = None
+
+    if request.method == 'POST':
+        sourcing_id = request.POST.get('sourcing_manager') or None
+        closing_id = request.POST.get('closing_manager') or None
+
+        sourcing_user = User.objects.get(id=sourcing_id) if sourcing_id else None
+        closing_user = User.objects.get(id=closing_id) if closing_id else None
+
+        if assignment:
+            assignment.sourcing_manager = sourcing_user
+            assignment.closing_manager = closing_user
+            assignment.assigned_by = request.user
+            assignment.save()
+        else:
+            assignment = CustomerAssignment.objects.create(
+                customer=customer,
+                sourcing_manager=sourcing_user,
+                closing_manager=closing_user,
+                assigned_by=request.user,
+            )
+
+        log_action(
+            request.user, 'assign', 'Customer', customer.id,
+            str(customer),
+            changes=json.dumps({
+                'sourcing_manager': sourcing_user.get_full_name() if sourcing_user else None,
+                'closing_manager': closing_user.get_full_name() if closing_user else None,
+            }),
+            request=request
+        )
+        messages.success(request, f"Assignment updated for {customer.get_full_name()}.")
+        return redirect('customer_enquiry:dashboard')
+
+    return render(request, 'assign_customer.html', {
+        'customer': customer,
+        'assignment': assignment,
+        'sourcing_managers': sourcing_managers,
+        'closing_managers': closing_managers,
+        'user_role': role,
+    })
+
+
+# ─── Manage Channel Partners (Master Directory) ───────────────────────────────
+
+@login_required
+def manage_channel_partners(request):
+    """Admin page: manage master list of Channel Partners."""
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    message = None
+    error = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            company_name = request.POST.get('company_name', '').strip()
+            partner_name = request.POST.get('partner_name', '').strip()
+            mobile_number = request.POST.get('mobile_number', '').strip()
+            rera_number = request.POST.get('rera_number', '').strip()
+            if not company_name or not partner_name or not mobile_number:
+                error = 'Company Name, Partner Name, and Mobile Number are required.'
+            elif len(mobile_number) != 10 or not mobile_number.isdigit():
+                error = 'Mobile number must be exactly 10 digits.'
+            else:
+                new_cp = ChannelPartnerMaster.objects.create(
+                    company_name=company_name,
+                    partner_name=partner_name,
+                    mobile_number=mobile_number,
+                    rera_number=rera_number,
+                )
+                message = f'Channel Partner "{company_name} — {partner_name}" added successfully.'
+                log_action(request.user, 'cp_add', 'ChannelPartnerMaster', new_cp.id,
+                           f'{company_name} — {partner_name}', request=request)
+
+        elif action == 'delete':
+            cp_id = request.POST.get('cp_id')
+            cp = get_object_or_404(ChannelPartnerMaster, pk=cp_id)
+            name = str(cp)
+            cp.delete()
+            message = f'"{name}" has been removed.'
+            log_action(request.user, 'delete', 'ChannelPartnerMaster', cp_id, name, request=request)
+
+        elif action == 'toggle_active':
+            cp_id = request.POST.get('cp_id')
+            cp = get_object_or_404(ChannelPartnerMaster, pk=cp_id)
+            cp.is_active = not cp.is_active
+            cp.save()
+            status = 'activated' if cp.is_active else 'deactivated'
+            message = f'"{cp.company_name}" has been {status}.'
+            log_action(request.user, 'cp_toggle', 'ChannelPartnerMaster', cp.id,
+                       f'{cp.company_name} — {status}', request=request)
+
+    search = request.GET.get('search', '')
+    partners = ChannelPartnerMaster.objects.all()
+    if search:
+        partners = partners.filter(
+            Q(company_name__icontains=search) |
+            Q(partner_name__icontains=search) |
+            Q(mobile_number__icontains=search)
+        )
+
+    return render(request, 'manage_channel_partners.html', {
+        'partners': partners,
+        'search': search,
+        'message': message,
+        'error': error,
+    })
+
+
+@login_required
+def channel_partners_api(request):
+    """Return active channel partners as JSON for auto-fill in forms."""
+    from django.http import JsonResponse
+    partners = ChannelPartnerMaster.objects.filter(is_active=True).values(
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+    )
+    return JsonResponse({'partners': list(partners)})
+
+
+# ─── Audit Trail ─────────────────────────────────────────────────────────────
+
+@login_required
+def audit_trail(request):
+    """View audit logs. Only admin and super admin can access."""
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin'):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Access denied.")
+
+    logs = AuditLog.objects.select_related('user', 'user__profile').order_by('-timestamp')
+
+    # Filters
+    filter_user = request.GET.get('user', '')
+    filter_action = request.GET.get('action', '')
+    filter_date_from = request.GET.get('date_from', '')
+    filter_date_to = request.GET.get('date_to', '')
+    filter_model = request.GET.get('model', '')
+
+    if filter_user:
+        logs = logs.filter(user__username__icontains=filter_user)
+    if filter_action:
+        logs = logs.filter(action=filter_action)
+    if filter_date_from:
+        logs = logs.filter(timestamp__date__gte=filter_date_from)
+    if filter_date_to:
+        logs = logs.filter(timestamp__date__lte=filter_date_to)
+    if filter_model:
+        logs = logs.filter(model_name__icontains=filter_model)
+
+    model_choices = AuditLog.objects.values_list('model_name', flat=True).distinct().exclude(model_name='').order_by('model_name')
+
+    from django.core.paginator import Paginator
+    logs_limited = logs[:5000]
+    paginator = Paginator(logs_limited, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'audit_trail.html', {
+        'page_obj': page_obj,
+        'total_count': paginator.count,
+        'action_choices': AuditLog.ACTION_CHOICES,
+        'model_choices': model_choices,
+        'filter_user': filter_user,
+        'filter_action': filter_action,
+        'filter_date_from': filter_date_from,
+        'filter_date_to': filter_date_to,
+        'filter_model': filter_model,
+        'user_role': role,
+    })
+
+
+# ─── Revisit ─────────────────────────────────────────────────────────────────
+
+@login_required
+def add_revisit(request, customer_id):
+    """Record a revisit for a customer."""
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    if request.method == 'POST':
+        visit_date = request.POST.get('visit_date', str(timezone.now().date()))
+        remark = request.POST.get('remark', '').strip()
+
+        revisit = CustomerRevisit.objects.create(
+            customer=customer,
+            visit_date=visit_date,
+            remark=remark,
+            created_by=request.user,
+        )
+        log_action(
+            request.user, 'create', 'CustomerRevisit', revisit.id,
+            f"Revisit for {customer.get_full_name()} on {visit_date}",
+            request=request
+        )
+        return JsonResponse({'success': True, 'visit_date': str(revisit.visit_date), 'remark': revisit.remark})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+
+@login_required
+def revisit_history(request, customer_id):
+    """Return revisit history for a customer as JSON."""
+    customer = get_object_or_404(Customer, id=customer_id)
+    revisits = customer.revisits.select_related('created_by').order_by('-visit_date')
+    data = [
+        {
+            'visit_date': str(r.visit_date),
+            'remark': r.remark,
+            'recorded_by': r.created_by.get_full_name() or r.created_by.username if r.created_by else 'Unknown',
+        }
+        for r in revisits
+    ]
+    return JsonResponse({'revisits': data, 'count': len(data)})

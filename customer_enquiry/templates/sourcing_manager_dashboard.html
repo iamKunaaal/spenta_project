@@ -1,0 +1,728 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sourcing Manager Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            zoom: 0.9;
+        }
+
+        .header {
+            position: relative;
+            padding: 24px 36px;
+            background: #333333;
+            color: #374151;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-text { flex: 1; text-align: center; }
+
+        .title {
+            font-weight: 400;
+            font-size: 32px;
+            line-height: 1.1;
+            margin: 0 0 6px 0;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 15px;
+            color: #fff;
+            font-weight: 400;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .dec {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 1;
+        }
+
+        .dec img { height: 80px; width: auto; }
+
+        .logout-btn {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%);
+            padding: 8px 18px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            z-index: 3;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.03"><circle cx="30" cy="30" r="1"/></g></svg>');
+            pointer-events: none;
+        }
+
+        .filters-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group { display: flex; flex-direction: column; }
+
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .action-buttons-top {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label { color: #666; font-size: 14px; }
+
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+        tr:hover { background-color: #f8f9fa; }
+
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary   { background: #007bff; color: white; }
+        .btn-success   { background: #28a745; color: white; }
+        .btn-info      { background: #17a2b8; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .assessment-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+
+        .assessment-complete { background: #d4edda; color: #155724; }
+        .assessment-pending  { background: #fff3cd; color: #856404; }
+
+        .property-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .phone-number { font-weight: 500; color: #495057; }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .filter-info {
+            background: #e9f7ef;
+            border: 1px solid #27ae60;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #1e8449;
+            display: none;
+        }
+
+        .filter-info.active { display: block; }
+
+        .no-results-container {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .no-results-container h3 { color: #888; margin-bottom: 10px; }
+        .no-results-container p  { margin-bottom: 20px; line-height: 1.5; }
+        .no-results-container .btn { margin: 0 5px; }
+
+        .loading { display: none; text-align: center; padding: 20px; }
+
+        @media (max-width: 1024px) {
+            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 700px; }
+            th, td { padding: 10px 8px; font-size: 13px; }
+            .title { font-size: 26px; }
+            .dec img { height: 60px; }
+        }
+
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .header { padding: 18px 20px; }
+            .brand-row { padding: 0 90px; }
+            .title { font-size: 20px; }
+            .subtitle { font-size: 12px; }
+            .logout-btn { font-size: 11px; padding: 6px 12px; }
+            .filters-container { grid-template-columns: repeat(2, 1fr); }
+            .action-buttons-top { flex-wrap: wrap; }
+            .action-buttons-top .btn { flex: 1 1 calc(50% - 5px); text-align: center; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 650px; }
+            th, td { padding: 8px 6px; font-size: 12px; white-space: nowrap; }
+            .btn { padding: 5px 8px; font-size: 11px; }
+        }
+
+        @media (max-width: 480px) {
+            body { margin: 8px; }
+            .dec img { height: 35px; }
+            .header { padding: 14px 16px; }
+            .brand-row { padding: 0 80px; margin-bottom: 0; }
+            .title { font-size: 17px; }
+            .subtitle { display: none; }
+            .logout-btn { font-size: 11px; padding: 5px 10px; left: 16px; }
+            .filters-container { grid-template-columns: 1fr; }
+            .action-buttons-top .btn { flex: 1 1 100%; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .stat-number { font-size: 1.5em; }
+            .stat-label { font-size: 12px; }
+            table th:nth-child(3), table td:nth-child(3),
+            table th:nth-child(5), table td:nth-child(5),
+            table th:nth-child(6), table td:nth-child(6),
+            table th:nth-child(7), table td:nth-child(7) { display: none; }
+            table { min-width: 480px; }
+            th, td { white-space: normal; padding: 8px 6px; }
+            td:first-child { display: table-cell; vertical-align: middle; }
+            .property-tag { display: inline-block; font-size: 9px; padding: 1px 5px; margin-bottom: 3px; }
+            .form-number-display { display: block; font-size: 11px; word-break: break-all; }
+            .btn { display: block; width: 100%; text-align: center; margin-bottom: 4px; white-space: nowrap; }
+            .action-buttons { flex-direction: column; gap: 4px; min-width: 110px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="{% url 'customer_enquiry:logout' %}" class="logout-btn">Logout</a>
+        <div class="brand-row">
+            <div class="header-text">
+                <div class="title">Customer Enquiry</div>
+                <div class="subtitle">
+                    Welcome, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                    &nbsp;·&nbsp; Sourcing Manager
+                </div>
+            </div>
+        </div>
+        <div class="dec">
+            <img src="{% static 'media/spenta_white.png' %}" alt="Spenta Logo" onerror="this.style.display='none';">
+        </div>
+    </header>
+
+    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="margin: 0 0 20px 0;">My Assigned Leads</h2>
+
+        <!-- Filters -->
+        <div class="filters-container">
+            <div class="filter-group">
+                <label for="searchInput">Search</label>
+                <input type="text" id="searchInput" placeholder="Search by name, email, phone, form number...">
+            </div>
+
+            <div class="filter-group">
+                <label for="propertyFilter">Property Filter</label>
+                <select id="propertyFilter">
+                    <option value="">All Properties</option>
+                    {% for project in active_projects %}
+                        <option value="{{ project.project_prefix }}">{{ project.project_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="dateFrom">Date From</label>
+                <input type="date" id="dateFrom">
+            </div>
+
+            <div class="filter-group">
+                <label for="dateTo">Date To</label>
+                <input type="date" id="dateTo">
+            </div>
+
+            <div class="filter-group">
+                <label for="assessmentFilter">Assessment Status</label>
+                <select id="assessmentFilter">
+                    <option value="">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="bookingFilter">Booking Status</label>
+                <select id="bookingFilter">
+                    <option value="">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons-top">
+            <button class="btn btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
+            <button class="btn btn-success" onclick="exportToExcel()">📊 Export to Excel</button>
+            <button class="btn btn-secondary" onclick="clearFilters()">🔄 Clear Filters</button>
+            <button class="btn btn-info" onclick="refreshData()">♻️ Refresh</button>
+        </div>
+    </div>
+
+    <!-- Filter Information -->
+    <div class="filter-info" id="filterInfo"></div>
+
+    <!-- Statistics -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-number" id="totalLeads">{{ customers|length }}</div>
+            <div class="stat-label">Total Leads</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="filteredLeads">{{ customers|length }}</div>
+            <div class="stat-label">Filtered Results</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="completedAssessments">0</div>
+            <div class="stat-label">Assessments Done</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="completedBookings">0</div>
+            <div class="stat-label">Bookings Done</div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading" id="loadingIndicator"><p>Loading...</p></div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <table id="leadsTable">
+            <thead>
+                <tr>
+                    <th>Form Number</th>
+                    <th>Full Name</th>
+                    <th>Property</th>
+                    <th>Phone Number</th>
+                    <th>City</th>
+                    <th>Lead Source(s)</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="leadsTableBody">
+                {% for customer in customers %}
+                <tr data-property=""
+                    data-date="{{ customer.created_at|date:'Y-m-d' }}"
+                    data-assessment="{% if customer.sales_assessment and customer.sales_assessment.lead_classification %}completed{% else %}pending{% endif %}"
+                    data-booking="{% if customer.booking_applications.exists %}completed{% else %}pending{% endif %}"
+                    data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}"
+                    data-form-number="{{ customer.form_number }}"
+                    style="display: table-row;">
+
+                    <td>
+                        <span class="property-tag property-tag-js">{{ customer.form_number|slice:':3' }}</span>
+                        <span class="form-number-display">{{ customer.form_number }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ customer.get_full_name }}</strong>
+                        <br><small style="color: #666;">{{ customer.email }}</small>
+                    </td>
+                    <td class="property-name-js">Loading...</td>
+                    <td>
+                        <span class="phone-number">{{ customer.phone_number|default:'Not Provided' }}</span>
+                    </td>
+                    <td>{{ customer.city }}</td>
+                    <td>
+                        {% for source in customer.sources.all %}
+                            {% with display_text=source.get_source_type_display %}
+                                {% if 'Social Media' in display_text %}Social Media
+                                {% else %}{{ display_text }}{% endif %}{% if not forloop.last %}, {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                        {% if customer.additional_channel_partners.exists %}
+                            <br><span style="background:#fff3cd;color:#856404;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;border:1px solid #ffc107;">⚠ Under Review</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
+                    <td class="action-buttons">
+                        <!-- View (read-only) -->
+                        <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info">View</a>
+
+                        <!-- Assessment -->
+                        <a href="{% url 'customer_enquiry:internal_sales_assessment' customer.pk %}" class="btn btn-success">
+                            Assessment
+                            {% if customer.sales_assessment and customer.sales_assessment.lead_classification %}
+                                <span class="assessment-status assessment-complete">✓</span>
+                            {% else %}
+                                <span class="assessment-status assessment-pending">⚠</span>
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="no-results">No leads assigned to you yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% csrf_token %}
+
+    <script>
+        let allRows = [];
+        let filteredRows = [];
+        let searchTimeout;
+
+        const projectsData = {{ projects_data_json|safe }};
+
+        function getPropertyFromFormNumber(formNumber) {
+            if (!formNumber) return { code: '', name: 'Unknown' };
+            let prefix = '';
+            if (formNumber.includes('-')) {
+                const parts = formNumber.split('-');
+                if (parts.length >= 3 && !(/^\d+$/.test(parts[1]))) {
+                    prefix = `${parts[0]}-${parts[1]}`.toUpperCase();
+                } else {
+                    prefix = parts[0].toUpperCase();
+                }
+            } else {
+                prefix = formNumber.substring(0, 3).toUpperCase();
+            }
+            if (projectsData[prefix]) return { code: projectsData[prefix].code, name: projectsData[prefix].name };
+            if (prefix.includes('-')) {
+                const simplePrefix = prefix.split('-')[0];
+                if (projectsData[simplePrefix]) return { code: projectsData[simplePrefix].code, name: projectsData[simplePrefix].name };
+            }
+            return { code: prefix, name: 'Unknown Property' };
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const allTableRows = Array.from(document.querySelectorAll('#leadsTableBody tr'));
+            allRows = allTableRows.filter(row => row.dataset.formNumber && !row.querySelector('.no-results'));
+
+            allRows.forEach(row => {
+                const formNumber = row.dataset.formNumber;
+                if (formNumber) {
+                    const property = getPropertyFromFormNumber(formNumber);
+                    row.dataset.property = property.code;
+                    const propertyTag = row.querySelector('.property-tag-js');
+                    if (propertyTag) propertyTag.textContent = property.code;
+                    const propertyName = row.querySelector('.property-name-js');
+                    if (propertyName) propertyName.textContent = property.name;
+                    const formNumberDisplay = row.querySelector('.form-number-display');
+                    if (formNumberDisplay && formNumberDisplay.textContent.includes('-')) {
+                        const parts = formNumberDisplay.textContent.trim().split('-');
+                        parts[0] = parts[0].toUpperCase();
+                        formNumberDisplay.textContent = parts.join('-');
+                    }
+                }
+            });
+
+            filteredRows = [...allRows];
+
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function(e) {
+                const currentValue = e.target.value.trim();
+                clearTimeout(searchTimeout);
+                if (currentValue === '') {
+                    applyFiltersExceptSearch();
+                    setTimeout(() => updateTableDisplay(), 10);
+                } else {
+                    searchTimeout = setTimeout(() => applyFilters(), 300);
+                }
+            });
+            document.getElementById('propertyFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateFrom').addEventListener('change', applyFilters);
+            document.getElementById('dateTo').addEventListener('change', applyFilters);
+            document.getElementById('assessmentFilter').addEventListener('change', applyFilters);
+            document.getElementById('bookingFilter').addEventListener('change', applyFilters);
+
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        });
+
+        function applyFiltersExceptSearch() {
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            filteredRows = allRows.filter(row => {
+                if (!row.dataset || !row.cells || row.cells.length < 8) return false;
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                if (propertyFilter && property !== propertyFilter) return false;
+                if (dateFrom && date < dateFrom) return false;
+                if (dateTo && date > dateTo) return false;
+                if (assessmentFilter && assessment !== assessmentFilter) return false;
+                if (bookingFilter && booking !== bookingFilter) return false;
+                return true;
+            });
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            filteredRows = allRows.filter(row => {
+                if (!row.dataset || !row.cells || row.cells.length < 8) return false;
+                const searchData = row.dataset.search || '';
+                const property = row.dataset.property || '';
+                const date = row.dataset.date || '';
+                const assessment = row.dataset.assessment || '';
+                const booking = row.dataset.booking || '';
+                if (searchTerm && !searchData.includes(searchTerm)) return false;
+                if (propertyFilter && property !== propertyFilter) return false;
+                if (dateFrom && date < dateFrom) return false;
+                if (dateTo && date > dateTo) return false;
+                if (assessmentFilter && assessment !== assessmentFilter) return false;
+                if (bookingFilter && booking !== bookingFilter) return false;
+                return true;
+            });
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function updateTableDisplay() {
+            const tbody = document.getElementById('leadsTableBody');
+            const noResultsEls = tbody.querySelectorAll('.no-results-container, .no-results');
+            noResultsEls.forEach(el => { const row = el.closest('tr'); if (row) row.remove(); });
+            tbody.querySelectorAll('tr').forEach(row => row.style.display = 'none');
+
+            if (filteredRows.length === 0) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = `
+                    <td colspan="8" class="no-results-container">
+                        <h3>🔍 No Results Found</h3>
+                        <p>We couldn't find any leads matching your current filter criteria.</p>
+                        <button class="btn btn-primary" onclick="clearFilters()">🔄 Clear All Filters</button>
+                        <button class="btn btn-secondary" onclick="refreshData()">♻️ Refresh Data</button>
+                    </td>`;
+                tbody.appendChild(noResultsRow);
+            } else {
+                filteredRows.forEach(row => {
+                    row.style.display = 'table-row';
+                    if (row.parentNode !== tbody) tbody.appendChild(row);
+                });
+            }
+        }
+
+        function updateStatistics() {
+            document.getElementById('filteredLeads').textContent = filteredRows.length;
+            let completedAssessments = 0;
+            let completedBookings = 0;
+            filteredRows.forEach(row => {
+                if (row.dataset.assessment === 'completed') completedAssessments++;
+                if (row.dataset.booking === 'completed') completedBookings++;
+            });
+            document.getElementById('completedAssessments').textContent = completedAssessments;
+            document.getElementById('completedBookings').textContent = completedBookings;
+        }
+
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            const activeFilters = [];
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+
+            if (searchTerm) activeFilters.push(`Search: "${searchTerm}"`);
+            if (propertyFilter) {
+                const sel = document.getElementById('propertyFilter');
+                activeFilters.push(`Property: ${sel.options[sel.selectedIndex].text}`);
+            }
+            if (dateFrom) activeFilters.push(`From: ${dateFrom}`);
+            if (dateTo) activeFilters.push(`To: ${dateTo}`);
+            if (assessmentFilter) activeFilters.push(`Assessment: ${assessmentFilter}`);
+            if (bookingFilter) activeFilters.push(`Booking: ${bookingFilter}`);
+
+            if (activeFilters.length > 0) {
+                filterInfo.innerHTML = `🔍 Active Filters: ${activeFilters.join(' • ')} <button class="btn btn-secondary" onclick="clearFilters()" style="margin-left:10px;padding:2px 8px;font-size:11px;">Clear All</button>`;
+                filterInfo.classList.add('active');
+            } else {
+                filterInfo.classList.remove('active');
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('propertyFilter').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('assessmentFilter').value = '';
+            document.getElementById('bookingFilter').value = '';
+            clearTimeout(searchTimeout);
+            filteredRows = [...allRows];
+            updateTableDisplay();
+            updateStatistics();
+            updateFilterInfo();
+        }
+
+        function refreshData() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            window.location.reload();
+        }
+
+        function exportToExcel() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+            const searchTerm = document.getElementById('searchInput').value;
+            const propertyFilter = document.getElementById('propertyFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const assessmentFilter = document.getElementById('assessmentFilter').value;
+            const bookingFilter = document.getElementById('bookingFilter').value;
+            const visibleFormNumbers = filteredRows.map(row => row.dataset.formNumber).filter(Boolean);
+
+            const formData = new FormData();
+            formData.append('search', searchTerm);
+            formData.append('property', propertyFilter);
+            formData.append('date_from', dateFrom);
+            formData.append('date_to', dateTo);
+            formData.append('assessment', assessmentFilter);
+            formData.append('booking', bookingFilter);
+            formData.append('form_numbers', visibleFormNumbers.join(','));
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('/export-leads/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) return response.blob();
+                throw new Error('Export failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const now = new Date();
+                const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+                const propertyName = propertyFilter ? `_${propertyFilter}` : '_Assigned';
+                a.download = `leads_export${propertyName}_${timestamp}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                loadingIndicator.style.display = 'none';
+                alert('Export completed successfully!');
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                loadingIndicator.style.display = 'none';
+                alert('Export failed. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>

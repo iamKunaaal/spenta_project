@@ -1354,30 +1354,106 @@
 
                         <!-- Channel Partner Section (conditional) -->
                         <div class="conditional-section" id="channelPartnerSection">
-                            <h4>Channel Partner Details</h4>
-                            <div class="grid cols-2" style="margin-top: 12px;">
-                                <div>
-                                    <label for="partnerCompany" class="required">Company Name</label>
-                                    <input class="field" id="partnerCompany" name="partner_company_name">
-                                    <div class="error-message">Please enter company name</div>
-                                </div>     
-                                <div>
-                                    <label for="partnerName" class="required">Channel Partner Name</label>
-                                    <input class="field" id="partnerName" name="partner_name">
-                                    <div class="error-message">Please enter partner name</div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                <h4 style="margin:0;">Channel Partner Details</h4>
+                                <button type="button" id="addCpBtn" onclick="addChannelPartner()" style="background:#28a745;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;">+ Add CP</button>
+                            </div>
+                            <!-- CP #1 (primary) -->
+                            <div class="cp-entry" id="cpEntry1">
+                                <div style="background:#f8f9fa;border-left:3px solid #007bff;padding:10px 12px;margin-top:10px;border-radius:4px;">
+                                    <strong style="font-size:13px;color:#495057;">Channel Partner #1</strong>
+                                </div>
+                                <div class="grid cols-2" style="margin-top: 8px;">
+                                    <div>
+                                        <label for="partnerCompanySearch" class="required">Company Name</label>
+                                        <!-- Searchable dropdown -->
+                                        <div style="position:relative;">
+                                            <input class="field" id="partnerCompanySearch" placeholder="Type to search company..." autocomplete="off">
+                                            <input type="hidden" id="partnerCompany" name="partner_company_name">
+                                            <div id="cpDropdownList" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                                        </div>
+                                        <div class="error-message">Please select a company name</div>
+                                    </div>
+                                    <div>
+                                        <label for="partnerName" class="required">Channel Partner Name</label>
+                                        <input class="field" id="partnerName" name="partner_name">
+                                        <div class="error-message">Please enter partner name</div>
+                                    </div>
+                                </div>
+                                <div class="grid cols-2" style="margin-top: 8px;">
+                                    <div>
+                                        <label for="partnerMobile" class="required">Mobile No.</label>
+                                        <input class="field" id="partnerMobile" name="partner_mobile" pattern="[0-9]{10}" maxlength="10">
+                                        <div class="error-message">Please enter 10-digit mobile number</div>
+                                    </div>
+                                    <div>
+                                        <label for="reraNo" class="required">RERA No.</label>
+                                        <input class="field" id="reraNo" name="partner_rera">
+                                        <div class="error-message">Please enter RERA number</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="grid cols-2" style="margin-top: 12px;">
-                                <div>
-                                    <label for="partnerMobile" class="required">Mobile No.</label>
-                                    <input class="field" id="partnerMobile" name="partner_mobile" pattern="[0-9]{10}" maxlength="10">
-                                    <div class="error-message">Please enter 10-digit mobile number</div>
-                                </div>
-                                <div>
-                                    <label for="reraNo" class="required">RERA No.</label>
-                                    <input class="field" id="reraNo" name="partner_rera">
-                                    <div class="error-message">Please enter RERA number</div>
-                                </div>
+
+                            <script>
+                            (function() {
+                                const cpData = {{ cp_master_json|default:'[]'|safe }};
+                                const searchInput = document.getElementById('partnerCompanySearch');
+                                const hiddenInput = document.getElementById('partnerCompany');
+                                const dropList   = document.getElementById('cpDropdownList');
+
+                                function renderList(items) {
+                                    if (!items.length) {
+                                        dropList.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:#9ca3af;">No matching companies found</div>';
+                                    } else {
+                                        dropList.innerHTML = items.map(cp =>
+                                            `<div class="cp-sdl-item" data-company="${cp.company_name}" data-name="${cp.partner_name}" data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}"
+                                                style="padding:9px 14px;cursor:pointer;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">
+                                                <strong>${cp.company_name}</strong>
+                                                <span style="color:#6b7280;font-size:12px;margin-left:6px;">${cp.partner_name}</span>
+                                            </div>`
+                                        ).join('');
+                                        dropList.querySelectorAll('.cp-sdl-item').forEach(el => {
+                                            el.addEventListener('mouseover', () => el.style.background = '#f0f4ff');
+                                            el.addEventListener('mouseout',  () => el.style.background = '');
+                                            el.addEventListener('mousedown', function(e) {
+                                                e.preventDefault();
+                                                searchInput.value        = this.dataset.company;
+                                                hiddenInput.value        = this.dataset.company;
+                                                document.getElementById('partnerName').value   = this.dataset.name;
+                                                document.getElementById('partnerMobile').value = this.dataset.mobile;
+                                                document.getElementById('reraNo').value        = this.dataset.rera;
+                                                dropList.style.display = 'none';
+                                            });
+                                        });
+                                    }
+                                    dropList.style.display = 'block';
+                                }
+
+                                searchInput.addEventListener('input', function() {
+                                    const q = this.value.trim().toLowerCase();
+                                    hiddenInput.value = this.value.trim(); // allow manual entry too
+                                    if (!q) { dropList.style.display = 'none'; return; }
+                                    renderList(cpData.filter(cp => cp.company_name.toLowerCase().includes(q) || cp.partner_name.toLowerCase().includes(q)));
+                                });
+
+                                searchInput.addEventListener('focus', function() {
+                                    const q = this.value.trim().toLowerCase();
+                                    if (q) renderList(cpData.filter(cp => cp.company_name.toLowerCase().includes(q) || cp.partner_name.toLowerCase().includes(q)));
+                                });
+
+                                searchInput.addEventListener('blur', function() {
+                                    setTimeout(() => { dropList.style.display = 'none'; }, 150);
+                                    // Sync hidden value on blur
+                                    hiddenInput.value = this.value.trim();
+                                });
+                            })();
+                            </script>
+                            <!-- Additional CPs added dynamically -->
+                            <div id="additionalCpContainer"></div>
+
+                            <!-- Source Under Review notice -->
+                            <div id="sourceUnderReviewNotice" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:10px 14px;margin-top:12px;font-size:13px;color:#856404;">
+                                ⚠️ <strong>Source Under Review:</strong> Multiple Channel Partners have been added. The source status will be set to "Source Under Review".
                             </div>
                         </div>
 
@@ -1399,8 +1475,13 @@
                         </div>
                     </div>
 
+                    <!-- Hidden fields for save_step -->
+                    <input type="hidden" name="customer_id" id="hiddenCustomerId" value="">
+                    <input type="hidden" name="additional_cp_count" id="additionalCpCount" value="0">
+
                     <div class="actions">
                         <button type="button" class="btn btn-secondary" id="prevBtn">← Previous</button>
+                        <button type="button" class="btn btn-save" id="saveBtn" style="background:#6c757d;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">💾 Save</button>
                         <button type="button" class="btn" id="nextBtn">Continue →</button>
                     </div>
                 </form>
@@ -1414,7 +1495,227 @@
         const steps = [...document.querySelectorAll('.step')];
         const nextBtn = document.getElementById('nextBtn');
         const prevBtn = document.getElementById('prevBtn');
+        const saveBtn = document.getElementById('saveBtn');
         const form = document.getElementById('propertyInquiryForm');
+
+        // ── Additional Channel Partners ────────────────────────────────────
+        let additionalCpCount = 0;
+        const MAX_ADDITIONAL_CP = 2; // 1 primary + 2 additional = 3 total
+
+        // CP master data from backend (for auto-fill)
+        const cpMasterData = {{ cp_master_json|default:'[]'|safe }};
+
+        function addChannelPartner() {
+            if (additionalCpCount >= MAX_ADDITIONAL_CP) {
+                alert('Maximum 3 Channel Partners allowed (1 primary + 2 additional).');
+                return;
+            }
+            additionalCpCount++;
+            document.getElementById('additionalCpCount').value = additionalCpCount;
+            if (additionalCpCount >= MAX_ADDITIONAL_CP) {
+                const btn = document.getElementById('addCpBtn');
+                if (btn) btn.style.display = 'none';
+            }
+            const idx = additionalCpCount + 1;
+            const container = document.getElementById('additionalCpContainer');
+            const div = document.createElement('div');
+            div.className = 'cp-entry';
+            div.id = `cpEntry${idx}`;
+            div.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;background:#f8f9fa;border-left:3px solid #28a745;padding:10px 12px;margin-top:10px;border-radius:4px;">
+                    <strong style="font-size:13px;color:#495057;">Channel Partner #${idx}</strong>
+                    <button type="button" onclick="removeCp(${idx})" style="background:#dc3545;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px;">✕ Remove</button>
+                </div>
+                <div class="grid cols-2" style="margin-top:8px;">
+                    <div>
+                        <label class="required">Company Name</label>
+                        <div style="position:relative;">
+                            <input class="field" id="cpSearch_${idx}" placeholder="Type to search company..." autocomplete="off">
+                            <input type="hidden" name="cp_company_name_${idx}" id="cpHidden_${idx}">
+                            <div id="cpList_${idx}" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="required">Channel Partner Name</label>
+                        <input class="field" id="cpName_${idx}" name="cp_partner_name_${idx}" placeholder="Partner Name" required>
+                    </div>
+                </div>
+                <div class="grid cols-2" style="margin-top:8px;">
+                    <div>
+                        <label class="required">Mobile No.</label>
+                        <input class="field" id="cpMobile_${idx}" name="cp_mobile_${idx}" placeholder="10-digit mobile" pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+                    <div>
+                        <label>RERA No.</label>
+                        <input class="field" id="cpRera_${idx}" name="cp_rera_${idx}" placeholder="RERA number">
+                    </div>
+                </div>`;
+            container.appendChild(div);
+            initAdditionalCpSearch(idx);
+            updateSourceUnderReviewNotice();
+        }
+
+        function initAdditionalCpSearch(idx) {
+            const searchInput = document.getElementById(`cpSearch_${idx}`);
+            const hiddenInput = document.getElementById(`cpHidden_${idx}`);
+            const dropList    = document.getElementById(`cpList_${idx}`);
+            if (!searchInput) return;
+
+            function renderList(items) {
+                if (!items.length) {
+                    dropList.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:#9ca3af;">No matching companies found</div>';
+                } else {
+                    dropList.innerHTML = items.map(cp =>
+                        `<div class="cp-sdl-item-dyn"
+                            data-company="${cp.company_name}" data-name="${cp.partner_name}"
+                            data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}"
+                            style="padding:9px 14px;cursor:pointer;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">
+                            <strong>${cp.company_name}</strong>
+                            <span style="color:#6b7280;font-size:12px;margin-left:6px;">${cp.partner_name}</span>
+                        </div>`
+                    ).join('');
+                    dropList.querySelectorAll('.cp-sdl-item-dyn').forEach(el => {
+                        el.addEventListener('mouseover', () => el.style.background = '#f0f4ff');
+                        el.addEventListener('mouseout',  () => el.style.background = '');
+                        el.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            searchInput.value = this.dataset.company;
+                            hiddenInput.value = this.dataset.company;
+                            document.getElementById(`cpName_${idx}`).value   = this.dataset.name;
+                            document.getElementById(`cpMobile_${idx}`).value = this.dataset.mobile;
+                            document.getElementById(`cpRera_${idx}`).value   = this.dataset.rera;
+                            dropList.style.display = 'none';
+                        });
+                    });
+                }
+                dropList.style.display = 'block';
+            }
+
+            searchInput.addEventListener('input', function() {
+                const q = this.value.trim().toLowerCase();
+                hiddenInput.value = this.value.trim();
+                if (!q) { dropList.style.display = 'none'; return; }
+                renderList(cpMasterData.filter(cp =>
+                    cp.company_name.toLowerCase().includes(q) || cp.partner_name.toLowerCase().includes(q)
+                ));
+            });
+
+            searchInput.addEventListener('focus', function() {
+                const q = this.value.trim().toLowerCase();
+                if (q) renderList(cpMasterData.filter(cp =>
+                    cp.company_name.toLowerCase().includes(q) || cp.partner_name.toLowerCase().includes(q)
+                ));
+            });
+
+            searchInput.addEventListener('blur', function() {
+                setTimeout(() => { dropList.style.display = 'none'; }, 150);
+                hiddenInput.value = this.value.trim();
+            });
+        }
+
+        function removeCp(idx) {
+            const el = document.getElementById(`cpEntry${idx}`);
+            if (el) el.remove();
+            additionalCpCount = document.querySelectorAll('#additionalCpContainer .cp-entry').length;
+            document.getElementById('additionalCpCount').value = additionalCpCount;
+            const btn = document.getElementById('addCpBtn');
+            if (btn && additionalCpCount < MAX_ADDITIONAL_CP) btn.style.display = '';
+            updateSourceUnderReviewNotice();
+        }
+
+        function updateSourceUnderReviewNotice() {
+            const notice = document.getElementById('sourceUnderReviewNotice');
+            if (notice) {
+                notice.style.display = additionalCpCount > 0 ? 'block' : 'none';
+            }
+        }
+
+        // ── Save Step (AJAX) ──────────────────────────────────────────────
+        function saveCurrentStep(showFeedback) {
+            const formData = new FormData(form);
+            formData.set('step', current);
+            formData.set('property_code', document.getElementById('hiddenPropertyCode').value || '');
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            return fetch('/save-step/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('hiddenCustomerId').value = data.customer_id;
+                    if (showFeedback) {
+                        window.location.href = '/thank-you/';
+                    }
+                } else if (showFeedback) {
+                    alert('Save failed: ' + (data.error || 'Unknown error'));
+                }
+                return data;
+            })
+            .catch(err => {
+                if (showFeedback) alert('Save error: ' + err);
+            });
+        }
+
+        function validateCurrentStepForSave() {
+            const currentSection = sections[current - 1];
+            let isValid = true;
+
+            // Clear previous errors in this section
+            currentSection.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            currentSection.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
+            // Check text/email/tel/select/textarea with required attribute (skip hidden)
+            currentSection.querySelectorAll(
+                'input[required]:not([type="radio"]):not([type="hidden"]), select[required], textarea[required]'
+            ).forEach(field => {
+                // Skip fields inside hidden conditional sections
+                const cond = field.closest('.conditional-section');
+                if (cond && cond.style.display === 'none') return;
+
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('error');
+                    const errMsg = field.closest('div') && field.closest('div').querySelector('.error-message');
+                    if (errMsg) errMsg.style.display = 'block';
+                }
+            });
+
+            // Check required radio groups
+            const radioGroups = {};
+            currentSection.querySelectorAll('input[type="radio"][required]').forEach(radio => {
+                if (!radioGroups[radio.name]) radioGroups[radio.name] = { checked: false, first: radio };
+                if (radio.checked) radioGroups[radio.name].checked = true;
+            });
+            Object.values(radioGroups).forEach(grp => {
+                if (!grp.checked) {
+                    isValid = false;
+                    const container = grp.first.closest('.radio-group');
+                    if (container) container.classList.add('error');
+                    const errMsg = grp.first.closest('div') && grp.first.closest('div').querySelector('.error-message');
+                    if (errMsg) errMsg.style.display = 'block';
+                }
+            });
+
+            if (!isValid) {
+                // Scroll to first error field
+                const firstErr = currentSection.querySelector('.error');
+                if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            return isValid;
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                if (validateCurrentStepForSave()) {
+                    saveCurrentStep(true);
+                }
+            });
+        }
 
         // Function to fetch project data dynamically
         function fetchAndDisplayProjectData(propertyCode) {

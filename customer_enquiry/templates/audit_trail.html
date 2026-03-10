@@ -1,0 +1,215 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Trail — Spenta</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; zoom: 0.9; }
+
+        .header {
+            position: relative; padding: 24px 36px; background: #333;
+            color: #fff; overflow: hidden; margin-bottom: 20px;
+        }
+        .header .title { font-size: 28px; font-weight: 400; color: #fff; text-align: center; margin: 0 0 4px 0; }
+        .header .subtitle { font-size: 14px; color: #ccc; text-align: center; margin: 0; }
+        .logout-btn {
+            position: absolute; top: 50%; left: 30px; transform: translateY(-50%);
+            padding: 8px 18px; background: rgba(255,255,255,0.15); color: #fff;
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 6px;
+            font-size: 13px; text-decoration: none; font-weight: 600;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+        .dec { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); }
+        .dec img { height: 70px; width: auto; }
+
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+
+        .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-weight: 600; font-size: 12px; color: #555; }
+        .filter-group input,
+        .filter-group select { padding: 8px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; min-width: 140px; }
+
+        .btn { padding: 8px 18px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #007bff; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn:hover { opacity: 0.88; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: top; }
+        tr:hover td { background: #f8f9fa; }
+
+        /* Action badges */
+        .action-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+        .action-create      { background: #d4edda; color: #155724; }
+        .action-update      { background: #cce5ff; color: #004085; }
+        .action-edit        { background: #cce5ff; color: #004085; }
+        .action-delete      { background: #f8d7da; color: #721c24; }
+        .action-login       { background: #d1ecf1; color: #0c5460; }
+        .action-logout      { background: #e2e3e5; color: #383d41; }
+        .action-assign      { background: #fff3cd; color: #856404; }
+        .action-submit      { background: #d4edda; color: #155724; }
+        .action-assessment  { background: #e8d5f5; color: #6610f2; }
+        .action-booking     { background: #fde8d8; color: #c0392b; }
+        .action-export      { background: #d1f2eb; color: #0e6655; }
+        .action-password_reset { background: #fef9e7; color: #b7950b; border: 1px solid #f1c40f; }
+        .action-cp_add      { background: #d4edda; color: #155724; }
+        .action-cp_remove   { background: #f8d7da; color: #721c24; }
+        .action-cp_toggle   { background: #fff3cd; color: #856404; }
+
+        /* Role badges */
+        .role-badge { padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .role-admin        { background: #343a40; color: #fff; }
+        .role-super_admin  { background: #6f42c1; color: #fff; }
+        .role-gre          { background: #17a2b8; color: #fff; }
+        .role-sourcing_manager { background: #fd7e14; color: #fff; }
+        .role-closing_manager  { background: #28a745; color: #fff; }
+        .role-system       { background: #adb5bd; color: #fff; }
+
+        .changes-cell { max-width: 220px; word-break: break-word; color: #555; font-size: 11px; }
+        .changes-pretty { background: #f8f9fa; border-radius: 4px; padding: 6px 8px; font-family: monospace; font-size: 11px; white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
+        .no-results { text-align: center; padding: 40px; color: #999; }
+        .count-badge { background: #007bff; color: #fff; border-radius: 12px; padding: 2px 9px; font-size: 12px; font-weight: 700; margin-left: 8px; }
+    </style>
+</head>
+<body>
+<header class="header">
+    <a href="{% url 'customer_enquiry:dashboard' %}" class="logout-btn">← Back</a>
+    <div class="title">Audit Trail</div>
+    <div class="subtitle">Track all major system activities</div>
+    <div class="dec"><img src="{% static 'media/spenta_white.png' %}" alt="" onerror="this.style.display='none'"></div>
+</header>
+
+<div class="card">
+    <form method="GET" style="margin:0;">
+        <div class="filters">
+            <div class="filter-group">
+                <label>User</label>
+                <input type="text" name="user" value="{{ filter_user }}" placeholder="Username...">
+            </div>
+            <div class="filter-group">
+                <label>Action</label>
+                <select name="action">
+                    <option value="">All Actions</option>
+                    {% for val, label in action_choices %}
+                        <option value="{{ val }}" {% if filter_action == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Model / Section</label>
+                <select name="model">
+                    <option value="">All</option>
+                    {% for m in model_choices %}
+                        <option value="{{ m }}" {% if filter_model == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Date From</label>
+                <input type="date" name="date_from" value="{{ filter_date_from }}">
+            </div>
+            <div class="filter-group">
+                <label>Date To</label>
+                <input type="date" name="date_to" value="{{ filter_date_to }}">
+            </div>
+            <div class="filter-group" style="justify-content:flex-end;">
+                <label>&nbsp;</label>
+                <div style="display:flex;gap:8px;">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{% url 'customer_enquiry:audit_trail' %}" class="btn btn-secondary">Clear</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div style="margin-bottom:14px;font-size:14px;color:#555;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span>Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of <strong>{{ total_count }}</strong> records</span>
+        <span class="count-badge">max 5000</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                    <th>Section</th>
+                    <th>Record</th>
+                    <th>Details / Changes</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td style="white-space:nowrap;">
+                        {{ log.timestamp|date:"d M Y" }}<br>
+                        <span style="color:#aaa;">{{ log.timestamp|date:"H:i:s" }}</span>
+                    </td>
+                    <td><strong>{{ log.user.username|default:"System" }}</strong></td>
+                    <td>
+                        {% if log.user %}
+                            {% with role=log.user.profile.role %}
+                                <span class="role-badge role-{{ role }}">{{ role|default:"—" }}</span>
+                            {% endwith %}
+                        {% else %}
+                            <span class="role-badge role-system">system</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="action-badge action-{{ log.action }}">{{ log.get_action_display }}</span>
+                    </td>
+                    <td style="color:#666;">{{ log.model_name|default:"—" }}</td>
+                    <td style="max-width:160px;word-break:break-word;color:#444;">{{ log.object_repr|default:"—" }}</td>
+                    <td class="changes-cell">
+                        {% if log.changes %}
+                            <div class="changes-pretty" id="ch_{{ log.id }}">{{ log.changes }}</div>
+                        {% else %}
+                            <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:#aaa;white-space:nowrap;font-family:monospace;font-size:11px;">{{ log.ip_address|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="no-results">No audit records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:20px;flex-wrap:wrap;">
+        {% if page_obj.has_previous %}
+            <a href="?{% if filter_user %}user={{ filter_user }}&{% endif %}{% if filter_action %}action={{ filter_action }}&{% endif %}{% if filter_model %}model={{ filter_model }}&{% endif %}{% if filter_date_from %}date_from={{ filter_date_from }}&{% endif %}{% if filter_date_to %}date_to={{ filter_date_to }}&{% endif %}page=1" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">« First</a>
+            <a href="?{% if filter_user %}user={{ filter_user }}&{% endif %}{% if filter_action %}action={{ filter_action }}&{% endif %}{% if filter_model %}model={{ filter_model }}&{% endif %}{% if filter_date_from %}date_from={{ filter_date_from }}&{% endif %}{% if filter_date_to %}date_to={{ filter_date_to }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">‹ Prev</a>
+        {% endif %}
+
+        <span style="padding:6px 14px;background:#007bff;color:#fff;border-radius:5px;font-size:13px;font-weight:700;">
+            Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?{% if filter_user %}user={{ filter_user }}&{% endif %}{% if filter_action %}action={{ filter_action }}&{% endif %}{% if filter_model %}model={{ filter_model }}&{% endif %}{% if filter_date_from %}date_from={{ filter_date_from }}&{% endif %}{% if filter_date_to %}date_to={{ filter_date_to }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Next ›</a>
+            <a href="?{% if filter_user %}user={{ filter_user }}&{% endif %}{% if filter_action %}action={{ filter_action }}&{% endif %}{% if filter_model %}model={{ filter_model }}&{% endif %}{% if filter_date_from %}date_from={{ filter_date_from }}&{% endif %}{% if filter_date_to %}date_to={{ filter_date_to }}&{% endif %}page={{ page_obj.paginator.num_pages }}" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Last »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Pretty-print JSON in changes cells
+document.querySelectorAll('.changes-pretty').forEach(function(el) {
+    try {
+        var parsed = JSON.parse(el.textContent.trim());
+        el.textContent = JSON.stringify(parsed, null, 2);
+    } catch(e) { /* leave as-is */ }
+});
+</script>
+</body>
+</html>

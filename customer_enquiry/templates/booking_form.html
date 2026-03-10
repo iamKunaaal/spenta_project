@@ -667,7 +667,7 @@
 </head>
 <body>
     <!-- Floating Back to Dashboard Button -->
-    <a href="{% url 'customer_enquiry:dashboard' %}" id="floatingBackBtn" class="hide-from-pdf" style="
+    <a href="{% if request.user.profile.role == 'closing_manager' %}{% url 'customer_enquiry:closing_manager_dashboard' %}{% elif request.user.profile.role == 'sourcing_manager' %}{% url 'customer_enquiry:sourcing_manager_dashboard' %}{% else %}{% url 'customer_enquiry:dashboard' %}{% endif %}" id="floatingBackBtn" class="hide-from-pdf" style="
         position: fixed;
         top: 20px;
         left: 20px;

@@ -1,0 +1,200 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Channel Partners</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; zoom: 0.9; }
+
+        .header {
+            position: relative; padding: 24px 36px; background: #333;
+            color: #fff; overflow: hidden; margin-bottom: 20px;
+        }
+        .header-text { flex: 1; text-align: center; }
+        .brand-row { display: flex; align-items: center; gap: 20px; margin-bottom: 12px; position: relative; z-index: 2; }
+        .title { font-weight: 400; font-size: 30px; color: #fff; margin: 0 0 4px 0; }
+        .subtitle { font-size: 14px; color: #ccc; margin: 0; }
+        .dec { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); }
+        .dec img { height: 75px; width: auto; }
+        .logout-btn {
+            position: absolute; top: 50%; left: 30px; transform: translateY(-50%);
+            padding: 8px 18px; background: rgba(255,255,255,0.15); color: #fff;
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 6px;
+            font-size: 13px; text-decoration: none; font-weight: 600;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .back-btn {
+            display: inline-block; margin-bottom: 16px; padding: 8px 16px;
+            background: #6c757d; color: #fff; border-radius: 6px;
+            text-decoration: none; font-size: 13px; font-weight: 600;
+        }
+        .back-btn:hover { background: #5a6268; }
+
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 20px; }
+        .card h3 { margin: 0 0 18px 0; font-size: 17px; color: #333; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+
+        label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+        input[type="text"] {
+            width: 100%; padding: 9px 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 14px; box-sizing: border-box;
+        }
+        input[type="text"]:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+
+        .btn { padding: 9px 20px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #007bff; color: #fff; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-danger  { background: #dc3545; color: #fff; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn:hover { opacity: 0.88; }
+
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 14px; }
+        .alert-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 14px; }
+
+        .search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+        .search-bar input { flex: 1; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 11px 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #dee2e6; font-weight: 700; }
+        td { padding: 11px 12px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: middle; }
+        tr:hover td { background: #f8f9fa; }
+
+        .badge-active   { background: #d4edda; color: #155724; padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+        .badge-inactive { background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+
+        .no-results { text-align: center; padding: 40px; color: #999; font-style: italic; }
+
+        @media (max-width: 768px) {
+            .grid-4 { grid-template-columns: 1fr 1fr; }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .grid-4 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<header class="header">
+    <a href="{% url 'customer_enquiry:logout' %}" class="logout-btn">Logout</a>
+    <div class="brand-row">
+        <div class="header-text">
+            <div class="title">Manage Channel Partners</div>
+            <div class="subtitle">Master directory for auto-fill in customer forms</div>
+        </div>
+    </div>
+    <div class="dec"><img src="{% static 'media/spenta_white.png' %}" alt="" onerror="this.style.display='none'"></div>
+</header>
+
+<a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
+
+{% if message %}
+<div class="alert-success">✅ {{ message }}</div>
+{% endif %}
+{% if error %}
+<div class="alert-error">❌ {{ error }}</div>
+{% endif %}
+
+<!-- Add New Channel Partner -->
+<div class="card">
+    <h3>➕ Add New Channel Partner</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <div class="grid-4">
+            <div>
+                <label>Company Name *</label>
+                <input type="text" name="company_name" placeholder="e.g. ABC Realty" required>
+            </div>
+            <div>
+                <label>Channel Partner Name *</label>
+                <input type="text" name="partner_name" placeholder="e.g. Rahul Shah" required>
+            </div>
+            <div>
+                <label>Mobile No. *</label>
+                <input type="text" name="mobile_number" placeholder="10-digit number" maxlength="10" required>
+            </div>
+            <div>
+                <label>RERA No.</label>
+                <input type="text" name="rera_number" placeholder="Optional">
+            </div>
+        </div>
+        <div style="margin-top:16px;">
+            <button type="submit" class="btn btn-success">➕ Add Channel Partner</button>
+        </div>
+    </form>
+</div>
+
+<!-- List -->
+<div class="card">
+    <h3>📋 All Channel Partners ({{ partners|length }})</h3>
+
+    <form method="GET" class="search-bar">
+        <input type="text" name="search" value="{{ search }}" placeholder="Search by company, partner name, or mobile...">
+        <button type="submit" class="btn btn-primary">🔍 Search</button>
+        {% if search %}<a href="{% url 'customer_enquiry:manage_channel_partners' %}" class="btn btn-secondary">✕ Clear</a>{% endif %}
+    </form>
+
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Company Name</th>
+                    <th>Partner Name</th>
+                    <th>Mobile No.</th>
+                    <th>RERA No.</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cp in partners %}
+                <tr>
+                    <td style="color:#aaa;font-size:12px;">{{ forloop.counter }}</td>
+                    <td><strong>{{ cp.company_name }}</strong></td>
+                    <td>{{ cp.partner_name }}</td>
+                    <td>{{ cp.mobile_number }}</td>
+                    <td>{{ cp.rera_number|default:'—' }}</td>
+                    <td>
+                        {% if cp.is_active %}
+                            <span class="badge-active">Active</span>
+                        {% else %}
+                            <span class="badge-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <!-- Toggle Active/Inactive -->
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle_active">
+                                <input type="hidden" name="cp_id" value="{{ cp.pk }}">
+                                <button type="submit" class="btn btn-warning btn-sm">
+                                    {% if cp.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                            <!-- Delete -->
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete {{ cp.company_name }}? This cannot be undone.')">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="cp_id" value="{{ cp.pk }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="no-results">No channel partners found{% if search %} for "{{ search }}"{% endif %}.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

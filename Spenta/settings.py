@@ -1,5 +1,8 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -8,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ypys+uq$j%8l2*td_ws8%yg==^gdrx=+4hw1=j-a3gei^=g#))'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-insecure-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -189,8 +192,8 @@ EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = 10  # Timeout in seconds — prevents SMTP hang from blocking the request
-EMAIL_HOST_USER = 'projects@spentacorporation.com'  # Replace with your Gmail
-EMAIL_HOST_PASSWORD = 'nyls ylrn pavn vvel'  # Replace with your 16-digit app password
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = 'Spenta CRM <projects@spentacorporation.com>'  # Must match EMAIL_HOST_USER for Gmail
 
 # Cache configuration (file-based — persists across server restarts)
@@ -208,7 +211,7 @@ OTP_MAX_PER_IP = 5      # Max OTP requests per IP per hour
 OTP_BLOCK_DURATION = 3600  # Block duration in seconds (1 hour)
 
 # Interakt WhatsApp API
-INTERAKT_API_KEY = 'ajNyXzdUdzVWbURuZmZWX3o3cmYxTy1jVU5Dd3ZXRlBWN25JSHMxbFZDWTo='
+INTERAKT_API_KEY = os.environ.get('INTERAKT_API_KEY', '')
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour

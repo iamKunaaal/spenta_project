@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users — Spenta</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .header { position:relative; padding:24px 36px; background:#333; color:#fff; margin-bottom:20px; border-radius:0; overflow:hidden; }
+        .header .title { font-size:28px; font-weight:400; margin:0 0 4px 0; color:#fff; text-align:center; }
+        .header .subtitle { font-size:14px; color:#ccc; text-align:center; margin:0; }
+        .logout-btn { position:absolute; top:50%; left:30px; transform:translateY(-50%); padding:8px 18px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.4); border-radius:6px; font-size:13px; text-decoration:none; }
+        .dec { position:absolute; right:30px; top:50%; transform:translateY(-50%); }
+        .dec img { height:70px; width:auto; }
+        .card { background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:24px; margin-bottom:20px; }
+        h2 { margin:0 0 18px 0; font-size:20px; color:#333; }
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+        .form-group { display:flex; flex-direction:column; gap:5px; }
+        .form-group label { font-weight:600; font-size:13px; color:#444; }
+        .form-group input, .form-group select { padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+        .btn { padding:9px 20px; border-radius:5px; border:none; cursor:pointer; font-size:13px; font-weight:600; text-decoration:none; display:inline-block; }
+        .btn-primary { background:#007bff; color:#fff; }
+        .btn-danger { background:#dc3545; color:#fff; }
+        .btn-secondary { background:#6c757d; color:#fff; }
+        .btn:hover { opacity:0.88; }
+        table { width:100%; border-collapse:collapse; }
+        th { background:#f8f9fa; padding:11px 12px; text-align:left; font-size:13px; border-bottom:2px solid #dee2e6; }
+        td { padding:11px 12px; border-bottom:1px solid #eee; font-size:13px; }
+        tr:hover td { background:#f8f9fa; }
+        .role-badge { padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .role-super_admin { background:#6f42c1; color:#fff; }
+        .role-admin { background:#007bff; color:#fff; }
+        .role-gre { background:#28a745; color:#fff; }
+        .role-sourcing_manager { background:#17a2b8; color:#fff; }
+        .role-closing_manager { background:#fd7e14; color:#fff; }
+        .alert { padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:14px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+<header class="header">
+    <a href="{% url 'customer_enquiry:dashboard' %}" class="logout-btn">← Back</a>
+    <div class="title">Manage Users</div>
+    <div class="subtitle">Create and manage GRE, Sourcing Manager, Closing Manager accounts</div>
+    <div class="dec"><img src="{% static 'media/spenta_white.png' %}" alt="" onerror="this.style.display='none'"></div>
+</header>
+
+{% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+{% endfor %}
+
+<!-- Create User Form -->
+<div class="card">
+    <h2>Create New User</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_user">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>First Name *</label>
+                <input type="text" name="first_name" required placeholder="First Name">
+            </div>
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" name="last_name" placeholder="Last Name">
+            </div>
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" name="email" required placeholder="email@example.com">
+            </div>
+            <div class="form-group">
+                <label>WhatsApp Number</label>
+                <input type="text" name="whatsapp_number" maxlength="10" placeholder="10-digit number">
+            </div>
+            <div class="form-group">
+                <label>Role *</label>
+                <select name="role" required>
+                    {% for val, label in role_choices %}
+                        {% if val != 'super_admin' %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Password *</label>
+                <input type="password" name="password" required placeholder="Set password" minlength="8">
+            </div>
+        </div>
+        <div style="margin-top:18px;">
+            <button type="submit" class="btn btn-primary">Create User</button>
+        </div>
+    </form>
+</div>
+
+<!-- Users List -->
+<div class="card">
+    <h2>All Users ({{ profiles|length }})</h2>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>WhatsApp</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for profile in profiles %}
+                <tr>
+                    <td><strong>{{ profile.user.get_full_name|default:profile.user.username }}</strong></td>
+                    <td>{{ profile.user.username }}</td>
+                    <td>{{ profile.user.email }}</td>
+                    <td><span class="role-badge role-{{ profile.role }}">{{ profile.get_role_display }}</span></td>
+                    <td>{{ profile.whatsapp_number|default:"—" }}</td>
+                    <td>{% if profile.user.is_active %}✅{% else %}❌{% endif %}</td>
+                    <td>
+                        {% if profile.user != request.user %}
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_user">
+                            <input type="hidden" name="user_id" value="{{ profile.user.id }}">
+                            <button type="submit" class="btn btn-danger" style="padding:5px 12px;font-size:12px;">Delete</button>
+                        </form>
+                        {% else %}
+                        <span style="color:#aaa;font-size:12px;">Current user</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">No users found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

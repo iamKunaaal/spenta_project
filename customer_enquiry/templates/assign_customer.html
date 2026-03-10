@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Customer — Spenta</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .header { position:relative; padding:24px 36px; background:#333; color:#fff; margin-bottom:20px; overflow:hidden; }
+        .header .title { font-size:26px; font-weight:400; color:#fff; text-align:center; margin:0 0 4px 0; }
+        .header .subtitle { font-size:13px; color:#ccc; text-align:center; margin:0; }
+        .logout-btn { position:absolute; top:50%; left:30px; transform:translateY(-50%); padding:8px 18px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.4); border-radius:6px; font-size:13px; text-decoration:none; }
+        .dec { position:absolute; right:30px; top:50%; transform:translateY(-50%); }
+        .dec img { height:70px; width:auto; }
+        .card { background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:24px; margin-bottom:20px; max-width:600px; }
+        h2 { margin:0 0 6px 0; font-size:18px; color:#333; }
+        .info-row { display:flex; gap:24px; margin-bottom:20px; padding:12px 16px; background:#f8f9fa; border-radius:6px; font-size:14px; }
+        .form-group { margin-bottom:18px; }
+        .form-group label { font-weight:600; font-size:13px; color:#444; display:block; margin-bottom:6px; }
+        .form-group select { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+        .btn { padding:10px 22px; border-radius:5px; border:none; cursor:pointer; font-size:14px; font-weight:600; text-decoration:none; display:inline-block; }
+        .btn-primary { background:#007bff; color:#fff; }
+        .btn-secondary { background:#6c757d; color:#fff; }
+        .btn:hover { opacity:0.88; }
+    </style>
+</head>
+<body>
+<header class="header">
+    <a href="{% url 'customer_enquiry:dashboard' %}" class="logout-btn">← Back</a>
+    <div class="title">Assign Customer</div>
+    <div class="subtitle">Assign leads to Sourcing / Closing Managers</div>
+    <div class="dec"><img src="{% static 'media/spenta_white.png' %}" alt="" onerror="this.style.display='none'"></div>
+</header>
+
+<div class="card">
+    <h2>{{ customer.get_full_name }}</h2>
+    <div class="info-row">
+        <span><strong>Form #:</strong> {{ customer.form_number }}</span>
+        <span><strong>Phone:</strong> {{ customer.phone_number|default:"—" }}</span>
+        <span><strong>City:</strong> {{ customer.city }}</span>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label>Sourcing Manager</label>
+            <select name="sourcing_manager">
+                <option value="">— Not Assigned —</option>
+                {% for mgr in sourcing_managers %}
+                    <option value="{{ mgr.id }}" {% if assignment and assignment.sourcing_manager_id == mgr.id %}selected{% endif %}>
+                        {{ mgr.get_full_name|default:mgr.username }} ({{ mgr.username }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Closing Manager</label>
+            <select name="closing_manager">
+                <option value="">— Not Assigned —</option>
+                {% for mgr in closing_managers %}
+                    <option value="{{ mgr.id }}" {% if assignment and assignment.closing_manager_id == mgr.id %}selected{% endif %}>
+                        {{ mgr.get_full_name|default:mgr.username }} ({{ mgr.username }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+            <button type="submit" class="btn btn-primary">Save Assignment</button>
+            <a href="{% url 'customer_enquiry:dashboard' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if assignment %}
+<div class="card" style="max-width:600px;">
+    <h2 style="font-size:15px;color:#555;">Current Assignment</h2>
+    <p style="font-size:14px;margin:6px 0;">
+        <strong>Sourcing Manager:</strong>
+        {% if assignment.sourcing_manager %}{{ assignment.sourcing_manager.get_full_name|default:assignment.sourcing_manager.username }}{% else %}Not Assigned{% endif %}
+    </p>
+    <p style="font-size:14px;margin:6px 0;">
+        <strong>Closing Manager:</strong>
+        {% if assignment.closing_manager %}{{ assignment.closing_manager.get_full_name|default:assignment.closing_manager.username }}{% else %}Not Assigned{% endif %}
+    </p>
+    <p style="font-size:12px;color:#aaa;margin-top:10px;">Assigned on {{ assignment.assigned_at|date:"d M Y, H:i" }}</p>
+</div>
+{% endif %}
+</body>
+</html>

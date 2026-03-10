@@ -958,6 +958,7 @@
                         <div class="badge">1</div>
                         <div class="label">Customer Information</div>
                     </div>
+                    {% if not gre_only %}
                     <div class="step" data-step="2">
                         <div class="badge">2</div>
                         <div class="label">Assessment Details</div>
@@ -974,15 +975,28 @@
                         <div class="badge">5</div>
                         <div class="label">Additional Info</div>
                     </div>
+                    {% endif %}
                 </div>
             </aside>
 
             <!-- Form -->
             <section class="form">
+                {% if request.user.profile.role == 'closing_manager' %}
+                <a href="{% url 'customer_enquiry:closing_manager_dashboard' %}" class="back-btn">← Back to Dashboard</a>
+                {% elif request.user.profile.role == 'sourcing_manager' %}
+                <a href="{% url 'customer_enquiry:sourcing_manager_dashboard' %}" class="back-btn">← Back to Dashboard</a>
+                {% else %}
                 <a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
+                {% endif %}
                 
                 <form method="POST" id="internalAssessment" novalidate>
                     {% csrf_token %}
+
+                    {% if gre_only %}
+                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#856404;">
+                        ℹ️ <strong>GRE Access:</strong> You can only fill Step 1 — Sourcing Manager and Closing Manager assignment.
+                    </div>
+                    {% endif %}
 
                     <!-- Validation Summary Banner -->
                     <div class="validation-summary" id="validationSummary">
@@ -1039,20 +1053,131 @@
                             {% endif %}
                         </div>
 
+                        <!-- Searchable Manager Dropdowns -->
+                        <style>
+                            .search-dropdown-wrap { position: relative; }
+                            .search-dropdown-wrap input.search-input { width: 100%; }
+                            .search-dropdown-list {
+                                display: none;
+                                position: absolute;
+                                top: 100%;
+                                left: 0; right: 0;
+                                background: #fff;
+                                border: 1px solid #d1d5db;
+                                border-top: none;
+                                border-radius: 0 0 6px 6px;
+                                max-height: 200px;
+                                overflow-y: auto;
+                                z-index: 999;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                            }
+                            .search-dropdown-list.open { display: block; }
+                            .sdl-item {
+                                padding: 9px 14px;
+                                cursor: pointer;
+                                font-size: 14px;
+                                color: #374151;
+                            }
+                            .sdl-item:hover, .sdl-item.highlighted { background: #f0f4ff; color: #1d4ed8; }
+                            .sdl-empty { padding: 10px 14px; font-size: 13px; color: #9ca3af; }
+                        </style>
+
                         <div class="grid cols-2">
                             <div>
-                                <label for="sourcingManager" class="required">Sourcing Manager</label>
-                                <input class="field" type="text" id="sourcingManager" name="sourcing_manager" 
-                                       value="{{ assessment.sourcing_manager|default:'' }}" placeholder="Enter Sourcing Manager Name" required>
-                                <div class="error-message">Please enter sourcing manager name</div>
+                                <label class="required">Sourcing Manager</label>
+                                <div class="search-dropdown-wrap">
+                                    <input type="text" class="field search-input" id="sourcingSearch"
+                                           placeholder="Type to search..."
+                                           autocomplete="off"
+                                           value="{% if assignment and assignment.sourcing_manager %}{{ assignment.sourcing_manager.get_full_name|default:assignment.sourcing_manager.username }}{% elif assessment.sourcing_manager %}{{ assessment.sourcing_manager }}{% endif %}">
+                                    <div class="search-dropdown-list" id="sourcingList"></div>
+                                </div>
+                                <input type="hidden" name="sourcing_manager_id" id="sourcingManagerId"
+                                       value="{% if assignment and assignment.sourcing_manager %}{{ assignment.sourcing_manager.id }}{% endif %}">
+                                <input type="hidden" name="sourcing_manager" id="sourcingManagerName"
+                                       value="{{ assessment.sourcing_manager|default:'' }}">
+                                <div class="error-message">Please select a sourcing manager</div>
                             </div>
                             <div>
-                                <label for="salesManager" class="required">Closing Manager</label>
-                                <input class="field" type="text" id="salesManager" name="sales_manager" 
-                                       value="{{ assessment.sales_manager|default:'' }}" placeholder="Enter Closing Manager Name" required>
-                                <div class="error-message">Please enter closing manager name</div>
+                                <label class="required">Closing Manager</label>
+                                <div class="search-dropdown-wrap">
+                                    <input type="text" class="field search-input" id="closingSearch"
+                                           placeholder="Type to search..."
+                                           autocomplete="off"
+                                           value="{% if assignment and assignment.closing_manager %}{{ assignment.closing_manager.get_full_name|default:assignment.closing_manager.username }}{% elif assessment.sales_manager %}{{ assessment.sales_manager }}{% endif %}">
+                                    <div class="search-dropdown-list" id="closingList"></div>
+                                </div>
+                                <input type="hidden" name="sales_manager_id" id="closingManagerId"
+                                       value="{% if assignment and assignment.closing_manager %}{{ assignment.closing_manager.id }}{% endif %}">
+                                <input type="hidden" name="sales_manager" id="closingManagerName"
+                                       value="{{ assessment.sales_manager|default:'' }}">
+                                <div class="error-message">Please select a closing manager</div>
                             </div>
                         </div>
+
+                        <script>
+                            const sourcingManagers = [
+                                {% for mgr in sourcing_managers %}
+                                { id: {{ mgr.id }}, name: "{{ mgr.get_full_name|default:mgr.username }}" }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ];
+                            const closingManagers = [
+                                {% for mgr in closing_managers %}
+                                { id: {{ mgr.id }}, name: "{{ mgr.get_full_name|default:mgr.username }}" }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ];
+
+                            function initSearchDropdown(inputId, listId, data, hiddenIdField, hiddenNameField) {
+                                const input = document.getElementById(inputId);
+                                const list = document.getElementById(listId);
+
+                                function render(items) {
+                                    if (!items.length) {
+                                        list.innerHTML = '<div class="sdl-empty">No results found</div>';
+                                    } else {
+                                        list.innerHTML = items.map(item =>
+                                            `<div class="sdl-item" data-id="${item.id}" data-name="${item.name}">${item.name}</div>`
+                                        ).join('');
+                                        list.querySelectorAll('.sdl-item').forEach(el => {
+                                            el.addEventListener('mousedown', function(e) {
+                                                e.preventDefault();
+                                                input.value = this.dataset.name;
+                                                document.getElementById(hiddenIdField).value = this.dataset.id;
+                                                document.getElementById(hiddenNameField).value = this.dataset.name;
+                                                list.classList.remove('open');
+                                            });
+                                        });
+                                    }
+                                    list.classList.add('open');
+                                }
+
+                                input.addEventListener('input', function() {
+                                    const q = this.value.toLowerCase().trim();
+                                    if (!q) { list.classList.remove('open'); return; }
+                                    render(data.filter(d => d.name.toLowerCase().includes(q)));
+                                });
+
+                                input.addEventListener('focus', function() {
+                                    const q = this.value.toLowerCase().trim();
+                                    if (q) render(data.filter(d => d.name.toLowerCase().includes(q)));
+                                });
+
+                                input.addEventListener('blur', function() {
+                                    setTimeout(() => list.classList.remove('open'), 150);
+                                });
+
+                                // Clear hidden id if user clears input
+                                input.addEventListener('change', function() {
+                                    if (!this.value.trim()) {
+                                        document.getElementById(hiddenIdField).value = '';
+                                        document.getElementById(hiddenNameField).value = '';
+                                    }
+                                });
+                            }
+
+                            initSearchDropdown('sourcingSearch', 'sourcingList', sourcingManagers, 'sourcingManagerId', 'sourcingManagerName');
+                            initSearchDropdown('closingSearch', 'closingList', closingManagers, 'closingManagerId', 'closingManagerName');
+                        </script>
 
                         <div style="margin-top: 16px;">
                             <div>
@@ -1224,7 +1349,8 @@
     </div>
 
     <script>
-        let current = 1, total = 5;
+        const greOnly = {{ gre_only|yesno:"true,false" }};
+        let current = 1, total = greOnly ? 1 : 5;
         const sections = [...document.querySelectorAll('.section')];
         const steps = [...document.querySelectorAll('.step')];
         const nextBtn = document.getElementById('nextBtn');
@@ -1373,10 +1499,16 @@
             validationSummary.classList.remove('show');
 
             allRequiredFields.forEach(field => {
-                // Skip validation for fields in hidden containers
+                // Skip fields that belong to a section beyond accessible total (e.g. GRE only has step 1)
+                const parentSection = field.closest('.section');
+                if (parentSection) {
+                    const sectionStep = parseInt(parentSection.getAttribute('data-step'));
+                    if (sectionStep > total) return;
+                }
+
+                // Skip validation for fields in hidden containers (inline style)
                 const parentContainer = field.closest('[style*="display:none"], [style*="display: none"]');
                 if (parentContainer) {
-                    console.log('Skipping field in hidden container:', field.name);
                     return;
                 }
                 

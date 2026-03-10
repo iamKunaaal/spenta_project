@@ -9,11 +9,26 @@ class UserProfile(models.Model):
     """
     Extended profile for staff/admin users — stores WhatsApp number for OTP password reset
     """
+    ROLE_CHOICES = [
+        ('super_admin', 'Super Admin'),
+        ('admin', 'Admin'),
+        ('gre', 'GRE'),
+        ('sourcing_manager', 'Sourcing Manager'),
+        ('closing_manager', 'Closing Manager'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     whatsapp_number = models.CharField(
         max_length=10,
+        blank=True,
         validators=[RegexValidator(regex=r'^\d{10}$', message='Enter a valid 10-digit WhatsApp number')],
         help_text="10-digit WhatsApp number for OTP password reset"
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='admin',
+        help_text="User role determines dashboard access and permissions"
     )
 
     class Meta:
@@ -22,7 +37,22 @@ class UserProfile(models.Model):
         verbose_name_plural = 'User Profiles'
 
     def __str__(self):
-        return f"{self.user.username} — {self.whatsapp_number}"
+        return f"{self.user.username} — {self.get_role_display()}"
+
+    def is_super_admin(self):
+        return self.role == 'super_admin'
+
+    def is_admin(self):
+        return self.role in ('admin', 'super_admin')
+
+    def is_gre(self):
+        return self.role == 'gre'
+
+    def is_sourcing_manager(self):
+        return self.role == 'sourcing_manager'
+
+    def is_closing_manager(self):
+        return self.role == 'closing_manager'
 
 
 class Customer(models.Model):
@@ -111,11 +141,11 @@ class Customer(models.Model):
     form_date = models.DateField(default=timezone.now)
     
     # Personal Details
-    first_name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100, blank=True)
     middle_name = models.CharField(max_length=100, blank=True)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField(validators=[EmailValidator()])
-    
+    last_name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True)
+
     # ADDED: Phone number field with validation
     phone_number = models.CharField(
         max_length=10,
@@ -127,7 +157,7 @@ class Customer(models.Model):
         null=True,
         help_text="10-digit phone number"
     )
-    
+
     # NEW: Sex/Gender field
     sex = models.CharField(
         max_length=10,
@@ -135,7 +165,7 @@ class Customer(models.Model):
         blank=True,
         help_text="Gender/Sex of the customer"
     )
-    
+
     # NEW: Marital Status field
     marital_status = models.CharField(
         max_length=15,
@@ -143,51 +173,58 @@ class Customer(models.Model):
         blank=True,
         help_text="Marital status of the customer"
     )
-    
+
     date_of_birth = models.DateField(blank=True, null=True)
     residential_address = models.TextField(blank=True)
-    city = models.CharField(max_length=100)
-    locality = models.CharField(max_length=100)
-    
+    city = models.CharField(max_length=100, blank=True)
+    locality = models.CharField(max_length=100, blank=True)
+
     # Pincode with validation
     pincode = models.CharField(
         max_length=6,
+        blank=True,
         validators=[RegexValidator(
             regex=r'^\d{6}$',
             message='Pincode must be 6 digits'
         )]
     )
-    
+
     nationality = models.CharField(
         max_length=10,
-        choices=NATIONALITY_CHOICES
+        choices=NATIONALITY_CHOICES,
+        blank=True,
     )
-    
+
     # Employment Details
     employment_type = models.CharField(
         max_length=15,
-        choices=EMPLOYMENT_CHOICES
+        choices=EMPLOYMENT_CHOICES,
+        blank=True,
     )
     company_name = models.CharField(max_length=200, blank=True)
     designation = models.CharField(max_length=100, blank=True)
     industry = models.CharField(max_length=100, blank=True)
-    
+
     # Customer Requirements
     configuration = models.CharField(
-        max_length=15,  # Increased length to accommodate new options
-        choices=CONFIGURATION_CHOICES
+        max_length=15,
+        choices=CONFIGURATION_CHOICES,
+        blank=True,
     )
     budget = models.CharField(
-        max_length=20,  # Increased length for new budget ranges
-        choices=BUDGET_CHOICES
+        max_length=20,
+        choices=BUDGET_CHOICES,
+        blank=True,
     )
     construction_status = models.CharField(
         max_length=20,
-        choices=CONSTRUCTION_STATUS_CHOICES
+        choices=CONSTRUCTION_STATUS_CHOICES,
+        blank=True,
     )
     purpose_of_buying = models.CharField(
         max_length=15,
-        choices=PURPOSE_CHOICES
+        choices=PURPOSE_CHOICES,
+        blank=True,
     )
     
     # Source Details
@@ -196,10 +233,20 @@ class Customer(models.Model):
         help_text="Additional details for Newspaper Ad, Social Media, Exhibition, or Property Portal"
     )
     
+    # Form completion tracking
+    current_step = models.IntegerField(
+        default=0,
+        help_text="Last saved step (0=not started, 1-5=step completed)"
+    )
+    is_complete = models.BooleanField(
+        default=False,
+        help_text="True when customer has submitted the full form"
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'customers'
         ordering = ['-created_at']
@@ -843,3 +890,174 @@ class Project(models.Model):
         if not self.form_number and self.project_prefix:
             self.form_number = Project.objects.generate_form_number(self.project_prefix)
         super().save(*args, **kwargs)
+
+
+class AdditionalChannelPartner(models.Model):
+    """
+    Stores additional Channel Partners for a customer (2nd, 3rd, etc.)
+    If any additional CP exists, source status becomes 'Source Under Review'
+    """
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='additional_channel_partners'
+    )
+    company_name = models.CharField(max_length=200)
+    partner_name = models.CharField(max_length=100)
+    mobile_number = models.CharField(
+        max_length=10,
+        validators=[RegexValidator(regex=r'^\d{10}$', message='Mobile number must be 10 digits')]
+    )
+    rera_number = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'additional_channel_partners'
+        verbose_name = 'Additional Channel Partner'
+        verbose_name_plural = 'Additional Channel Partners'
+
+    def __str__(self):
+        return f"{self.partner_name} ({self.company_name}) — {self.customer}"
+
+
+class ChannelPartnerMaster(models.Model):
+    """
+    Master directory of Channel Partners.
+    Used for auto-fill in the customer enquiry form.
+    """
+    company_name = models.CharField(max_length=200)
+    partner_name = models.CharField(max_length=100)
+    mobile_number = models.CharField(
+        max_length=10,
+        validators=[RegexValidator(regex=r'^\d{10}$', message='Mobile number must be 10 digits')]
+    )
+    rera_number = models.CharField(max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'channel_partner_master'
+        verbose_name = 'Channel Partner (Master)'
+        verbose_name_plural = 'Channel Partners (Master)'
+        ordering = ['company_name']
+
+    def __str__(self):
+        return f"{self.company_name} — {self.partner_name}"
+
+
+class CustomerAssignment(models.Model):
+    """
+    Assigns a customer/lead to Sourcing Manager and/or Closing Manager
+    """
+    customer = models.OneToOneField(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='assignment'
+    )
+    sourcing_manager = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sourcing_assignments'
+    )
+    closing_manager = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='closing_assignments'
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='made_assignments'
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'customer_assignments'
+        verbose_name = 'Customer Assignment'
+        verbose_name_plural = 'Customer Assignments'
+
+    def __str__(self):
+        return f"Assignment — {self.customer}"
+
+
+class CustomerRevisit(models.Model):
+    """
+    Tracks each revisit by a customer
+    """
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='revisits'
+    )
+    visit_date = models.DateField(default=timezone.now)
+    remark = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='recorded_revisits'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'customer_revisits'
+        ordering = ['-visit_date']
+        verbose_name = 'Customer Revisit'
+        verbose_name_plural = 'Customer Revisits'
+
+    def __str__(self):
+        return f"Revisit — {self.customer} on {self.visit_date}"
+
+
+class AuditLog(models.Model):
+    """
+    Tracks all major changes in the system for Admin/Super Admin review
+    """
+    ACTION_CHOICES = [
+        ('create', 'Created'),
+        ('update', 'Updated'),
+        ('edit', 'Edited'),
+        ('delete', 'Deleted'),
+        ('login', 'Logged In'),
+        ('logout', 'Logged Out'),
+        ('assign', 'Assigned'),
+        ('submit', 'Form Submitted'),
+        ('assessment', 'Assessment Saved'),
+        ('booking', 'Booking Submitted'),
+        ('export', 'Exported Data'),
+        ('password_reset', 'Password Reset Requested'),
+        ('cp_add', 'CP Added'),
+        ('cp_remove', 'CP Removed'),
+        ('cp_toggle', 'CP Status Toggled'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='audit_logs'
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=100, blank=True)
+    object_id = models.IntegerField(null=True, blank=True)
+    object_repr = models.CharField(max_length=300, blank=True)
+    changes = models.TextField(blank=True, help_text="JSON string of field changes")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'audit_logs'
+        ordering = ['-timestamp']
+        verbose_name = 'Audit Log'
+        verbose_name_plural = 'Audit Logs'
+
+    def __str__(self):
+        user_str = self.user.username if self.user else 'System'
+        return f"{user_str} — {self.get_action_display()} {self.model_name} ({self.timestamp:%d %b %Y %H:%M})"
