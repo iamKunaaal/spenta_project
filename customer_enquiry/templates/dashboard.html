@@ -200,6 +200,7 @@
             gap: 5px;
             flex-wrap: nowrap;
             align-items: center;
+            min-width: max-content;
         }
         
         .btn {
@@ -248,6 +249,15 @@
             padding: 2px 6px;
             border-radius: 3px;
             margin-left: 4px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .action-buttons .btn {
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
         }
         
         .assessment-complete {
