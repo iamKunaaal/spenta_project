@@ -2120,15 +2120,6 @@ def send_otp_view(request):
         # Generate OTP on backend (secure)
         otp = str(random.randint(100000, 999999))
 
-        # --- TEST MODE: skip Interakt, use fixed test OTP ---
-        if getattr(settings, 'TEST_OTP_MODE', False):
-            otp = getattr(settings, 'TEST_OTP', '123456')
-            request.session['otp'] = otp
-            request.session['otp_phone'] = phone_number
-            request.session['otp_timestamp'] = int(timezone.now().timestamp())
-            logger.info(f"[TEST MODE] OTP {otp} stored for {phone_number}")
-            return JsonResponse({'success': True, 'message': f'TEST MODE: Use OTP {otp}'})
-
         # Send via Interakt WhatsApp API
         response = http_client.post(
             'https://api.interakt.ai/v1/public/message/',
