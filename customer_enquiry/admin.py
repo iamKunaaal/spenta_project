@@ -6,7 +6,7 @@ import csv
 from datetime import datetime
 
 from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment
-from .models import BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile
+from .models import BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile, ChannelPartnerMaster
 
 # Inline Admin Classes
 class CustomerSourceInline(admin.TabularInline):
@@ -327,3 +327,13 @@ class ProjectAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'whatsapp_number')
     search_fields = ('user__username', 'user__email', 'whatsapp_number')
+
+
+@admin.register(ChannelPartnerMaster)
+class ChannelPartnerMasterAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'partner_name', 'mobile_number', 'rera_number', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('company_name', 'partner_name', 'mobile_number', 'rera_number')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('company_name',)
+    list_per_page = 50
