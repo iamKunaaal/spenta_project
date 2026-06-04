@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 import json
 import logging
 import random
+import re
 import requests as http_client
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
@@ -2750,6 +2751,29 @@ def manage_channel_partners(request):
             log_action(request.user, 'cp_toggle', 'ChannelPartnerMaster', cp.id,
                        f'{cp.company_name} — {status}', request=request)
 
+        elif action == 'edit':
+            cp_id = request.POST.get('cp_id')
+            cp = get_object_or_404(ChannelPartnerMaster, pk=cp_id)
+            company_name = request.POST.get('company_name', '').strip()
+            partner_name = request.POST.get('partner_name', '').strip()
+            mobile_number = request.POST.get('mobile_number', '').strip()
+            rera_number = request.POST.get('rera_number', '').strip()
+            if not company_name or not partner_name or not mobile_number:
+                error = 'Company Name, Partner Name, and Mobile Number are required.'
+            elif len(mobile_number) != 10 or not mobile_number.isdigit():
+                error = 'Mobile number must be exactly 10 digits.'
+            else:
+                cp.company_name = company_name
+                cp.partner_name = partner_name
+                cp.mobile_number = mobile_number
+                cp.rera_number = rera_number
+                cp.save()
+                message = f'"{company_name} — {partner_name}" updated successfully.'
+                log_action(request.user, 'cp_edit', 'ChannelPartnerMaster', cp.id,
+                           f'{company_name} — {partner_name}', request=request)
+
+    from django.core.paginator import Paginator
+
     search = request.GET.get('search', '')
     partners = ChannelPartnerMaster.objects.all()
     if search:
@@ -2759,12 +2783,75 @@ def manage_channel_partners(request):
             Q(mobile_number__icontains=search)
         )
 
+    paginator = Paginator(partners, 25)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'manage_channel_partners.html', {
-        'partners': partners,
+        'partners': page_obj,
+        'page_obj': page_obj,
         'search': search,
         'message': message,
         'error': error,
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def cp_edit_ajax(request):
+    """AJAX endpoint to edit a ChannelPartnerMaster record."""
+    from django.http import JsonResponse
+    import json
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin'):
+        return JsonResponse({'success': False, 'error': 'Access denied.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+    cp_id       = data.get('cp_id')
+    company     = data.get('company_name', '').strip()
+    partner     = data.get('partner_name', '').strip()
+    mobile      = data.get('mobile_number', '').strip()
+    rera        = data.get('rera_number', '').strip()
+
+    errors = {}
+    if not company:
+        errors['company_name'] = 'Company Name is required.'
+    elif len(company) > 200:
+        errors['company_name'] = 'Company Name must be 200 characters or less.'
+
+    if not partner:
+        errors['partner_name'] = 'Partner Name is required.'
+    elif not re.match(r'^[a-zA-Z\s]+$', partner):
+        errors['partner_name'] = 'Partner Name must contain letters only.'
+    elif len(partner) > 100:
+        errors['partner_name'] = 'Partner Name must be 100 characters or less.'
+
+    if not mobile:
+        errors['mobile_number'] = 'Mobile Number is required.'
+    elif not mobile.isdigit():
+        errors['mobile_number'] = 'Mobile Number must contain digits only.'
+    elif len(mobile) != 10:
+        errors['mobile_number'] = 'Mobile Number must be exactly 10 digits.'
+
+    if rera and len(rera) > 50:
+        errors['rera_number'] = 'RERA No. must be 50 characters or less.'
+
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors})
+
+    cp = get_object_or_404(ChannelPartnerMaster, pk=cp_id)
+    cp.company_name  = company
+    cp.partner_name  = partner
+    cp.mobile_number = mobile
+    cp.rera_number   = rera
+    cp.save()
+    log_action(request.user, 'cp_edit', 'ChannelPartnerMaster', cp.id,
+               f'{company} — {partner}', request=request)
+    return JsonResponse({'success': True, 'message': f'"{company} — {partner}" updated successfully.'})
 
 
 @login_required

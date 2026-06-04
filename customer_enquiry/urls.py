@@ -75,4 +75,5 @@ urlpatterns = [
     # Master Channel Partners directory
     path('manage-channel-partners/', views.manage_channel_partners, name='manage_channel_partners'),
     path('api/channel-partners/', views.channel_partners_api, name='channel_partners_api'),
+    path('api/channel-partners/edit/', views.cp_edit_ajax, name='cp_edit_ajax'),
 ]

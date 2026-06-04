@@ -70,6 +70,18 @@
 
         .no-results { text-align: center; padding: 40px; color: #999; font-style: italic; }
 
+        .pagination { display:flex; align-items:center; justify-content:space-between; margin-top:16px; flex-wrap:wrap; gap:10px; }
+        .pagination-info { font-size:13px; color:#6c757d; }
+        .pagination-links { display:flex; gap:4px; flex-wrap:wrap; }
+        .pagination-links a, .pagination-links span {
+            display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px;
+            font-weight:600; text-decoration:none; border:1px solid #dee2e6;
+        }
+        .pagination-links a { background:#fff; color:#007bff; }
+        .pagination-links a:hover { background:#e9ecef; }
+        .pagination-links span.current { background:#007bff; color:#fff; border-color:#007bff; }
+        .pagination-links span.disabled { background:#f8f9fa; color:#adb5bd; cursor:default; }
+
         @media (max-width: 768px) {
             .grid-4 { grid-template-columns: 1fr 1fr; }
             .grid-2 { grid-template-columns: 1fr; }
@@ -133,7 +145,7 @@
 
 <!-- List -->
 <div class="card">
-    <h3>📋 All Channel Partners ({{ partners|length }})</h3>
+    <h3>📋 All Channel Partners ({{ page_obj.paginator.count }})</h3>
 
     <form method="GET" class="search-bar">
         <input type="text" name="search" value="{{ search }}" placeholder="Search by company, partner name, or mobile...">
@@ -171,6 +183,11 @@
                     </td>
                     <td>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <!-- Edit -->
+                            <button type="button" class="btn btn-primary btn-sm"
+                                onclick="openEditModal({{ cp.pk }}, '{{ cp.company_name|escapejs }}', '{{ cp.partner_name|escapejs }}', '{{ cp.mobile_number|escapejs }}', '{{ cp.rera_number|escapejs }}')">
+                                Edit
+                            </button>
                             <!-- Toggle Active/Inactive -->
                             <form method="POST" style="display:inline;">
                                 {% csrf_token %}
@@ -196,6 +213,196 @@
             </tbody>
         </table>
     </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination">
+        <div class="pagination-info">
+            Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} partners
+        </div>
+        <div class="pagination-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if search %}&search={{ search }}{% endif %}">« First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">‹ Prev</a>
+            {% else %}
+                <span class="disabled">« First</span>
+                <span class="disabled">‹ Prev</span>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="current">{{ num }}</span>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">Next ›</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">Last »</a>
+            {% else %}
+                <span class="disabled">Next ›</span>
+                <span class="disabled">Last »</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+<!-- Edit Modal -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:10px; padding:28px; width:100%; max-width:520px; box-shadow:0 8px 30px rgba(0,0,0,0.2); margin:20px;">
+        <h3 style="margin:0 0 16px 0; font-size:17px; color:#333;">✏️ Edit Channel Partner</h3>
+
+        <!-- Modal-level error/success -->
+        <div id="modal_alert" style="display:none; padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:13px;"></div>
+
+        <form id="editForm" onsubmit="submitEditForm(event)">
+            {% csrf_token %}
+            <input type="hidden" id="edit_cp_id">
+            <div class="grid-2" style="margin-bottom:14px;">
+                <div>
+                    <label>Company Name *</label>
+                    <input type="text" id="edit_company_name" maxlength="200"
+                           oninput="clearFieldError('company_name')"
+                           style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                    <div id="err_company_name" style="color:#dc3545; font-size:12px; margin-top:3px; display:none;"></div>
+                </div>
+                <div>
+                    <label>Channel Partner Name *</label>
+                    <input type="text" id="edit_partner_name" maxlength="100"
+                           oninput="this.value=this.value.replace(/[^a-zA-Z\s]/g,''); clearFieldError('partner_name')"
+                           style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                    <div id="err_partner_name" style="color:#dc3545; font-size:12px; margin-top:3px; display:none;"></div>
+                </div>
+            </div>
+            <div class="grid-2" style="margin-bottom:20px;">
+                <div>
+                    <label>Mobile No. * <span style="color:#6c757d;font-weight:400;">(10 digits only)</span></label>
+                    <input type="text" id="edit_mobile_number" maxlength="10"
+                           oninput="this.value=this.value.replace(/\D/g,''); clearFieldError('mobile_number')"
+                           style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                    <div id="err_mobile_number" style="color:#dc3545; font-size:12px; margin-top:3px; display:none;"></div>
+                </div>
+                <div>
+                    <label>RERA No. <span style="color:#6c757d;font-weight:400;">(optional)</span></label>
+                    <input type="text" id="edit_rera_number" maxlength="50"
+                           oninput="clearFieldError('rera_number')"
+                           style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                    <div id="err_rera_number" style="color:#dc3545; font-size:12px; margin-top:3px; display:none;"></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" id="editSaveBtn" class="btn btn-success">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, company, partner, mobile, rera) {
+    document.getElementById('edit_cp_id').value = id;
+    document.getElementById('edit_company_name').value = company;
+    document.getElementById('edit_partner_name').value = partner;
+    document.getElementById('edit_mobile_number').value = mobile;
+    document.getElementById('edit_rera_number').value = rera;
+    clearAllErrors();
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    clearAllErrors();
+}
+
+function clearAllErrors() {
+    ['company_name','partner_name','mobile_number','rera_number'].forEach(clearFieldError);
+    var alert = document.getElementById('modal_alert');
+    alert.style.display = 'none';
+    alert.textContent = '';
+}
+
+function clearFieldError(field) {
+    var el = document.getElementById('err_' + field);
+    var input = document.getElementById('edit_' + field);
+    if (el) { el.style.display = 'none'; el.textContent = ''; }
+    if (input) input.style.borderColor = '#ddd';
+}
+
+function showFieldError(field, msg) {
+    var el = document.getElementById('err_' + field);
+    var input = document.getElementById('edit_' + field);
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    if (input) input.style.borderColor = '#dc3545';
+}
+
+function submitEditForm(e) {
+    e.preventDefault();
+    clearAllErrors();
+
+    var company = document.getElementById('edit_company_name').value.trim();
+    var partner = document.getElementById('edit_partner_name').value.trim();
+    var mobile  = document.getElementById('edit_mobile_number').value.trim();
+    var rera    = document.getElementById('edit_rera_number').value.trim();
+    var hasError = false;
+
+    // Client-side validation
+    if (!company) { showFieldError('company_name', 'Company Name is required.'); hasError = true; }
+    if (!partner) { showFieldError('partner_name', 'Partner Name is required.'); hasError = true; }
+    else if (!/^[a-zA-Z\s]+$/.test(partner)) { showFieldError('partner_name', 'Partner Name must contain letters only.'); hasError = true; }
+    if (!mobile) {
+        showFieldError('mobile_number', 'Mobile Number is required.'); hasError = true;
+    } else if (!/^\d{10}$/.test(mobile)) {
+        showFieldError('mobile_number', 'Mobile Number must be exactly 10 digits.'); hasError = true;
+    }
+    if (hasError) return;
+
+    var btn = document.getElementById('editSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch("{% url 'customer_enquiry:cp_edit_ajax' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({
+            cp_id: document.getElementById('edit_cp_id').value,
+            company_name: company, partner_name: partner,
+            mobile_number: mobile, rera_number: rera
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+        if (data.success) {
+            closeEditModal();
+            location.reload();
+        } else if (data.errors) {
+            Object.keys(data.errors).forEach(f => showFieldError(f, data.errors[f]));
+        } else {
+            var alert = document.getElementById('modal_alert');
+            alert.textContent = data.error || 'Something went wrong.';
+            alert.style.display = 'block';
+            alert.style.background = '#f8d7da';
+            alert.style.color = '#721c24';
+            alert.style.border = '1px solid #f5c6cb';
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+        var alert = document.getElementById('modal_alert');
+        alert.textContent = 'Network error. Please try again.';
+        alert.style.display = 'block';
+        alert.style.background = '#f8d7da';
+        alert.style.color = '#721c24';
+    });
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+</script>
+
 </body>
 </html>
