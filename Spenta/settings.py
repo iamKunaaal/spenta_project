@@ -188,10 +188,6 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
 
-# Test OTP mode — bypass Interakt WhatsApp API (use TEST_OTP for verification)
-TEST_OTP_MODE = True
-TEST_OTP = '123456'
-
 # Email Configuration
 # For development - emails will be displayed in console
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
