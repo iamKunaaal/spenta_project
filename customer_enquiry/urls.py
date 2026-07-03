@@ -54,6 +54,7 @@ urlpatterns = [
     # Role-based dashboards
     path('sourcing-dashboard/', views.sourcing_manager_dashboard, name='sourcing_manager_dashboard'),
     path('closing-dashboard/', views.closing_manager_dashboard, name='closing_manager_dashboard'),
+    path('site-head-dashboard/', views.site_head_dashboard, name='site_head_dashboard'),
 
     # Admin: User management
     path('manage-users/', views.manage_users, name='manage_users'),
