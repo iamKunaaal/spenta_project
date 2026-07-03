@@ -59,6 +59,7 @@ def role_redirect(user):
         'gre':              'customer_enquiry:gre_dashboard',
         'sourcing_manager': 'customer_enquiry:sourcing_manager_dashboard',
         'closing_manager':  'customer_enquiry:closing_manager_dashboard',
+        'site_head':        'customer_enquiry:site_head_dashboard',
     }
     return mapping.get(role, 'customer_enquiry:dashboard')
 
@@ -95,6 +96,46 @@ def log_action(user, action, model_name='', object_id=None, object_repr='', chan
         )
     except Exception as e:
         logger.error(f"AuditLog creation failed: {e}")
+
+
+# ─── Site Head scoping helpers ─────────────────────────────────────────────────
+
+def site_head_projects(user):
+    """Project queryset a Site Head manages (empty for non-site-heads)."""
+    try:
+        return user.profile.projects.all()
+    except Exception:
+        return Project.objects.none()
+
+
+def scope_customers(user, qs):
+    """Restrict a Customer queryset to a Site Head's projects; unchanged for others."""
+    if get_user_role(user) == 'site_head':
+        return qs.filter(project__in=site_head_projects(user))
+    return qs
+
+
+def can_access_customer(user, customer):
+    """True if user may act on this customer (Site Head → must be one of their projects)."""
+    if get_user_role(user) == 'site_head':
+        return customer.project_id is not None and \
+            site_head_projects(user).filter(id=customer.project_id).exists()
+    return True
+
+
+def diff_and_log(user, action, instance, before, after, request=None):
+    """Log only changed fields as {field: {old, new}} JSON to AuditLog.changes."""
+    changed = {
+        k: {'old': before.get(k), 'new': after.get(k)}
+        for k in after if before.get(k) != after.get(k)
+    }
+    if changed:
+        log_action(
+            user, action, instance.__class__.__name__, instance.pk,
+            str(instance), changes=json.dumps(changed, default=str), request=request
+        )
+    return changed
+
 
 # Helper function to get project data from database
 def get_project_by_code(code):
@@ -395,6 +436,7 @@ def customer_submit_view(request):
                 project = Project.objects.get(form_number=property_code, is_active=True)
                 project_prefix = project.project_prefix
             except Project.DoesNotExist:
+                project = None
                 # Fallback: extract prefix from property_code
                 if '-' in property_code:
                     # For compound form numbers like "ALT-PHASE1-12345", extract "ALT-PHASE1"
@@ -405,6 +447,11 @@ def customer_submit_view(request):
                         project_prefix = parts[0]
                 else:
                     project_prefix = property_code
+                # Best-effort: resolve the project by prefix so the FK is populated
+                if project_prefix:
+                    project = Project.objects.filter(
+                        project_prefix__iexact=project_prefix, is_active=True
+                    ).first()
 
             # Generate unique customer form number using full project prefix
             while True:
@@ -423,6 +470,7 @@ def customer_submit_view(request):
             # Create customer - UPDATED: Added sex and marital_status fields, made date_of_birth and residential_address optional
             customer = Customer.objects.create(
                 form_number=form_number,
+                project=project,
                 form_date=data.get('form_date', datetime.now().date()),
                 first_name=data.get('first_name'),
                 middle_name=data.get('middle_name', ''),
@@ -631,6 +679,71 @@ def dashboard(request):
         'active_projects': projects
     })
 
+
+@require_role('site_head', 'admin', 'super_admin')
+def site_head_dashboard(request):
+    """Project-scoped dashboard for Site Heads (admins see all projects)."""
+    customers = Customer.objects.select_related('sales_assessment', 'project').prefetch_related(
+        'sources', 'booking_applications', 'revisits', 'additional_channel_partners'
+    ).order_by('-created_at')
+
+    # Restrict to the Site Head's own project(s); admins/super_admins keep full access
+    customers = scope_customers(request.user, customers)
+
+    # Filters (mirror dashboard())
+    search = request.GET.get('search', '')
+    property_filter = request.GET.get('property', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    assessment_filter = request.GET.get('assessment', '')
+    booking_filter = request.GET.get('booking', '')
+
+    if search:
+        customers = customers.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(form_number__icontains=search) |
+            Q(city__icontains=search) |
+            Q(phone_number__icontains=search)
+        )
+    if property_filter:
+        customers = customers.filter(form_number__startswith=property_filter)
+    if date_from:
+        customers = customers.filter(created_at__date__gte=date_from)
+    if date_to:
+        customers = customers.filter(created_at__date__lte=date_to)
+    if assessment_filter == 'completed':
+        customers = customers.filter(sales_assessment__isnull=False)
+    elif assessment_filter == 'pending':
+        customers = customers.filter(sales_assessment__isnull=True)
+    if booking_filter == 'completed':
+        customers = customers.filter(booking_applications__isnull=False)
+    elif booking_filter == 'pending':
+        customers = customers.filter(booking_applications__isnull=True)
+
+    # Projects this Site Head manages (for JS property mapping); admins see all active
+    if get_user_role(request.user) == 'site_head':
+        projects = site_head_projects(request.user).filter(is_active=True)
+    else:
+        projects = Project.objects.active_projects()
+
+    projects_data = {}
+    for project in projects:
+        projects_data[project.project_prefix.upper()] = {
+            'code': project.project_prefix,
+            'name': project.project_name
+        }
+    projects_data_json = json.dumps(projects_data)
+
+    return render(request, 'dashboard.html', {
+        'customers': customers,
+        'projects_data_json': projects_data_json,
+        'active_projects': projects,
+        'is_site_head': get_user_role(request.user) == 'site_head',
+    })
+
+
 @login_required
 @csrf_exempt
 def export_leads(request):
@@ -649,6 +762,10 @@ def export_leads(request):
         customers = Customer.objects.select_related('sales_assessment').prefetch_related(
             'sources', 'booking_applications'
         ).order_by('-created_at')
+
+        # Site Heads can only ever export their own project(s) — enforced regardless of any
+        # broader filter posted. Admins/others are unaffected.
+        customers = scope_customers(request.user, customers)
 
         # If specific form numbers are provided (e.g. from closing manager), restrict to those
         if form_numbers_str:
@@ -787,13 +904,32 @@ def export_leads(request):
     return HttpResponse('Method not allowed', status=405)
 
 
+def _customer_snapshot(customer):
+    """Return a dict of the editable Customer fields for audit diffing."""
+    fields = [
+        'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'sex',
+        'marital_status', 'date_of_birth', 'residential_address', 'city', 'locality',
+        'pincode', 'nationality', 'employment_type', 'company_name', 'designation',
+        'industry', 'configuration', 'budget', 'construction_status',
+        'purpose_of_buying', 'source_details',
+    ]
+    return {f: getattr(customer, f) for f in fields}
+
+
+@login_required
 def edit_customer(request, pk):
     """Edit or view customer information based on user role"""
     customer = get_object_or_404(Customer, pk=pk)
     user_role = get_user_role(request.user)
-    can_edit = user_role in ('admin', 'super_admin', 'closing_manager')
+    can_edit = user_role in ('admin', 'super_admin', 'closing_manager', 'site_head')
+
+    # Site Heads may only touch customers in their own project(s)
+    if user_role == 'site_head' and not can_access_customer(request.user, customer):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
     if request.method == 'POST' and can_edit:
+        before = _customer_snapshot(customer)
         try:
             with transaction.atomic():
                 customer.first_name = request.POST.get('first_name', customer.first_name)
@@ -881,9 +1017,10 @@ def edit_customer(request, pk):
                             project_name=ref_project
                         )
 
-                log_action(request.user, 'edit', 'Customer', customer.id, str(customer), request=request)
+                after = _customer_snapshot(customer)
+                diff_and_log(request.user, 'edit', customer, before, after, request=request)
                 messages.success(request, 'Customer information updated successfully!')
-                return redirect('customer_enquiry:dashboard')
+                return redirect(role_redirect(request.user))
 
         except Exception as e:
             messages.error(request, f'An error occurred: {str(e)}')
@@ -946,16 +1083,18 @@ def edit_customer(request, pk):
 
 @login_required
 def remove_additional_cp(request, cp_id):
-    """Remove an additional channel partner (admin/super_admin/closing_manager only)."""
+    """Remove an additional channel partner (admin/super_admin/closing_manager/site_head)."""
     from django.http import JsonResponse
     role = get_user_role(request.user)
-    if role not in ('admin', 'super_admin', 'closing_manager'):
+    if role not in ('admin', 'super_admin', 'closing_manager', 'site_head'):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
 
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
 
     cp = get_object_or_404(AdditionalChannelPartner, pk=cp_id)
+    if not can_access_customer(request.user, cp.customer):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
     customer_pk = cp.customer_id
     cp_repr = f"{cp.company_name} — {cp.partner_name}" if cp.company_name else f"CP #{cp_id}"
     cp.delete()
@@ -966,15 +1105,17 @@ def remove_additional_cp(request, cp_id):
 
 @login_required
 def add_additional_cp(request, customer_id):
-    """Add a new additional channel partner to a customer (admin/super_admin/closing_manager only)."""
+    """Add a new additional channel partner to a customer (admin/super_admin/closing_manager/site_head)."""
     from django.http import JsonResponse
     role = get_user_role(request.user)
-    if role not in ('admin', 'super_admin', 'closing_manager'):
+    if role not in ('admin', 'super_admin', 'closing_manager', 'site_head'):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
 
     customer = get_object_or_404(Customer, pk=customer_id)
+    if not can_access_customer(request.user, customer):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
     company_name = request.POST.get('company_name', '').strip()
     partner_name = request.POST.get('partner_name', '').strip()
     mobile_number = request.POST.get('mobile_number', '').strip()
@@ -1147,11 +1288,30 @@ def add_additional_cp(request, customer_id):
         
 #         return render(request, 'edit_customer.html', context)
 
+def _assessment_snapshot(assessment):
+    """Return a dict of lead-status / remarks fields for audit diffing."""
+    fields = [
+        'lead_classification', 'reason_for_lost', 'customer_classification',
+        'reason_for_closed', 'current_residence_config', 'current_residence_ownership',
+        'plot', 'family_size', 'area_looking', 'desired_flat_area',
+        'source_of_funding', 'ethnicity', 'other_projects_considered',
+        'sales_manager_remarks',
+    ]
+    if assessment is None or assessment.pk is None:
+        return {f: None for f in fields}
+    return {f: getattr(assessment, f) for f in fields}
+
+
 @login_required
 def internal_sales_assessment(request, customer_id):
     """Create or edit internal sales assessment for a customer"""
     customer = get_object_or_404(Customer, pk=customer_id)
-    
+
+    # Site Heads may only work on inquiries within their own project(s)
+    if get_user_role(request.user) == 'site_head' and not can_access_customer(request.user, customer):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("You do not have permission to access this inquiry.")
+
     # Try to get existing assessment or create new one
     try:
         assessment = customer.sales_assessment
@@ -1216,6 +1376,8 @@ def internal_sales_assessment(request, customer_id):
     user_role = get_user_role(request.user)
 
     if request.method == 'POST':
+        assessment_existed = assessment is not None and assessment.pk is not None
+        before = _assessment_snapshot(assessment if assessment_existed else None)
         try:
             with transaction.atomic():
                 # Get or create assessment
@@ -1277,18 +1439,26 @@ def internal_sales_assessment(request, customer_id):
                     assessment_obj.sales_manager_remarks = request.POST.get('sales_manager_remarks', '')
 
                 assessment_obj.save()
-                log_action(request.user, 'assessment', 'InternalSalesAssessment', assessment_obj.id,
-                           f"Assessment for {customer.get_full_name()} ({customer.form_number})",
-                           changes=json.dumps({'action': 'updated' if assessment else 'created',
-                                               'lead_classification': assessment_obj.lead_classification}),
-                           request=request)
+
+                # Field-level before/after audit (captures previous vs updated value)
+                after = _assessment_snapshot(assessment_obj)
+                if assessment_existed:
+                    diff_and_log(request.user, 'status_update', assessment_obj,
+                                 before, after, request=request)
+                else:
+                    log_action(request.user, 'assessment', 'InternalSalesAssessment',
+                               assessment_obj.id,
+                               f"Assessment for {customer.get_full_name()} ({customer.form_number})",
+                               changes=json.dumps({'action': 'created',
+                                                   'lead_classification': assessment_obj.lead_classification}),
+                               request=request)
 
                 if assessment:
                     messages.success(request, 'Internal sales assessment updated successfully!')
                 else:
                     messages.success(request, 'Internal sales assessment created successfully!')
-                
-                return redirect('customer_enquiry:dashboard')
+
+                return redirect(role_redirect(request.user))
 
         except Exception as e:
             messages.error(request, f'An error occurred: {str(e)}')
@@ -1345,9 +1515,20 @@ def internal_sales_assessment(request, customer_id):
             except Exception:
                 project_data = None
 
-    # Get managers for dropdown
-    sourcing_managers = User.objects.filter(profile__role='sourcing_manager').order_by('first_name')
-    closing_managers = User.objects.filter(profile__role='closing_manager').order_by('first_name')
+    # Get managers for dropdown (Site Heads see only their project's active team)
+    if user_role == 'site_head':
+        proj_customers = Customer.objects.filter(project=customer.project)
+        sourcing_managers = User.objects.filter(
+            profile__role='sourcing_manager',
+            sourcing_assignments__customer__in=proj_customers,
+        ).distinct().order_by('first_name')
+        closing_managers = User.objects.filter(
+            profile__role='closing_manager',
+            closing_assignments__customer__in=proj_customers,
+        ).distinct().order_by('first_name')
+    else:
+        sourcing_managers = User.objects.filter(profile__role='sourcing_manager').order_by('first_name')
+        closing_managers = User.objects.filter(profile__role='closing_manager').order_by('first_name')
 
     # Get existing assignment if any
     try:
@@ -2600,11 +2781,18 @@ def manage_users(request):
                     first_name=first_name,
                     last_name=last_name,
                 )
-                UserProfile.objects.create(
+                new_profile = UserProfile.objects.create(
                     user=new_user,
                     whatsapp_number=whatsapp,
                     role=new_role,
                 )
+                # Site Heads must be scoped to one or more projects
+                if new_role == 'site_head':
+                    project_ids = request.POST.getlist('projects')
+                    if project_ids:
+                        new_profile.projects.set(
+                            Project.objects.filter(id__in=project_ids)
+                        )
                 log_action(
                     request.user, 'create', 'User',
                     new_user.id, f"{first_name} {last_name} ({new_role})",
@@ -2628,11 +2816,12 @@ def manage_users(request):
             return redirect('customer_enquiry:manage_users')
 
     # List all staff users with profiles
-    profiles = UserProfile.objects.select_related('user').order_by('role', 'user__first_name')
+    profiles = UserProfile.objects.select_related('user').prefetch_related('projects').order_by('role', 'user__first_name')
     return render(request, 'manage_users.html', {
         'profiles': profiles,
         'role_choices': UserProfile.ROLE_CHOICES,
         'user_role': role,
+        'active_projects': Project.objects.filter(is_active=True).order_by('project_name'),
     })
 
 
@@ -2640,16 +2829,36 @@ def manage_users(request):
 
 @login_required
 def assign_customer(request, customer_id):
-    """Assign a customer to sourcing/closing manager."""
+    """Assign/reassign a customer to sourcing/closing manager.
+
+    Admins may assign among all managers. Site Heads may reassign only within
+    their own project, and only among managers already active on that project.
+    """
     role = get_user_role(request.user)
-    if role not in ('admin', 'super_admin'):
+    if role not in ('admin', 'super_admin', 'site_head'):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
     customer = get_object_or_404(Customer, id=customer_id)
 
-    sourcing_managers = User.objects.filter(profile__role='sourcing_manager')
-    closing_managers = User.objects.filter(profile__role='closing_manager')
+    if role == 'site_head' and not can_access_customer(request.user, customer):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("You do not have permission to access this inquiry.")
+
+    if role == 'site_head':
+        # Scope the "sales team" to managers already assigned to this project's customers
+        proj_customers = Customer.objects.filter(project=customer.project)
+        sourcing_managers = User.objects.filter(
+            profile__role='sourcing_manager',
+            sourcing_assignments__customer__in=proj_customers,
+        ).distinct()
+        closing_managers = User.objects.filter(
+            profile__role='closing_manager',
+            closing_assignments__customer__in=proj_customers,
+        ).distinct()
+    else:
+        sourcing_managers = User.objects.filter(profile__role='sourcing_manager')
+        closing_managers = User.objects.filter(profile__role='closing_manager')
 
     try:
         assignment = customer.assignment
@@ -2662,6 +2871,20 @@ def assign_customer(request, customer_id):
 
         sourcing_user = User.objects.get(id=sourcing_id) if sourcing_id else None
         closing_user = User.objects.get(id=closing_id) if closing_id else None
+
+        # Site Heads may only pick from their project's team (guard against tampering)
+        if role == 'site_head':
+            allowed_ids = set(sourcing_managers.values_list('id', flat=True)) | \
+                set(closing_managers.values_list('id', flat=True))
+            if (sourcing_user and sourcing_user.id not in allowed_ids) or \
+               (closing_user and closing_user.id not in allowed_ids):
+                from django.http import HttpResponseForbidden
+                return HttpResponseForbidden("Selected manager is not part of this project's team.")
+
+        before = {
+            'sourcing_manager': assignment.sourcing_manager.get_full_name() if assignment and assignment.sourcing_manager else None,
+            'closing_manager': assignment.closing_manager.get_full_name() if assignment and assignment.closing_manager else None,
+        }
 
         if assignment:
             assignment.sourcing_manager = sourcing_user
@@ -2676,17 +2899,13 @@ def assign_customer(request, customer_id):
                 assigned_by=request.user,
             )
 
-        log_action(
-            request.user, 'assign', 'Customer', customer.id,
-            str(customer),
-            changes=json.dumps({
-                'sourcing_manager': sourcing_user.get_full_name() if sourcing_user else None,
-                'closing_manager': closing_user.get_full_name() if closing_user else None,
-            }),
-            request=request
-        )
+        after = {
+            'sourcing_manager': sourcing_user.get_full_name() if sourcing_user else None,
+            'closing_manager': closing_user.get_full_name() if closing_user else None,
+        }
+        diff_and_log(request.user, 'reassign', customer, before, after, request=request)
         messages.success(request, f"Assignment updated for {customer.get_full_name()}.")
-        return redirect('customer_enquiry:dashboard')
+        return redirect(role_redirect(request.user))
 
     return render(request, 'assign_customer.html', {
         'customer': customer,

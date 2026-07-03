@@ -723,7 +723,7 @@
                     <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
                     <td class="action-buttons">
                         <!-- Edit/View Customer Button (role-based) -->
-                        {% if request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.profile.role == 'closing_manager' %}
+                        {% if request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.profile.role == 'closing_manager' or request.user.profile.role == 'site_head' %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-primary">Edit</a>
                         {% else %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info" style="background:#17a2b8;color:#fff;">View</a>
@@ -765,8 +765,8 @@
                         </button>
                         {% endif %}
 
-                        <!-- Assign Button (admin only) -->
-                        {% if request.user.profile.role in 'admin,super_admin' or request.user.is_superuser %}
+                        <!-- Assign / Reassign Button (admin + site head) -->
+                        {% if request.user.profile.role in 'admin,super_admin' or request.user.profile.role == 'site_head' or request.user.is_superuser %}
                         <a href="{% url 'customer_enquiry:assign_customer' customer.pk %}" class="btn btn-secondary" style="font-size:11px;">Assign</a>
                         {% endif %}
                     </td>

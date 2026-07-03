@@ -15,6 +15,7 @@ class UserProfile(models.Model):
         ('gre', 'GRE'),
         ('sourcing_manager', 'Sourcing Manager'),
         ('closing_manager', 'Closing Manager'),
+        ('site_head', 'Site Head'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -29,6 +30,12 @@ class UserProfile(models.Model):
         choices=ROLE_CHOICES,
         default='admin',
         help_text="User role determines dashboard access and permissions"
+    )
+    projects = models.ManyToManyField(
+        'Project',
+        blank=True,
+        related_name='site_heads',
+        help_text="Projects this Site Head manages (Site Head role only)"
     )
 
     class Meta:
@@ -53,6 +60,9 @@ class UserProfile(models.Model):
 
     def is_closing_manager(self):
         return self.role == 'closing_manager'
+
+    def is_site_head(self):
+        return self.role == 'site_head'
 
 
 class Customer(models.Model):
@@ -134,9 +144,17 @@ class Customer(models.Model):
     
     # Form Meta Information
     form_number = models.CharField(
-        max_length=20, 
+        max_length=20,
         unique=True,
         help_text="Auto-generated form number"
+    )
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers',
+        help_text="Project this inquiry belongs to (used for project-scoped access)"
     )
     form_date = models.DateField(default=timezone.now)
     
@@ -1036,6 +1054,9 @@ class AuditLog(models.Model):
         ('cp_add', 'CP Added'),
         ('cp_remove', 'CP Removed'),
         ('cp_toggle', 'CP Status Toggled'),
+        ('cp_edit', 'CP Edited'),
+        ('status_update', 'Lead Status Updated'),
+        ('reassign', 'Lead Reassigned'),
     ]
 
     user = models.ForeignKey(
