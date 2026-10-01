@@ -300,6 +300,13 @@
             break-before: page !important;
         }
 
+        /* html2canvas crashes ("Error parsing CSS component value, unexpected EOF") on
+           ::after content of checked inputs. Disable it while generating the PDF -
+           html2canvas draws the radio dot / checkbox tick natively. */
+        html.pdf-generating input:checked::after {
+            content: none !important;
+        }
+
         /* Hide elements from PDF generation only - keeps them visible on screen */
         .hide-from-pdf {
             /* Elements remain visible on screen, hidden only during PDF generation */
@@ -2335,6 +2342,9 @@
                 element.style.display = 'none';
             });
             
+            // Avoid html2canvas crash on checked-input pseudo content
+            document.documentElement.classList.add('pdf-generating');
+
             // PDF configuration - using perfect settings from working code
             const opt = {
                 margin: 0.3,
@@ -2354,7 +2364,8 @@
                 button.innerHTML = '❌ PDF Failed';
                 setTimeout(() => { button.innerHTML = '📄 Download PDF'; }, 3000);
             }).finally(() => {
-                
+                document.documentElement.classList.remove('pdf-generating');
+
                 // Restore original applicant section displays
                 if (app2) app2.style.display = originalApp2Display;
                 if (app3) app3.style.display = originalApp3Display;
