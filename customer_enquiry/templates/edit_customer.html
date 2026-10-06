@@ -362,6 +362,10 @@
                                 <div>
                                     <label>RERA No.</label>
                                     <input type="text" name="partner_rera" class="field" value="{{ channel_partner.rera_number|default:'' }}" {% if view_only %}readonly{% endif %}>
+                                    <select name="partner_rera_status" class="field" style="margin-top:6px;" {% if view_only %}disabled{% endif %}>
+                                        <option value="registered" {% if channel_partner.rera_status != 'applied' %}selected{% endif %}>RERA Registered</option>
+                                        <option value="applied" {% if channel_partner.rera_status == 'applied' %}selected{% endif %}>RERA Applied</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -398,7 +402,7 @@
                                 </div>
                                 <div>
                                     <label>RERA No.</label>
-                                    <input type="text" class="field" value="{{ acp.rera_number|default:'-' }}" readonly>
+                                    <input type="text" class="field" value="{% if acp.rera_status == 'applied' %}RERA Applied{% if acp.rera_number %} ({{ acp.rera_number }}){% endif %}{% else %}{{ acp.rera_number|default:'-' }}{% endif %}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -436,6 +440,10 @@
                                 <div>
                                     <label>RERA No.</label>
                                     <input class="field" id="newCpRera" placeholder="Optional">
+                                    <select class="field" id="newCpReraStatus" style="margin-top:6px;">
+                                        <option value="registered">RERA Registered</option>
+                                        <option value="applied">RERA Applied</option>
+                                    </select>
                                 </div>
                             </div>
                             <div style="display:flex;gap:8px;margin-top:12px;">
@@ -581,6 +589,7 @@
         document.getElementById('newCpPartner').value = cp.partner_name;
         document.getElementById('newCpMobile').value = cp.mobile_number;
         document.getElementById('newCpRera').value = cp.rera_number || '';
+        document.getElementById('newCpReraStatus').value = cp.rera_status || 'registered';
         document.getElementById('newCpList').style.display = 'none';
     }
 
@@ -600,6 +609,7 @@
         ['newCpSearch','newCpCompany','newCpPartner','newCpMobile','newCpRera'].forEach(id => {
             document.getElementById(id).value = '';
         });
+        document.getElementById('newCpReraStatus').value = 'registered';
         document.getElementById('addCpMsg').textContent = '';
     }
 
@@ -627,6 +637,7 @@
         fd.append('partner_name', partner);
         fd.append('mobile_number', mobile);
         fd.append('rera_number', rera);
+        fd.append('rera_status', document.getElementById('newCpReraStatus').value);
 
         msg.textContent = 'Saving…';
         msg.style.color = '#555';
@@ -652,7 +663,7 @@
                             style="background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">Remove</button>
                     </div>
                     <div style="font-size:13px;color:#555;">
-                        <strong>${data.company_name}</strong> — ${data.partner_name} &nbsp;|&nbsp; ${data.mobile_number}${data.rera_number ? ' &nbsp;|&nbsp; RERA: ' + data.rera_number : ''}
+                        <strong>${data.company_name}</strong> — ${data.partner_name} &nbsp;|&nbsp; ${data.mobile_number}${data.rera_status === 'applied' ? ' &nbsp;|&nbsp; RERA Applied' + (data.rera_number ? ' (' + data.rera_number + ')' : '') : (data.rera_number ? ' &nbsp;|&nbsp; RERA: ' + data.rera_number : '')}
                     </div>`;
                 const addSection = document.getElementById('addCpSection');
                 addSection.parentElement.insertBefore(div, addSection);

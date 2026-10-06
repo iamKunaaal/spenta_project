@@ -13,7 +13,7 @@ from django.urls import reverse
 
 MOBILE_RE = re.compile(r'^\d{10}$')
 REQUIRED_COLS = ('company_name', 'partner_name', 'mobile_number')
-OPTIONAL_COLS = ('rera_number', 'is_active')
+OPTIONAL_COLS = ('rera_number', 'rera_status', 'is_active')
 ALLOWED_EXT = ('.xlsx', '.xls', '.csv')
 
 
@@ -121,6 +121,7 @@ def cp_bulk_upload(request):
         partner = _clean(row.get('partner_name'))
         mobile = _clean(row.get('mobile_number'))
         rera = _clean(row.get('rera_number')) if 'rera_number' in df.columns else ''
+        rera_status = (_clean(row.get('rera_status')) if 'rera_status' in df.columns else '').lower()
         is_active = _parse_bool(row.get('is_active'), default=True) if 'is_active' in df.columns else True
 
         reasons = []
@@ -138,6 +139,8 @@ def cp_bulk_upload(request):
             reasons.append('mobile_number must be exactly 10 digits')
         if rera and len(rera) > 50:
             reasons.append('rera_number exceeds 50 characters')
+        if rera_status and rera_status not in ('registered', 'applied'):
+            reasons.append("rera_status must be 'registered' or 'applied'")
 
         if reasons:
             errors.append({'row': row_no, 'mobile': mobile, 'reason': '; '.join(reasons)})
@@ -157,6 +160,7 @@ def cp_bulk_upload(request):
             partner_name=partner,
             mobile_number=mobile,
             rera_number=rera,
+            rera_status=rera_status or 'registered',
             is_active=is_active,
         ))
 
@@ -202,6 +206,7 @@ def download_template(request):
         'partner_name': 'Rahul Sharma',
         'mobile_number': '9876543210',
         'rera_number': 'A12345678',
+        'rera_status': 'registered',
         'is_active': 'true',
     }])
     buf = io.BytesIO()

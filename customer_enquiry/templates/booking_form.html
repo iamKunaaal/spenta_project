@@ -1376,7 +1376,7 @@
                 </div>
                 <div class="grid-fit" style="margin-top: 6px">
                     <div class="label">Channel Partner MahaRERA Registration Number:</div>
-                    <input class="line" name="channel_partner_rera" value="{% if channel_partner %}{{ prefilled_data.channel_partner_rera|default:channel_partner.rera_number|default:'' }}{% else %}{{ prefilled_data.channel_partner_rera|default:'' }}{% endif %}" />
+                    <input class="line" name="channel_partner_rera" value="{% if channel_partner %}{% if prefilled_data.channel_partner_rera %}{{ prefilled_data.channel_partner_rera }}{% elif channel_partner.rera_number %}{{ channel_partner.rera_number }}{% elif channel_partner.rera_status == 'applied' %}RERA Applied{% endif %}{% else %}{{ prefilled_data.channel_partner_rera|default:'' }}{% endif %}" />
                 </div>
                 <div class="row cols-2" style="margin-top: 6px">
                     <div class="grid-fit">

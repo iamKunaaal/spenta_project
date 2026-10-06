@@ -34,6 +34,7 @@
         .role-sourcing_manager { background:#17a2b8; color:#fff; }
         .role-closing_manager { background:#fd7e14; color:#fff; }
         .role-site_head { background:#c2185b; color:#fff; }
+        .role-digital_form { background:#6f42c1; color:#fff; }
         .alert { padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:14px; }
         .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
         .alert-error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
@@ -90,7 +91,7 @@
             </div>
         </div>
         <div class="form-group" id="projectsGroup" style="display:none;margin-top:14px;">
-            <label>Projects (Site Head) *</label>
+            <label>Projects * <span style="font-weight:400;color:#888;">(Site Head / GRE: the projects they can see. Sourcing / Closing Manager: the projects they work on.)</span></label>
             <select name="projects" multiple size="5" style="width:100%;">
                 {% for project in active_projects %}
                     <option value="{{ project.id }}">{{ project.project_name }}</option>
@@ -109,9 +110,11 @@
         var role = document.getElementById('roleSelect').value;
         var group = document.getElementById('projectsGroup');
         var sel = group.querySelector('select[name="projects"]');
-        if (role === 'site_head') {
+        var scoped = (role === 'site_head' || role === 'gre');
+        var assignable = scoped || role === 'sourcing_manager' || role === 'closing_manager';
+        if (assignable) {
             group.style.display = 'block';
-            sel.required = true;
+            sel.required = scoped;
         } else {
             group.style.display = 'none';
             sel.required = false;
@@ -144,10 +147,23 @@
                     <td>{{ profile.user.email }}</td>
                     <td>
                         <span class="role-badge role-{{ profile.role }}">{{ profile.get_role_display }}</span>
-                        {% if profile.role == 'site_head' %}
-                            <div style="margin-top:5px;font-size:11px;color:#666;">
-                                {% for p in profile.projects.all %}{{ p.project_name }}{% if not forloop.last %}, {% endif %}{% empty %}<em>No projects</em>{% endfor %}
-                            </div>
+                        {% if profile.role == 'site_head' or profile.role == 'gre' or profile.role == 'sourcing_manager' or profile.role == 'closing_manager' %}
+                        <details style="margin-top:6px;">
+                            <summary style="cursor:pointer;font-size:11px;color:#007bff;">
+                                {% for p in profile.projects.all %}{{ p.project_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span style="color:#dc3545;">⚠ No projects{% if profile.role == 'site_head' or profile.role == 'gre' %} — sees no leads{% endif %}</span>{% endfor %} ✎
+                            </summary>
+                            <form method="POST" style="margin-top:6px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_projects">
+                                <input type="hidden" name="user_id" value="{{ profile.user.id }}">
+                                <select name="projects" multiple size="5" style="width:100%;font-size:12px;">
+                                    {% for project in active_projects %}
+                                    <option value="{{ project.id }}" {% if project in profile.projects.all %}selected{% endif %}>{{ project.project_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary" style="padding:4px 10px;font-size:11px;margin-top:4px;">Save projects</button>
+                            </form>
+                        </details>
                         {% endif %}
                     </td>
                     <td>{{ profile.whatsapp_number|default:"—" }}</td>

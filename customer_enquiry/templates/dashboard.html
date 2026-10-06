@@ -601,7 +601,7 @@
                 <input type="date" id="dateTo">
             </div>
             
-            <div class="filter-group">
+            <div class="filter-group"{% if request.user.profile.is_gre_like %} style="display:none"{% endif %}>
                 <label for="assessmentFilter">Assessment Status</label>
                 <select id="assessmentFilter">
                     <option value="">All</option>
@@ -642,7 +642,7 @@
             <div class="stat-number" id="filteredLeads">{{ customers|length }}</div>
             <div class="stat-label">Filtered Results</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card"{% if request.user.profile.is_gre_like %} style="display:none"{% endif %}>
             <div class="stat-number" id="completedAssessments">
                 {% for customer in customers %}
                     {% if customer.sales_assessment %}1{% endif %}
@@ -684,7 +684,7 @@
                 {% for customer in customers %}
                 <tr data-property="" 
                     data-date="{{ customer.created_at|date:'Y-m-d' }}"
-                    data-assessment="{% if request.user.profile.role == 'gre' %}{% if customer.sales_assessment %}completed{% else %}pending{% endif %}{% else %}{% if customer.sales_assessment and customer.sales_assessment.lead_classification %}completed{% else %}pending{% endif %}{% endif %}"
+                    data-assessment="{% if request.user.profile.is_gre_like %}{% if customer.sales_assessment %}completed{% else %}pending{% endif %}{% else %}{% if customer.sales_assessment and customer.sales_assessment.lead_classification %}completed{% else %}pending{% endif %}{% endif %}"
                     data-booking="{% if customer.booking_applications.exists %}completed{% else %}pending{% endif %}"
                     data-search="{{ customer.form_number|lower }} {{ customer.get_full_name|lower }} {{ customer.email|lower }} {{ customer.city|lower }} {{ customer.phone_number|default:'' }}"
                     data-form-number="{{ customer.form_number }}"
@@ -729,10 +729,16 @@
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info" style="background:#17a2b8;color:#fff;">View</a>
                         {% endif %}
                         
+                        <!-- Download CIF (Digital Form, Admin, Super Admin) -->
+                        {% if request.user.profile.role == 'digital_form' or request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' %}
+                        <a href="{% url 'customer_enquiry:cif_view' customer.pk %}" class="btn btn-warning" style="font-size:11px;background:#6f42c1;border-color:#6f42c1;color:#fff;">CIF</a>
+                        {% endif %}
+
+                        {% if not request.user.profile.is_gre_like %}
                         <!-- Internal Assessment Button -->
                         <a href="{% url 'customer_enquiry:internal_sales_assessment' customer.pk %}" class="btn btn-success">
                             Assessment
-                            {% if request.user.profile.role == 'gre' %}
+                            {% if request.user.profile.is_gre_like %}
                                 {% if customer.sales_assessment %}
                                     <span class="assessment-status assessment-complete">✓</span>
                                 {% else %}
@@ -746,9 +752,10 @@
                                 {% endif %}
                             {% endif %}
                         </a>
-            
+                        {% endif %}
+
                         <!-- Booking Form Button (hidden for GRE) -->
-                        {% if not request.user.profile.role == 'gre' %}
+                        {% if not request.user.profile.is_gre_like %}
                         <a href="{% url 'customer_enquiry:booking_form' customer.pk %}" class="btn btn-warning">
                             Booking
                             {% if customer.booking_applications.exists %}
@@ -766,7 +773,7 @@
                         {% endif %}
 
                         <!-- Assign / Reassign Button (admin + site head) -->
-                        {% if request.user.profile.role in 'admin,super_admin' or request.user.profile.role == 'site_head' or request.user.is_superuser %}
+                        {% if request.user.profile.role in 'admin,super_admin' or request.user.profile.role == 'site_head' or request.user.profile.is_gre_like or request.user.is_superuser %}
                         <a href="{% url 'customer_enquiry:assign_customer' customer.pk %}" class="btn btn-secondary" style="font-size:11px;">Assign</a>
                         {% endif %}
                     </td>

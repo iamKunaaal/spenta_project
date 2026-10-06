@@ -992,9 +992,9 @@
                 <form method="POST" id="internalAssessment" novalidate>
                     {% csrf_token %}
 
-                    {% if gre_only %}
+                    {% if read_only %}
                     <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#856404;">
-                        ℹ️ <strong>GRE Access:</strong> You can only fill Step 1 — Sourcing Manager and Closing Manager assignment.
+                        🔒 <strong>View only:</strong> Assessment details and remarks can be edited only by the Closing Manager, Admin or Site Head.
                     </div>
                     {% endif %}
 
@@ -1350,12 +1350,17 @@
 
     <script>
         const greOnly = {{ gre_only|yesno:"true,false" }};
+        const readOnly = {{ read_only|yesno:"true,false" }};
         let current = 1, total = greOnly ? 1 : 5;
         const sections = [...document.querySelectorAll('.section')];
         const steps = [...document.querySelectorAll('.step')];
         const nextBtn = document.getElementById('nextBtn');
         const prevBtn = document.getElementById('prevBtn');
         const form = document.getElementById('internalAssessment');
+        if (readOnly) {
+            // View-only roles can browse every step but cannot change anything
+            form.querySelectorAll('input, select, textarea').forEach(el => { el.disabled = true; });
+        }
 
         function setStep(n) {
             current = Math.min(Math.max(n, 1), total);
@@ -1365,6 +1370,7 @@
                 s.classList.toggle('done', i + 1 < current);
             });
             nextBtn.textContent = current === total ? 'Submit Assessment' : 'Continue →';
+            nextBtn.style.display = (readOnly && current === total) ? 'none' : '';
             prevBtn.style.display = current === 1 ? 'none' : 'flex';
             document.querySelector('.form').scrollTop = 0;
         }
@@ -1419,6 +1425,7 @@
 
         // Next button click handler
         nextBtn.addEventListener('click', () => {
+            if (readOnly) { setStep(current + 1); return; }
             if (current === total) {
                 // Validate ALL required fields in the entire form
                 if (validateAllRequiredFields()) {

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIF — {{ customer.form_number }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #eef0f4; font-family: Arial, Helvetica, sans-serif; color: #1f2933; }
+        .toolbar { max-width: 800px; margin: 16px auto 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 0 4px; }
+        .toolbar a.back { color: #374151; text-decoration: none; font-size: 14px; }
+        .toolbar button { background: #28a745; color: #fff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        .toolbar button:disabled { opacity: .6; cursor: default; }
+        #cifSheet { width: 800px; max-width: 100%; margin: 12px auto 40px; background: #fff; padding: 32px 36px; border: 1px solid #d5d9e0; }
+        .head { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #c9a227; padding-bottom: 14px; margin-bottom: 18px; }
+        .head img { max-height: 70px; max-width: 160px; object-fit: contain; }
+        .head .meta { flex: 1; }
+        .head h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+        .head .proj { font-size: 13px; color: #4b5563; margin-top: 4px; }
+        .head .formno { text-align: right; font-size: 13px; }
+        .head .formno strong { display: block; font-size: 16px; }
+        h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .6px; background: #f5efd8; border-left: 4px solid #c9a227; padding: 6px 10px; margin: 20px 0 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 18px; }
+        .grid.two { grid-template-columns: 1fr 1fr; }
+        .grid .full { grid-column: 1 / -1; }
+        .f label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; margin-bottom: 2px; }
+        .f .v { font-size: 13.5px; min-height: 20px; border-bottom: 1px solid #cfd4dc; padding-bottom: 3px; word-break: break-word; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { border: 1px solid #c9a227; background: #fffaf0; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; }
+        table.cp { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+        table.cp th, table.cp td { border: 1px solid #cfd4dc; padding: 5px 8px; text-align: left; }
+        table.cp td { height: 30px; }
+        table.cp th { background: #f3f4f6; font-size: 11px; text-transform: uppercase; }
+        .foot { margin-top: 26px; font-size: 11px; color: #6b7280; display: flex; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+        h3.sub { font-size: 12.5px; margin: 16px 0 8px; color: #374151; border-bottom: 1px dashed #cfd4dc; padding-bottom: 3px; }
+        .srcgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-top: 4px; }
+        .src { font-size: 13px; }
+        .cb { display: inline-block; width: 14px; height: 14px; border: 1px solid #444; border-radius: 2px; margin-right: 8px; text-align: center; line-height: 13px; font-size: 12px; font-weight: bold; vertical-align: middle; }
+        .section { page-break-inside: avoid; }
+        @media (max-width: 700px) { #cifSheet { padding: 18px; } .grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+{% csrf_token %}
+<div class="toolbar" id="cifToolbar">
+    <a class="back" href="{% url 'customer_enquiry:edit_customer' customer.pk %}">← Back to customer</a>
+    <button type="button" id="cifDownloadBtn">📄 Download CIF (PDF)</button>
+</div>
+
+<div id="cifSheet">
+    <div class="head">
+        {% if project and project.project_logo %}<img src="{{ project.project_logo.url }}" alt="" onerror="this.style.display='none'">{% endif %}
+        <div class="meta">
+            <h1>CUSTOMER INFORMATION FORM</h1>
+            <div class="proj">
+                {% if project %}{{ project.project_name }}{% if project.site_name %} — {{ project.site_name }}{% endif %}{% else %}Project not mapped{% endif %}
+                {% if project and project.maharera_no %}<br>MahaRERA: {{ project.maharera_no }}{% endif %}
+            </div>
+        </div>
+        <div class="formno">
+            <span>Form No.</span>
+            <strong>{{ customer.form_number }}</strong>
+            <span>Date: {{ customer.form_date|date:"d M Y" }}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Personal Details</h2>
+        <div class="grid">
+            <div class="f"><label>First Name</label><div class="v">{{ customer.first_name|default:"" }}</div></div>
+            <div class="f"><label>Middle Name</label><div class="v">{{ customer.middle_name|default:"" }}</div></div>
+            <div class="f"><label>Last Name</label><div class="v">{{ customer.last_name|default:"" }}</div></div>
+            <div class="f"><label>Email</label><div class="v">{{ customer.email|default:"" }}</div></div>
+            <div class="f"><label>Phone Number</label><div class="v">{{ customer.phone_number|default:"" }}</div></div>
+            <div class="f"><label>Date of Birth</label><div class="v">{% if customer.date_of_birth %}{{ customer.date_of_birth|date:"d M Y" }}{% endif %}</div></div>
+            <div class="f"><label>Sex</label><div class="v">{{ customer.get_sex_display|default:"" }}</div></div>
+            <div class="f"><label>Marital Status</label><div class="v">{{ customer.get_marital_status_display|default:"" }}</div></div>
+            <div class="f"><label>Nationality</label><div class="v">{{ customer.get_nationality_display|default:"" }}</div></div>
+            <div class="f full"><label>Residential Address</label><div class="v">{{ customer.residential_address|default:"" }}</div></div>
+            <div class="f"><label>City</label><div class="v">{{ customer.city|default:"" }}</div></div>
+            <div class="f"><label>Locality</label><div class="v">{{ customer.locality|default:"" }}</div></div>
+            <div class="f"><label>Pincode</label><div class="v">{{ customer.pincode|default:"" }}</div></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Employment Details</h2>
+        <div class="grid">
+            <div class="f"><label>Employment Type</label><div class="v">{{ customer.get_employment_type_display|default:"" }}</div></div>
+            <div class="f"><label>Company Name</label><div class="v">{{ customer.company_name|default:"" }}</div></div>
+            <div class="f"><label>Designation</label><div class="v">{{ customer.designation|default:"" }}</div></div>
+            <div class="f full"><label>Industry</label><div class="v">{{ customer.industry|default:"" }}</div></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Customer's Requirements</h2>
+        <div class="grid two">
+            <div class="f"><label>Configuration</label><div class="v">{{ customer.get_configuration_display|default:"" }}</div></div>
+            <div class="f"><label>Budget</label><div class="v">{{ customer.get_budget_display|default:"" }}</div></div>
+            <div class="f"><label>Construction Status</label><div class="v">{{ customer.get_construction_status_display|default:"" }}</div></div>
+            <div class="f"><label>Purpose of Buying</label><div class="v">{{ customer.get_purpose_of_buying_display|default:"" }}</div></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Source of Visit</h2>
+        <div class="f"><label>How did you hear about us?</label></div>
+        <div class="srcgrid">
+            {% for value, label, checked in source_options %}
+            <div class="src"><span class="cb">{% if checked %}&#10003;{% endif %}</span>{{ label }}</div>
+            {% endfor %}
+        </div>
+        <div class="f" style="margin-top:12px;"><label>If Newspaper Ad / Social Media / Exhibition / Property Search Portal, please specify details</label><div class="v">{{ customer.source_details|default:"" }}</div></div>
+
+        <h3 class="sub">Sourcing Manager</h3>
+        <div class="grid two">
+            <div class="f"><label>Assigned Sourcing Manager</label><div class="v">{{ assigned_sourcing_manager }}</div></div>
+        </div>
+
+        <h3 class="sub">Channel Partner Details</h3>
+        <div class="grid two">
+            <div class="f"><label>Company Name</label><div class="v">{{ channel_partner.company_name|default:"" }}</div></div>
+            <div class="f"><label>Channel Partner Name</label><div class="v">{{ channel_partner.partner_name|default:"" }}</div></div>
+            <div class="f"><label>Mobile No.</label><div class="v">{{ channel_partner.mobile_number|default:"" }}</div></div>
+            <div class="f"><label>RERA No.</label><div class="v">{% if channel_partner.rera_status == 'applied' %}RERA Applied{% if channel_partner.rera_number %} ({{ channel_partner.rera_number }}){% endif %}{% else %}{{ channel_partner.rera_number|default:"" }}{% endif %}</div></div>
+        </div>
+
+        <h3 class="sub">Additional Channel Partners</h3>
+        <table class="cp">
+            <thead><tr><th>Company Name</th><th>Channel Partner Name</th><th>Mobile No.</th><th>RERA No.</th></tr></thead>
+            <tbody>
+                {% for cp in additional_channel_partners %}
+                <tr><td>{{ cp.company_name }}</td><td>{{ cp.partner_name }}</td><td>{{ cp.mobile_number }}</td><td>{% if cp.rera_status == 'applied' %}RERA Applied{% if cp.rera_number %} ({{ cp.rera_number }}){% endif %}{% else %}{{ cp.rera_number|default:"" }}{% endif %}</td></tr>
+                {% endfor %}
+                {% for blank in blank_cp_rows %}
+                <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3 class="sub">Referral Details</h3>
+        <div class="grid two">
+            <div class="f"><label>Name</label><div class="v">{{ referral.referral_name|default:"" }}</div></div>
+            <div class="f"><label>Project Name</label><div class="v">{{ referral.project_name|default:"" }}</div></div>
+        </div>
+    </div>
+
+    <div class="foot">
+        <span>Spenta Corporation — Customer Information Form</span>
+        <span>Generated {% now "d M Y, H:i" %}</span>
+    </div>
+</div>
+
+<script>
+function refreshSheet() {
+    return fetch(window.location.href, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (res) {
+            if (!res.ok) { throw new Error('HTTP ' + res.status); }
+            return res.text();
+        })
+        .then(function (html) {
+            var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('cifSheet');
+            if (!fresh) { throw new Error('CIF sheet not in response'); }
+            document.getElementById('cifSheet').innerHTML = fresh.innerHTML;
+        });
+}
+
+document.getElementById('cifDownloadBtn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating PDF...';
+    var sheet = document.getElementById('cifSheet');
+    var opt = {
+        margin: 0.3,
+        filename: 'CIF-{{ customer.form_number }}.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+    };
+    // Always pull the latest saved data first, so edits made after this page was opened
+    // (by Admin / Closing Manager / Site Head) are reflected in the downloaded PDF.
+    refreshSheet().catch(function (e) {
+        console.warn('Could not refresh CIF data, using the page as loaded:', e);
+    }).then(function () {
+        return html2pdf().set(opt).from(document.getElementById('cifSheet')).save();
+    }).then(function () {
+        // audit-log the download (best effort)
+        var token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        return fetch("{% url 'customer_enquiry:cif_download_log' customer.pk %}", {
+            method: 'POST', headers: { 'X-CSRFToken': token }, credentials: 'same-origin'
+        });
+    }).catch(function (e) {
+        console.error('CIF PDF failed:', e);
+        btn.textContent = '❌ PDF failed — retry';
+        setTimeout(function () { btn.textContent = '📄 Download CIF (PDF)'; btn.disabled = false; }, 3000);
+        throw e;
+    }).then(function () {
+        btn.textContent = '📄 Download CIF (PDF)';
+        btn.disabled = false;
+    }, function () {});
+});
+</script>
+</body>
+</html>
