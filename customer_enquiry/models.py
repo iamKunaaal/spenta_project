@@ -4,6 +4,9 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 import random
 
+# Channel Partner RERA status: a partner is either RERA-registered or has applied for it
+RERA_STATUS_CHOICES = [('registered', 'Registered'), ('applied', 'Applied')]
+
 
 class UserProfile(models.Model):
     """
@@ -16,6 +19,7 @@ class UserProfile(models.Model):
         ('sourcing_manager', 'Sourcing Manager'),
         ('closing_manager', 'Closing Manager'),
         ('site_head', 'Site Head'),
+        ('digital_form', 'Digital Form'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -35,7 +39,7 @@ class UserProfile(models.Model):
         'Project',
         blank=True,
         related_name='site_heads',
-        help_text="Projects this Site Head manages (Site Head role only)"
+        help_text="Projects this user belongs to: visibility scope for Site Head / GRE, project team for Sourcing / Closing Managers"
     )
 
     class Meta:
@@ -63,6 +67,13 @@ class UserProfile(models.Model):
 
     def is_site_head(self):
         return self.role == 'site_head'
+
+    def is_digital_form(self):
+        return self.role == 'digital_form'
+
+    def is_gre_like(self):
+        """Roles that get GRE-level (restricted) access: GRE and Digital Form."""
+        return self.role in ('gre', 'digital_form')
 
 
 class Customer(models.Model):
@@ -356,8 +367,10 @@ class ChannelPartner(models.Model):
     
     rera_number = models.CharField(
         max_length=50,
-        help_text="Real Estate Regulatory Authority Number"
+        blank=True,
+        help_text="Real Estate Regulatory Authority Number (optional while RERA is 'Applied')"
     )
+    rera_status = models.CharField(max_length=10, choices=RERA_STATUS_CHOICES, default='registered')
     
     class Meta:
         db_table = 'channel_partners'
@@ -927,6 +940,7 @@ class AdditionalChannelPartner(models.Model):
         validators=[RegexValidator(regex=r'^\d{10}$', message='Mobile number must be 10 digits')]
     )
     rera_number = models.CharField(max_length=50, blank=True)
+    rera_status = models.CharField(max_length=10, choices=RERA_STATUS_CHOICES, default='registered')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -950,6 +964,7 @@ class ChannelPartnerMaster(models.Model):
         validators=[RegexValidator(regex=r'^\d{10}$', message='Mobile number must be 10 digits')]
     )
     rera_number = models.CharField(max_length=50, blank=True)
+    rera_status = models.CharField(max_length=10, choices=RERA_STATUS_CHOICES, default='registered')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

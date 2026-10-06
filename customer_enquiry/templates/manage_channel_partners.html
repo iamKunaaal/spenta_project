@@ -134,6 +134,10 @@
             <div>
                 <label>RERA No.</label>
                 <input type="text" name="rera_number" placeholder="Optional">
+                <select name="rera_status" style="margin-top:6px;">
+                    <option value="registered">RERA Registered</option>
+                    <option value="applied">RERA Applied</option>
+                </select>
             </div>
         </div>
         <div style="margin-top:16px;">
@@ -173,7 +177,7 @@
                     <td><strong>{{ cp.company_name }}</strong></td>
                     <td>{{ cp.partner_name }}</td>
                     <td>{{ cp.mobile_number }}</td>
-                    <td>{{ cp.rera_number|default:'—' }}</td>
+                    <td>{% if cp.rera_status == 'applied' %}<span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;">RERA Applied</span>{% if cp.rera_number %} {{ cp.rera_number }}{% endif %}{% else %}{{ cp.rera_number|default:'—' }}{% endif %}</td>
                     <td>
                         {% if cp.is_active %}
                             <span class="badge-active">Active</span>
@@ -185,7 +189,7 @@
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <!-- Edit -->
                             <button type="button" class="btn btn-primary btn-sm"
-                                onclick="openEditModal({{ cp.pk }}, '{{ cp.company_name|escapejs }}', '{{ cp.partner_name|escapejs }}', '{{ cp.mobile_number|escapejs }}', '{{ cp.rera_number|escapejs }}')">
+                                onclick="openEditModal({{ cp.pk }}, '{{ cp.company_name|escapejs }}', '{{ cp.partner_name|escapejs }}', '{{ cp.mobile_number|escapejs }}', '{{ cp.rera_number|escapejs }}', '{{ cp.rera_status }}')">
                                 Edit
                             </button>
                             <!-- Toggle Active/Inactive -->
@@ -287,6 +291,10 @@
                     <input type="text" id="edit_rera_number" maxlength="50"
                            oninput="clearFieldError('rera_number')"
                            style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                    <select id="edit_rera_status" style="width:100%; margin-top:6px; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;">
+                        <option value="registered">RERA Registered</option>
+                        <option value="applied">RERA Applied</option>
+                    </select>
                     <div id="err_rera_number" style="color:#dc3545; font-size:12px; margin-top:3px; display:none;"></div>
                 </div>
             </div>
@@ -299,12 +307,13 @@
 </div>
 
 <script>
-function openEditModal(id, company, partner, mobile, rera) {
+function openEditModal(id, company, partner, mobile, rera, reraStatus) {
     document.getElementById('edit_cp_id').value = id;
     document.getElementById('edit_company_name').value = company;
     document.getElementById('edit_partner_name').value = partner;
     document.getElementById('edit_mobile_number').value = mobile;
     document.getElementById('edit_rera_number').value = rera;
+    document.getElementById('edit_rera_status').value = reraStatus || 'registered';
     clearAllErrors();
     document.getElementById('editModal').style.display = 'flex';
 }
@@ -367,7 +376,8 @@ function submitEditForm(e) {
         body: JSON.stringify({
             cp_id: document.getElementById('edit_cp_id').value,
             company_name: company, partner_name: partner,
-            mobile_number: mobile, rera_number: rera
+            mobile_number: mobile, rera_number: rera,
+            rera_status: document.getElementById('edit_rera_status').value
         })
     })
     .then(r => r.json())

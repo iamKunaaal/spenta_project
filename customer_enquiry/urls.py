@@ -37,6 +37,8 @@ urlpatterns = [
     path('panel/super-admin/dashboard/', views.dashboard, name='super_admin_dashboard'),
     path('panel/gre/dashboard/', views.dashboard, name='gre_dashboard'),
     path('customer/<int:pk>/edit/', views.edit_customer, name='edit_customer'),
+    path('customer/<int:customer_id>/cif/', views.cif_view, name='cif_view'),
+    path('customer/<int:customer_id>/cif/log/', views.cif_download_log, name='cif_download_log'),
     path('customer/<int:customer_id>/assessment/', views.internal_sales_assessment, name='internal_sales_assessment'),
     path('customer/<int:customer_id>/booking/', views.booking_form_view, name='booking_form'),
     path('export-leads/', views.export_leads, name='export_leads'),
@@ -76,5 +78,6 @@ urlpatterns = [
     # Master Channel Partners directory
     path('manage-channel-partners/', views.manage_channel_partners, name='manage_channel_partners'),
     path('api/channel-partners/', views.channel_partners_api, name='channel_partners_api'),
+    path('api/sourcing-managers/', views.sourcing_managers_api, name='sourcing_managers_api'),
     path('api/channel-partners/edit/', views.cp_edit_ajax, name='cp_edit_ajax'),
 ]

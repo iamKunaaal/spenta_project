@@ -1373,6 +1373,7 @@
                                             <div id="cpDropdownList" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
                                         </div>
                                         <div class="error-message">Please select a company name</div>
+                                        <div id="cpNewNote" style="display:none;margin-top:6px;font-size:12px;color:#0a6c3a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:5px 8px;">New Channel Partner: it will be added to the Channel Partner list when you submit.</div>
                                     </div>
                                     <div>
                                         <label for="partnerName" class="required">Channel Partner Name</label>
@@ -1389,7 +1390,11 @@
                                     <div>
                                         <label for="reraNo" class="required">RERA No.</label>
                                         <input class="field" id="reraNo" name="partner_rera">
-                                        <div class="error-message">Please enter RERA number</div>
+                                        <div class="error-message">Please enter RERA number or choose "RERA Applied"</div>
+                                        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;">
+                                            <label style="font-weight:400;margin:0;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;width:auto;"><input type="radio" name="partner_rera_status" value="registered" checked onchange="syncReraStatus()"> Registered</label>
+                                            <label style="font-weight:400;margin:0;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;width:auto;"><input type="radio" name="partner_rera_status" value="applied" onchange="syncReraStatus()"> RERA Applied</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1406,7 +1411,7 @@
                                         dropList.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:#9ca3af;">No matching companies found</div>';
                                     } else {
                                         dropList.innerHTML = items.map(cp =>
-                                            `<div class="cp-sdl-item" data-company="${cp.company_name}" data-name="${cp.partner_name}" data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}"
+                                            `<div class="cp-sdl-item" data-company="${cp.company_name}" data-name="${cp.partner_name}" data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}" data-rera-status="${cp.rera_status || 'registered'}"
                                                 style="padding:9px 14px;cursor:pointer;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">
                                                 <strong>${cp.company_name}</strong>
                                                 <span style="color:#6b7280;font-size:12px;margin-left:6px;">${cp.partner_name}</span>
@@ -1422,10 +1427,14 @@
                                                 document.getElementById('partnerName').value   = this.dataset.name;
                                                 document.getElementById('partnerMobile').value = this.dataset.mobile;
                                                 document.getElementById('reraNo').value        = this.dataset.rera;
+                                                const st = this.dataset.reraStatus || 'registered';
+                                                const stRadio = document.querySelector(`input[name="partner_rera_status"][value="${st}"]`);
+                                                if (stRadio) { stRadio.checked = true; syncReraStatus(); }
                                                 dropList.style.display = 'none';
                                             });
                                         });
                                     }
+                                    appendAddNewCpRow(dropList, searchInput, hiddenInput, 'partnerName', 'cpNewNote');
                                     dropList.style.display = 'block';
                                 }
 
@@ -1473,6 +1482,15 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Lead assignment: Sourcing Manager (shown only when the project has Sourcing Managers) -->
+                        <div id="sourcingManagerBox" style="display:none;margin-top:22px;padding:14px 16px;background:#f0f7ff;border:1px solid #b6d4fe;border-radius:8px;">
+                            <h4 style="margin:0 0 6px 0;">Assign to Sourcing Manager</h4>
+                            <p style="margin:0 0 10px 0;font-size:12.5px;color:#4b5563;">This lead goes to the Sourcing Manager chosen here, never to a Channel Partner. Leave it blank to assign later.</p>
+                            <select class="field" id="sourcingManagerSelect" name="sourcing_manager">
+                                <option value="">Select Sourcing Manager</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Hidden fields for save_step -->
@@ -1505,6 +1523,69 @@
         // CP master data from backend (for auto-fill)
         const cpMasterData = {{ cp_master_json|default:'[]'|safe }};
 
+        // ── Add a NEW Channel Partner from inside the form ────────────────────
+        function isKnownCompany(name) {
+            const n = (name || '').trim().toLowerCase();
+            return cpMasterData.some(cp => cp.company_name.toLowerCase() === n);
+        }
+
+        // Last row of the company dropdown: "Add <typed> as a new Channel Partner"
+        function appendAddNewCpRow(dropList, searchInput, hiddenInput, nameInputId, noteId) {
+            const typed = searchInput.value.trim();
+            if (!typed || isKnownCompany(typed)) return;
+            const row = document.createElement('div');
+            row.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:14px;color:#0a6c3a;font-weight:600;background:#f0fdf4;border-top:1px solid #d1fae5;';
+            row.textContent = '+ Add "' + typed + '" as a new Channel Partner';
+            row.addEventListener('mouseover', () => row.style.background = '#dcfce7');
+            row.addEventListener('mouseout',  () => row.style.background = '#f0fdf4');
+            row.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                hiddenInput.value = typed;
+                dropList.style.display = 'none';
+                const note = document.getElementById(noteId);
+                if (note) note.style.display = 'block';
+                const nameInput = document.getElementById(nameInputId);
+                if (nameInput) nameInput.focus();
+            });
+            dropList.appendChild(row);
+        }
+
+        // Green "new Channel Partner" note: visible while the typed company is not in the list
+        function wireNewCpNote(searchInput, noteId, dropList) {
+            const update = () => {
+                const note = document.getElementById(noteId);
+                if (!note) return;
+                const typed = searchInput.value.trim();
+                note.style.display = (typed && !isKnownCompany(typed)) ? 'block' : 'none';
+            };
+            searchInput.addEventListener('input', update);
+            searchInput.addEventListener('blur', () => setTimeout(update, 200));
+            dropList.addEventListener('mousedown', () => setTimeout(update, 0));
+        }
+
+        // Sourcing Managers of the selected project (for "Assign to Sourcing Manager")
+        function loadSourcingManagers(propertyCode) {
+            const box = document.getElementById('sourcingManagerBox');
+            const select = document.getElementById('sourcingManagerSelect');
+            if (!box || !select || !propertyCode) return;
+            fetch('/api/sourcing-managers/?property=' + encodeURIComponent(propertyCode), { credentials: 'same-origin' })
+                .then(r => r.ok ? r.json() : { managers: [] })
+                .then(d => {
+                    const list = d.managers || [];
+                    list.forEach(m => {
+                        const o = document.createElement('option');
+                        o.value = m.id;
+                        o.textContent = m.name;
+                        select.appendChild(o);
+                    });
+                    box.style.display = list.length ? 'block' : 'none';
+                })
+                .catch(() => {});
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            wireNewCpNote(document.getElementById('partnerCompanySearch'), 'cpNewNote', document.getElementById('cpDropdownList'));
+        });
+
         function addChannelPartner() {
             if (additionalCpCount >= MAX_ADDITIONAL_CP) {
                 alert('Maximum 3 Channel Partners allowed (1 primary + 2 additional).');
@@ -1534,6 +1615,7 @@
                             <input type="hidden" name="cp_company_name_${idx}" id="cpHidden_${idx}">
                             <div id="cpList_${idx}" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
                         </div>
+                        <div id="cpNewNote_${idx}" style="display:none;margin-top:6px;font-size:12px;color:#0a6c3a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:5px 8px;">New Channel Partner: it will be added to the Channel Partner list when you submit.</div>
                     </div>
                     <div>
                         <label class="required">Channel Partner Name</label>
@@ -1548,6 +1630,11 @@
                     <div>
                         <label>RERA No.</label>
                         <input class="field" id="cpRera_${idx}" name="cp_rera_${idx}" placeholder="RERA number">
+                        <select class="field" id="cpReraStatus_${idx}" name="cp_rera_status_${idx}" style="margin-top:6px;"
+                            onchange="document.getElementById('cpRera_${idx}').placeholder = this.value === 'applied' ? 'Application No. (optional)' : 'RERA number'">
+                            <option value="registered">RERA Registered</option>
+                            <option value="applied">RERA Applied</option>
+                        </select>
                     </div>
                 </div>`;
             container.appendChild(div);
@@ -1568,7 +1655,7 @@
                     dropList.innerHTML = items.map(cp =>
                         `<div class="cp-sdl-item-dyn"
                             data-company="${cp.company_name}" data-name="${cp.partner_name}"
-                            data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}"
+                            data-mobile="${cp.mobile_number}" data-rera="${cp.rera_number}" data-rera-status="${cp.rera_status || 'registered'}"
                             style="padding:9px 14px;cursor:pointer;font-size:14px;color:#374151;border-bottom:1px solid #f3f4f6;">
                             <strong>${cp.company_name}</strong>
                             <span style="color:#6b7280;font-size:12px;margin-left:6px;">${cp.partner_name}</span>
@@ -1584,12 +1671,15 @@
                             document.getElementById(`cpName_${idx}`).value   = this.dataset.name;
                             document.getElementById(`cpMobile_${idx}`).value = this.dataset.mobile;
                             document.getElementById(`cpRera_${idx}`).value   = this.dataset.rera;
+                            document.getElementById(`cpReraStatus_${idx}`).value = this.dataset.reraStatus || 'registered';
                             dropList.style.display = 'none';
                         });
                     });
                 }
+                appendAddNewCpRow(dropList, searchInput, hiddenInput, `cpName_${idx}`, `cpNewNote_${idx}`);
                 dropList.style.display = 'block';
             }
+            wireNewCpNote(searchInput, `cpNewNote_${idx}`, dropList);
 
             searchInput.addEventListener('input', function() {
                 const q = this.value.trim().toLowerCase();
@@ -1752,6 +1842,7 @@
             if (selectedProperty) {
                 // Set property information
                 document.getElementById('hiddenPropertyCode').value = selectedProperty;
+                loadSourcingManagers(selectedProperty);
 
                 // Check if backend provided project data, if not fetch it dynamically
                 const hasBackendProjectData = {{ selected_property|yesno:"true,false" }};
@@ -2331,6 +2422,7 @@
                     section.querySelectorAll('input').forEach(field => {
                         field.required = true;
                     });
+                    syncReraStatus();
                 } else if (this.value === 'referral') {
                     const section = document.getElementById('referralSection');
                     section.style.display = 'block';
@@ -2340,6 +2432,24 @@
                 }
             });
         });
+
+        // RERA Registered / Applied: the RERA No. is mandatory only for "Registered" partners
+        function syncReraStatus() {
+            const checked = document.querySelector('input[name="partner_rera_status"]:checked');
+            const applied = !!checked && checked.value === 'applied';
+            const rera = document.getElementById('reraNo');
+            const section = document.getElementById('channelPartnerSection');
+            const cpActive = !!section && section.style.display === 'block';
+            rera.required = cpActive && !applied;
+            rera.placeholder = applied ? 'Application No. (optional)' : '';
+            const label = document.querySelector('label[for="reraNo"]');
+            if (label) label.classList.toggle('required', !applied);
+            if (applied) {
+                rera.classList.remove('error');
+                const err = rera.parentElement.querySelector('.error-message');
+                if (err) err.style.display = 'none';
+            }
+        }
 
         // Show message
         function showMessage(text, type) {

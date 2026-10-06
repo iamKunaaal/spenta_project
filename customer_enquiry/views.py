@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 from django.db import transaction
 from datetime import datetime
 from django.contrib import messages
@@ -42,6 +43,15 @@ logger = logging.getLogger(__name__)
 
 # ─── Role helpers ────────────────────────────────────────────────────────────
 
+# Roles with GRE-level access (Step-1-only assessment, no booking/revisit buttons)
+GRE_LIKE_ROLES = ('gre', 'digital_form')
+
+
+def norm_rera_status(value):
+    """Channel Partner RERA status: 'registered' (default) or 'applied'."""
+    return value if value in ('registered', 'applied') else 'registered'
+
+
 def get_user_role(user):
     """Return role string for a user, defaults to 'admin' if no profile."""
     try:
@@ -60,6 +70,7 @@ def role_redirect(user):
         'sourcing_manager': 'customer_enquiry:sourcing_manager_dashboard',
         'closing_manager':  'customer_enquiry:closing_manager_dashboard',
         'site_head':        'customer_enquiry:site_head_dashboard',
+        'digital_form':     'customer_enquiry:gre_dashboard',
     }
     return mapping.get(role, 'customer_enquiry:dashboard')
 
@@ -98,10 +109,20 @@ def log_action(user, action, model_name='', object_id=None, object_repr='', chan
         logger.error(f"AuditLog creation failed: {e}")
 
 
-# ─── Site Head scoping helpers ─────────────────────────────────────────────────
+# ─── Project scoping helpers ───────────────────────────────────────────────────
+
+# Roles that only see / act on customers of the projects assigned to them (UserProfile.projects).
+# Admin, Super Admin and Digital Form see every project; Sourcing / Closing managers are
+# assignment-based (own dashboards).
+PROJECT_SCOPED_ROLES = ('site_head', 'gre')
+# Roles for which an Admin can assign projects (scope for Site Head / GRE, project team for managers)
+PROJECT_ASSIGNABLE_ROLES = ('site_head', 'gre', 'sourcing_manager', 'closing_manager')
+# Roles allowed to edit Assessment Steps 2-5 and the Closing Manager's remarks
+ASSESSMENT_EDIT_ROLES = ('closing_manager', 'admin', 'super_admin', 'site_head')
+
 
 def site_head_projects(user):
-    """Project queryset a Site Head manages (empty for non-site-heads)."""
+    """Projects assigned to a user via UserProfile.projects (empty if none)."""
     try:
         return user.profile.projects.all()
     except Exception:
@@ -109,18 +130,144 @@ def site_head_projects(user):
 
 
 def scope_customers(user, qs):
-    """Restrict a Customer queryset to a Site Head's projects; unchanged for others."""
-    if get_user_role(user) == 'site_head':
+    """Restrict a Customer queryset to what the user may see:
+    Site Head / GRE -> their projects; Sourcing Manager / Closing Manager -> leads assigned to them."""
+    role = get_user_role(user)
+    if role in PROJECT_SCOPED_ROLES:
         return qs.filter(project__in=site_head_projects(user))
+    if role == 'sourcing_manager':
+        return qs.filter(assignment__sourcing_manager=user)
+    if role == 'closing_manager':
+        return qs.filter(assignment__closing_manager=user)
     return qs
 
 
 def can_access_customer(user, customer):
-    """True if user may act on this customer (Site Head → must be one of their projects)."""
-    if get_user_role(user) == 'site_head':
+    """True if user may act on this customer: Site Head / GRE -> must be one of their projects;
+    Sourcing / Closing Manager -> the lead must be assigned to them. Admin / Super Admin / Digital Form: all."""
+    role = get_user_role(user)
+    if role in PROJECT_SCOPED_ROLES:
         return customer.project_id is not None and \
             site_head_projects(user).filter(id=customer.project_id).exists()
+    if role == 'sourcing_manager':
+        return CustomerAssignment.objects.filter(customer=customer, sourcing_manager=user).exists()
+    if role == 'closing_manager':
+        return CustomerAssignment.objects.filter(customer=customer, closing_manager=user).exists()
     return True
+
+
+def resolve_project(code):
+    """Resolve a Project from a form number ('STAR-60325'), a URL code ('Star') or a prefix ('STAR')."""
+    code = (code or '').strip()
+    if not code:
+        return None
+    project = Project.objects.filter(form_number=code, is_active=True).first()
+    if project:
+        return project
+    url_codes = {'alt': 'ALT', 'med': 'MED', 'orn': 'ORN', 'star': 'STAR', 'ant': 'ANT'}
+    prefix = url_codes.get(code.lower(), code)
+    project = Project.objects.filter(project_prefix__iexact=prefix, is_active=True).first()
+    if project or '-' not in code:
+        return project
+    parts = code.split('-')
+    if len(parts) >= 3 and not parts[1].isdigit():
+        project = Project.objects.filter(project_prefix__iexact=f"{parts[0]}-{parts[1]}", is_active=True).first()
+        if project:
+            return project
+    return Project.objects.filter(project_prefix__iexact=parts[0], is_active=True).first()
+
+
+def project_team_for_project(project):
+    """(sourcing_managers, closing_managers) of a project: active managers that have the project in
+    UserProfile.projects, plus managers already assigned on that project's customers."""
+    project_id = getattr(project, 'id', project)
+    if not project_id:
+        return User.objects.none(), User.objects.none()
+    proj_customers = Customer.objects.filter(project_id=project_id)
+    sourcing = User.objects.filter(is_active=True, profile__role='sourcing_manager').filter(
+        Q(profile__projects=project_id) | Q(sourcing_assignments__customer__in=proj_customers)
+    ).distinct()
+    closing = User.objects.filter(is_active=True, profile__role='closing_manager').filter(
+        Q(profile__projects=project_id) | Q(closing_assignments__customer__in=proj_customers)
+    ).distinct()
+    return sourcing, closing
+
+
+def project_team(customer):
+    """Project team of a customer's project (see project_team_for_project)."""
+    return project_team_for_project(customer.project_id)
+
+
+def validate_form_sourcing_manager(sm_id, project):
+    """Validate the Sourcing Manager chosen on the CIF form. Returns (user, error).
+    The lead can only go to a real Sourcing Manager of this project's team, never to a Channel
+    Partner or a free-text name. Nothing selected -> (None, None)."""
+    sm_id = str(sm_id or '').strip()
+    if not sm_id:
+        return None, None
+    if not sm_id.isdigit():
+        return None, 'Please choose a valid Sourcing Manager'
+    team, _ = project_team_for_project(project)
+    user = team.filter(id=int(sm_id)).first()
+    if not user:
+        return None, 'The selected Sourcing Manager is not available for this project'
+    return user, None
+
+
+def assign_sourcing_manager_from_form(customer, user, request=None):
+    """Assign the lead to the Sourcing Manager chosen on the CIF form (audit-logged)."""
+    assignment, created = CustomerAssignment.objects.get_or_create(
+        customer=customer, defaults={'sourcing_manager': user, 'assigned_by': None}
+    )
+    if not created:
+        if assignment.sourcing_manager_id == user.id:
+            return assignment
+        assignment.sourcing_manager = user
+        assignment.save()
+    log_action(
+        None, 'assign', 'Customer', customer.id, str(customer),
+        changes=json.dumps({'sourcing_manager': user.get_full_name() or user.username,
+                            'via': 'Customer Information Form'}),
+        request=request
+    )
+    return assignment
+
+
+def ensure_cp_in_master(company, partner, mobile, rera, rera_status, request=None):
+    """Add a Channel Partner entered on the CIF form to the CP directory if it is not there yet
+    (matched by mobile number, or company + partner name). Returns the new row or None."""
+    company = (company or '').strip()
+    partner = (partner or '').strip()
+    mobile = (mobile or '').strip()
+    if not (company and partner and re.fullmatch(r'\d{10}', mobile)):
+        return None
+    if len(company) > 200 or len(partner) > 100 or not re.fullmatch(r'[A-Za-z\s]+', partner):
+        return None
+    if ChannelPartnerMaster.objects.filter(
+        Q(mobile_number=mobile) | Q(company_name__iexact=company, partner_name__iexact=partner)
+    ).exists():
+        return None
+    cp = ChannelPartnerMaster.objects.create(
+        company_name=company, partner_name=partner, mobile_number=mobile,
+        rera_number=(rera or '').strip()[:50], rera_status=norm_rera_status(rera_status), is_active=True,
+    )
+    log_action(None, 'cp_add', 'ChannelPartnerMaster', cp.id,
+               f'{company} — {partner} (added from Customer Information Form)', request=request)
+    return cp
+
+
+@require_http_methods(["GET"])
+def sourcing_managers_api(request):
+    """Sourcing Managers of a project, for the "Assign to Sourcing Manager" box on the CIF form.
+    Only for OTP-verified visitors or logged-in staff."""
+    if not (request.user.is_authenticated or request.session.get('user_authenticated')):
+        return JsonResponse({'managers': []}, status=403)
+    project = resolve_project(request.GET.get('property'))
+    team, _ = project_team_for_project(project)
+    return JsonResponse({'managers': [
+        {'id': u.id, 'name': u.get_full_name() or u.username}
+        for u in team.order_by('first_name', 'username')
+    ]})
 
 
 def diff_and_log(user, action, instance, before, after, request=None):
@@ -214,7 +361,7 @@ def index(request, property_code=None):
     # Channel partner master list for auto-fill
     import json as _json
     cp_master = list(ChannelPartnerMaster.objects.filter(is_active=True).values(
-        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number', 'rera_status'
     ))
     cp_master_json = _json.dumps(cp_master)
 
@@ -261,6 +408,8 @@ def save_step_view(request):
         step = int(data.get('step', 1))
         customer_id = data.get('customer_id', '').strip()
         property_code = data.get('property_code', '').strip()
+
+        project_obj = resolve_project(property_code)
 
         # Resolve project prefix for form_number generation
         project_prefix = property_code
@@ -324,6 +473,8 @@ def save_step_view(request):
         if customer:
             for k, v in update_fields.items():
                 setattr(customer, k, v)
+            if customer.project_id is None and project_obj:
+                customer.project = project_obj
             customer.save()
         else:
             # Generate form number
@@ -332,8 +483,16 @@ def save_step_view(request):
                 if not Customer.objects.filter(form_number=form_number).exists():
                     break
             update_fields['form_number'] = form_number
+            update_fields['project'] = project_obj
             update_fields.setdefault('form_date', timezone.now().date())
             customer = Customer.objects.create(**update_fields)
+
+        # Step 4: Sourcing Manager chosen on the form
+        if step >= 4 and data.get('sourcing_manager'):
+            sm_user, sm_error = validate_form_sourcing_manager(data.get('sourcing_manager'), project_obj or customer.project)
+            if sm_error:
+                return JsonResponse({'success': False, 'error': sm_error}, status=400)
+            assign_sourcing_manager_from_form(customer, sm_user, request)
 
         return JsonResponse({
             'success': True,
@@ -428,6 +587,20 @@ def customer_submit_view(request):
                 else:
                     return HttpResponse('Invalid marital status selection', status=400)
             
+            # Channel Partners typed on the form are added to the CP directory, but only for OTP-verified
+            # visitors or logged-in staff (keeps the public form from polluting the directory)
+            cp_master_allowed = bool(request.session.get('user_authenticated') or request.user.is_authenticated)
+
+            # Channel Partner: RERA No. is required unless the partner has "RERA Applied"
+            cp_rera_status = norm_rera_status(data.get('partner_rera_status'))
+            if data.get('source') == 'channel_partner' and cp_rera_status == 'registered' \
+                    and not (data.get('partner_rera') or '').strip():
+                error_msg = 'Please enter the Channel Partner RERA No. or choose "RERA Applied"'
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': error_msg})
+                else:
+                    return HttpResponse(error_msg, status=400)
+
             # Generate unique customer form number with project prefix
             import random
 
@@ -452,6 +625,16 @@ def customer_submit_view(request):
                     project = Project.objects.filter(
                         project_prefix__iexact=project_prefix, is_active=True
                     ).first()
+
+            if project is None:
+                project = resolve_project(property_code)
+
+            # Lead assignment: only the Sourcing Manager chosen on the form (never a Channel Partner)
+            sm_user, sm_error = validate_form_sourcing_manager(data.get('sourcing_manager'), project)
+            if sm_error:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': sm_error})
+                return HttpResponse(sm_error, status=400)
 
             # Generate unique customer form number using full project prefix
             while True:
@@ -510,11 +693,20 @@ def customer_submit_view(request):
                     'company_name': data.get('partner_company_name'),
                     'partner_name': data.get('partner_name'),
                     'mobile_number': data.get('partner_mobile'),
-                    'rera_number': data.get('partner_rera')
                 }
                 
                 if all(partner_data.values()):
-                    ChannelPartner.objects.create(customer=customer, **partner_data)
+                    ChannelPartner.objects.create(
+                        customer=customer,
+                        rera_number=(data.get('partner_rera') or '').strip(),
+                        rera_status=cp_rera_status,
+                        **partner_data
+                    )
+                    if cp_master_allowed:
+                        ensure_cp_in_master(
+                            partner_data['company_name'], partner_data['partner_name'],
+                            partner_data['mobile_number'], data.get('partner_rera'), cp_rera_status, request
+                        )
             
             # Add referral if selected
             if source == 'referral':
@@ -540,7 +732,14 @@ def customer_submit_view(request):
                             partner_name=extra_name,
                             mobile_number=extra_mobile,
                             rera_number=extra_rera,
+                            rera_status=norm_rera_status(data.get(f'cp_rera_status_{i}')),
                         )
+                        if cp_master_allowed:
+                            ensure_cp_in_master(extra_company, extra_name, extra_mobile, extra_rera,
+                                                data.get(f'cp_rera_status_{i}'), request)
+
+            if sm_user:
+                assign_sourcing_manager_from_form(customer, sm_user, request)
 
             # Mark form as complete
             customer.is_complete = True
@@ -617,10 +816,18 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     """Enhanced dashboard with filtering capabilities"""
+    # "All Leads" is for Admin / Super Admin / GRE / Digital Form. Everyone else is sent to their own
+    # (assignment- or project-scoped) dashboard instead of seeing every project.
+    if get_user_role(request.user) in ('sourcing_manager', 'closing_manager', 'site_head'):
+        return redirect(role_redirect(request.user))
+
     # Get all customers with related data
     customers = Customer.objects.select_related('sales_assessment').prefetch_related(
         'sources', 'booking_applications', 'additional_channel_partners'
     ).order_by('-created_at')
+
+    # GRE sees only the projects assigned to them; Admin / Super Admin / Digital Form see all
+    customers = scope_customers(request.user, customers)
 
     # Apply filters if provided (for AJAX requests)
     search = request.GET.get('search', '')
@@ -660,7 +867,10 @@ def dashboard(request):
         customers = customers.filter(booking_applications__isnull=True)
     
     # Get all active projects for JavaScript property mapping
-    projects = Project.objects.active_projects()
+    if get_user_role(request.user) in PROJECT_SCOPED_ROLES:
+        projects = site_head_projects(request.user).filter(is_active=True)
+    else:
+        projects = Project.objects.active_projects()
 
     # Create a dictionary for JavaScript consumption
     projects_data = {}
@@ -923,8 +1133,8 @@ def edit_customer(request, pk):
     user_role = get_user_role(request.user)
     can_edit = user_role in ('admin', 'super_admin', 'closing_manager', 'site_head')
 
-    # Site Heads may only touch customers in their own project(s)
-    if user_role == 'site_head' and not can_access_customer(request.user, customer):
+    # Project-scoped roles (Site Head, GRE) may only touch customers of their own project(s)
+    if not can_access_customer(request.user, customer):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
@@ -999,7 +1209,8 @@ def edit_customer(request, pk):
                             company_name=cp_company,
                             partner_name=cp_name,
                             mobile_number=cp_mobile,
-                            rera_number=cp_rera
+                            rera_number=cp_rera,
+                            rera_status=norm_rera_status(request.POST.get('partner_rera_status'))
                         )
 
                 # Update referral
@@ -1064,7 +1275,7 @@ def edit_customer(request, pk):
             project_data = None
 
     cp_master = ChannelPartnerMaster.objects.filter(is_active=True).values(
-        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number', 'rera_status'
     )
     cp_master_json = json.dumps(list(cp_master))
 
@@ -1079,6 +1290,77 @@ def edit_customer(request, pk):
         'cp_master_json': cp_master_json,
     }
     return render(request, 'edit_customer.html', context)
+
+
+def _customer_project(customer):
+    """Project for a customer: the FK first, else the longest matching form_number prefix."""
+    if customer.project_id:
+        return customer.project
+    fn = (customer.form_number or '').upper()
+    best = None
+    for p in Project.objects.exclude(project_prefix=''):
+        prefix = f"{p.project_prefix.upper()}-"
+        if fn.startswith(prefix) and (best is None or len(prefix) > len(best[0])):
+            best = (prefix, p)
+    return best[1] if best else None
+
+
+# Source-of-visit options exactly as shown on the CIF form (value, label)
+CIF_SOURCE_OPTIONS = [
+    ('channel_partner', 'Channel Partner'),
+    ('referral', 'Referral'),
+    ('whatsapp', 'WhatsApp'),
+    ('social_media', 'Social Media (Facebook, Google, etc.)'),
+    ('website', 'Website'),
+    ('passing_by', 'Passing by'),
+    ('property_portal', 'Property Search Portal'),
+    ('hoarding', 'Hoarding'),
+    ('newspaper_ad', 'Newspaper Ad'),
+    ('exhibition', 'Exhibition'),
+]
+
+
+@require_role('digital_form', 'admin', 'super_admin')
+@never_cache
+def cif_view(request, customer_id):
+    """Print-friendly, filled Customer Information Form (CIF) — downloaded as PDF in the browser."""
+    customer = get_object_or_404(Customer.objects.select_related('project'), pk=customer_id)
+    try:
+        channel_partner = customer.channel_partner
+    except ChannelPartner.DoesNotExist:
+        channel_partner = None
+    try:
+        referral = customer.referral
+    except Referral.DoesNotExist:
+        referral = None
+    try:
+        sm = customer.assignment.sourcing_manager
+        assigned_sourcing_manager = (sm.get_full_name() or sm.username) if sm else ''
+    except CustomerAssignment.DoesNotExist:
+        assigned_sourcing_manager = ''
+    selected_sources = set(customer.sources.values_list('source_type', flat=True))
+    additional_cps = list(customer.additional_channel_partners.all())
+    return render(request, 'cif_print.html', {
+        'customer': customer,
+        'project': _customer_project(customer),
+        'source_options': [(v, label, v in selected_sources) for v, label in CIF_SOURCE_OPTIONS],
+        'channel_partner': channel_partner,
+        'additional_channel_partners': additional_cps,
+        # pad the Additional CP table to at least 4 rows so blanks can be filled by hand
+        'blank_cp_rows': range(max(0, 4 - len(additional_cps))),
+        'referral': referral,
+        'assigned_sourcing_manager': assigned_sourcing_manager,
+    })
+
+
+@require_role('digital_form', 'admin', 'super_admin')
+@require_http_methods(["POST"])
+def cif_download_log(request, customer_id):
+    """Audit-log a CIF download (called by the CIF page when the PDF is generated)."""
+    customer = get_object_or_404(Customer, pk=customer_id)
+    log_action(request.user, 'export', 'Customer', customer.id,
+               f'CIF downloaded — {customer.form_number}', request=request)
+    return JsonResponse({'success': True})
 
 
 @login_required
@@ -1120,6 +1402,7 @@ def add_additional_cp(request, customer_id):
     partner_name = request.POST.get('partner_name', '').strip()
     mobile_number = request.POST.get('mobile_number', '').strip()
     rera_number = request.POST.get('rera_number', '').strip()
+    rera_status = norm_rera_status(request.POST.get('rera_status'))
 
     if not company_name or not partner_name or not mobile_number:
         return JsonResponse({'success': False, 'error': 'Company name, partner name, and mobile are required.'})
@@ -1132,6 +1415,7 @@ def add_additional_cp(request, customer_id):
         partner_name=partner_name,
         mobile_number=mobile_number,
         rera_number=rera_number,
+        rera_status=rera_status,
     )
     log_action(request.user, 'cp_add', 'AdditionalChannelPartner', acp.id,
                f'{company_name} — {partner_name} added to {customer.form_number}', request=request)
@@ -1142,6 +1426,7 @@ def add_additional_cp(request, customer_id):
         'partner_name': partner_name,
         'mobile_number': mobile_number,
         'rera_number': rera_number,
+        'rera_status': rera_status,
     })
 
 
@@ -1307,8 +1592,13 @@ def internal_sales_assessment(request, customer_id):
     """Create or edit internal sales assessment for a customer"""
     customer = get_object_or_404(Customer, pk=customer_id)
 
-    # Site Heads may only work on inquiries within their own project(s)
-    if get_user_role(request.user) == 'site_head' and not can_access_customer(request.user, customer):
+    # GRE / Digital Form have no access to the assessment (they only enter the CIF and assign managers)
+    if get_user_role(request.user) in GRE_LIKE_ROLES:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("The assessment is filled by the Closing Manager.")
+
+    # Project-scoped roles (Site Head, GRE) may only work on inquiries of their own project(s)
+    if not can_access_customer(request.user, customer):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
@@ -1375,7 +1665,12 @@ def internal_sales_assessment(request, customer_id):
 
     user_role = get_user_role(request.user)
 
+    can_edit_assessment = user_role in ASSESSMENT_EDIT_ROLES
+
     if request.method == 'POST':
+        if not can_edit_assessment:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("Only the Closing Manager, Admin or Site Head can edit the assessment.")
         assessment_existed = assessment is not None and assessment.pk is not None
         before = _assessment_snapshot(assessment if assessment_existed else None)
         try:
@@ -1421,8 +1716,8 @@ def internal_sales_assessment(request, customer_id):
                         request=request
                     )
 
-                # Steps 2-5 — only non-GRE roles can update these
-                if user_role != 'gre':
+                # Steps 2-5 + Closing Manager's remarks (only ASSESSMENT_EDIT_ROLES reach here)
+                if can_edit_assessment:
                     assessment_obj.lead_classification = request.POST.get('lead_classification', '')
                     assessment_obj.reason_for_lost = request.POST.get('reason_for_lost', '')
                     assessment_obj.customer_classification = request.POST.get('customer_classification', '')
@@ -1515,20 +1810,14 @@ def internal_sales_assessment(request, customer_id):
             except Exception:
                 project_data = None
 
-    # Get managers for dropdown (Site Heads see only their project's active team)
-    if user_role == 'site_head':
-        proj_customers = Customer.objects.filter(project=customer.project)
-        sourcing_managers = User.objects.filter(
-            profile__role='sourcing_manager',
-            sourcing_assignments__customer__in=proj_customers,
-        ).distinct().order_by('first_name')
-        closing_managers = User.objects.filter(
-            profile__role='closing_manager',
-            closing_assignments__customer__in=proj_customers,
-        ).distinct().order_by('first_name')
-    else:
+    # Get managers for dropdown (non-admin roles see only the customer's project team)
+    if user_role in ('admin', 'super_admin'):
         sourcing_managers = User.objects.filter(profile__role='sourcing_manager').order_by('first_name')
         closing_managers = User.objects.filter(profile__role='closing_manager').order_by('first_name')
+    else:
+        sourcing_managers, closing_managers = project_team(customer)
+        sourcing_managers = sourcing_managers.order_by('first_name')
+        closing_managers = closing_managers.order_by('first_name')
 
     # Get existing assignment if any
     try:
@@ -1541,7 +1830,8 @@ def internal_sales_assessment(request, customer_id):
         'assessment': assessment,
         'selected_property': project_data,
         'user_role': user_role,
-        'gre_only': user_role == 'gre',
+        'gre_only': False,
+        'read_only': not can_edit_assessment,
         'sourcing_managers': sourcing_managers,
         'closing_managers': closing_managers,
         'assignment': assignment,
@@ -1556,6 +1846,9 @@ def booking_form_view(request, customer_id):
     Booking form view with pre-filled customer data and persistence support
     """
     customer = get_object_or_404(Customer, pk=customer_id)
+    if not can_access_customer(request.user, customer):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("You do not have permission to access this inquiry.")
     
     if request.method == 'GET':
         # Check if customer already has a booking application (for editing)
@@ -2436,7 +2729,7 @@ def property_customer_form(request, property_code):
 
     import json as _json
     cp_master = list(ChannelPartnerMaster.objects.filter(is_active=True).values(
-        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number', 'rera_status'
     ))
     cp_master_json = _json.dumps(cp_master)
 
@@ -2766,6 +3059,8 @@ def manage_users(request):
                 messages.error(request, "First name, email, and password are required.")
             elif User.objects.filter(email=email).exists():
                 messages.error(request, "A user with this email already exists.")
+            elif new_role in PROJECT_SCOPED_ROLES and not request.POST.getlist('projects'):
+                messages.error(request, "Select at least one project for a GRE / Site Head.")
             else:
                 username = email.split('@')[0]
                 base_username = username
@@ -2786,8 +3081,8 @@ def manage_users(request):
                     whatsapp_number=whatsapp,
                     role=new_role,
                 )
-                # Site Heads must be scoped to one or more projects
-                if new_role == 'site_head':
+                # Site Head / GRE are scoped to their projects; managers belong to project teams
+                if new_role in PROJECT_ASSIGNABLE_ROLES:
                     project_ids = request.POST.getlist('projects')
                     if project_ids:
                         new_profile.projects.set(
@@ -2800,6 +3095,30 @@ def manage_users(request):
                 )
                 messages.success(request, f"User '{username}' created successfully with role '{new_role}'.")
                 return redirect('customer_enquiry:manage_users')
+
+        elif action == 'update_projects':
+            try:
+                target_profile = UserProfile.objects.select_related('user').get(user_id=request.POST.get('user_id'))
+                if target_profile.role not in PROJECT_ASSIGNABLE_ROLES:
+                    messages.error(request, "Projects can only be set for Site Head, GRE and Sourcing / Closing Managers.")
+                else:
+                    ids = request.POST.getlist('projects')
+                    if target_profile.role in PROJECT_SCOPED_ROLES and not ids:
+                        messages.error(request, "A GRE / Site Head needs at least one project.")
+                    else:
+                        before = sorted(target_profile.projects.values_list('project_name', flat=True))
+                        target_profile.projects.set(Project.objects.filter(id__in=ids))
+                        after = sorted(target_profile.projects.values_list('project_name', flat=True))
+                        log_action(
+                            request.user, 'update', 'UserProfile', target_profile.id,
+                            f"{target_profile.user.username} — projects",
+                            changes=json.dumps({'projects': {'old': before, 'new': after}}),
+                            request=request
+                        )
+                        messages.success(request, f"Projects updated for {target_profile.user.username}.")
+            except UserProfile.DoesNotExist:
+                messages.error(request, "User not found.")
+            return redirect('customer_enquiry:manage_users')
 
         elif action == 'delete_user':
             user_id = request.POST.get('user_id')
@@ -2831,34 +3150,26 @@ def manage_users(request):
 def assign_customer(request, customer_id):
     """Assign/reassign a customer to sourcing/closing manager.
 
-    Admins may assign among all managers. Site Heads may reassign only within
-    their own project, and only among managers already active on that project.
+    Admins may assign among all managers. Site Head / GRE / Digital Form may assign only
+    within a project they can access, and only among that project's team.
     """
     role = get_user_role(request.user)
-    if role not in ('admin', 'super_admin', 'site_head'):
+    if role not in ('admin', 'super_admin', 'site_head', 'gre', 'digital_form'):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
     customer = get_object_or_404(Customer, id=customer_id)
 
-    if role == 'site_head' and not can_access_customer(request.user, customer):
+    if not can_access_customer(request.user, customer):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
-    if role == 'site_head':
-        # Scope the "sales team" to managers already assigned to this project's customers
-        proj_customers = Customer.objects.filter(project=customer.project)
-        sourcing_managers = User.objects.filter(
-            profile__role='sourcing_manager',
-            sourcing_assignments__customer__in=proj_customers,
-        ).distinct()
-        closing_managers = User.objects.filter(
-            profile__role='closing_manager',
-            closing_assignments__customer__in=proj_customers,
-        ).distinct()
-    else:
+    if role in ('admin', 'super_admin'):
         sourcing_managers = User.objects.filter(profile__role='sourcing_manager')
         closing_managers = User.objects.filter(profile__role='closing_manager')
+    else:
+        # Site Head / GRE / Digital Form: only this project's team
+        sourcing_managers, closing_managers = project_team(customer)
 
     try:
         assignment = customer.assignment
@@ -2872,8 +3183,8 @@ def assign_customer(request, customer_id):
         sourcing_user = User.objects.get(id=sourcing_id) if sourcing_id else None
         closing_user = User.objects.get(id=closing_id) if closing_id else None
 
-        # Site Heads may only pick from their project's team (guard against tampering)
-        if role == 'site_head':
+        # Non-admin roles may only pick from the project's team (guard against tampering)
+        if role not in ('admin', 'super_admin'):
             allowed_ids = set(sourcing_managers.values_list('id', flat=True)) | \
                 set(closing_managers.values_list('id', flat=True))
             if (sourcing_user and sourcing_user.id not in allowed_ids) or \
@@ -2947,6 +3258,7 @@ def manage_channel_partners(request):
                     partner_name=partner_name,
                     mobile_number=mobile_number,
                     rera_number=rera_number,
+                    rera_status=norm_rera_status(request.POST.get('rera_status')),
                 )
                 message = f'Channel Partner "{company_name} — {partner_name}" added successfully.'
                 log_action(request.user, 'cp_add', 'ChannelPartnerMaster', new_cp.id,
@@ -2986,6 +3298,7 @@ def manage_channel_partners(request):
                 cp.partner_name = partner_name
                 cp.mobile_number = mobile_number
                 cp.rera_number = rera_number
+                cp.rera_status = norm_rera_status(request.POST.get('rera_status'))
                 cp.save()
                 message = f'"{company_name} — {partner_name}" updated successfully.'
                 log_action(request.user, 'cp_edit', 'ChannelPartnerMaster', cp.id,
@@ -3067,6 +3380,7 @@ def cp_edit_ajax(request):
     cp.partner_name  = partner
     cp.mobile_number = mobile
     cp.rera_number   = rera
+    cp.rera_status   = norm_rera_status(data.get('rera_status'))
     cp.save()
     log_action(request.user, 'cp_edit', 'ChannelPartnerMaster', cp.id,
                f'{company} — {partner}', request=request)
@@ -3078,7 +3392,7 @@ def channel_partners_api(request):
     """Return active channel partners as JSON for auto-fill in forms."""
     from django.http import JsonResponse
     partners = ChannelPartnerMaster.objects.filter(is_active=True).values(
-        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number'
+        'id', 'company_name', 'partner_name', 'mobile_number', 'rera_number', 'rera_status'
     )
     return JsonResponse({'partners': list(partners)})
 
@@ -3141,6 +3455,8 @@ def audit_trail(request):
 def add_revisit(request, customer_id):
     """Record a revisit for a customer."""
     customer = get_object_or_404(Customer, id=customer_id)
+    if not can_access_customer(request.user, customer):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
 
     if request.method == 'POST':
         visit_date = request.POST.get('visit_date', str(timezone.now().date()))
@@ -3166,6 +3482,8 @@ def add_revisit(request, customer_id):
 def revisit_history(request, customer_id):
     """Return revisit history for a customer as JSON."""
     customer = get_object_or_404(Customer, id=customer_id)
+    if not can_access_customer(request.user, customer):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
     revisits = customer.revisits.select_related('created_by').order_by('-visit_date')
     data = [
         {
