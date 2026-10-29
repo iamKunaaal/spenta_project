@@ -723,14 +723,14 @@
                     <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
                     <td class="action-buttons">
                         <!-- Edit/View Customer Button (role-based) -->
-                        {% if request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.profile.role == 'closing_manager' or request.user.profile.role == 'site_head' %}
+                        {% if request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.profile.role == 'closing_manager' or request.user.profile.role == 'site_head' or request.user.is_superuser %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-primary">Edit</a>
                         {% else %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info" style="background:#17a2b8;color:#fff;">View</a>
                         {% endif %}
                         
                         <!-- Download CIF (Digital Form, Admin, Super Admin) -->
-                        {% if request.user.profile.role == 'digital_form' or request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' %}
+                        {% if request.user.profile.role == 'digital_form' or request.user.profile.role == 'admin' or request.user.profile.role == 'super_admin' or request.user.is_superuser %}
                         <a href="{% url 'customer_enquiry:cif_view' customer.pk %}" class="btn btn-warning" style="font-size:11px;background:#6f42c1;border-color:#6f42c1;color:#fff;">CIF</a>
                         {% endif %}
 
