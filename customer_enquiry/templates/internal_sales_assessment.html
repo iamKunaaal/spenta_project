@@ -1317,7 +1317,7 @@
                                 <label for="ethnicity" class="required">Ethnicity</label>
                                 <select class="field" id="ethnicity" name="ethnicity" required>
                                     <option value="">Select Ethnicity</option>
-                                    <option value="hindu" {% if assessment.ethnicity == 'hindu' %}selected{% endif %}>Hindu</option>
+                                    {% if assessment.ethnicity == 'hindu' %}<option value="hindu" selected>Hindu (old value: please update)</option>{% endif %}
                                     <option value="maharashtrian" {% if assessment.ethnicity == 'maharashtrian' %}selected{% endif %}>Maharashtrian</option>
                                     <option value="other" {% if assessment.ethnicity == 'other' %}selected{% endif %}>Other</option>
                                 </select>
@@ -1334,9 +1334,10 @@
                         <textarea class="field" id="otherProjects" name="other_projects_considered" rows="4" 
                                   placeholder="List other projects the customer is considering...">{{ assessment.other_projects_considered|default:'' }}</textarea>
 
-                        <label for="salesManagerRemarks" style="margin-top:16px">Closing Manager's Remarks</label>
-                        <textarea class="field" id="salesManagerRemarks" name="sales_manager_remarks" rows="4" 
+                        <label for="salesManagerRemarks" class="required" style="margin-top:16px">Closing Manager's Remarks</label>
+                        <textarea class="field" id="salesManagerRemarks" name="sales_manager_remarks" rows="4" required
                                   placeholder="Enter closing manager's remarks about the customer...">{{ assessment.sales_manager_remarks|default:'' }}</textarea>
+                        <div class="error-message">Closing Manager's remarks are mandatory</div>
                     </div>
 
                     <div class="actions">
