@@ -745,8 +745,7 @@
                 <!-- Booking for flat -->
                 <div class="section-head">BOOKING APPLICATION FOR THE FLAT:</div>
                 <div class="inline">
-                    <span>Flat No.:</span><input class="line" style="max-width: 100px" name="flat_number" maxlength="50" value="{{ prefilled_data.flat_number|default:'' }}" required />
-                    <span>Wing:</span><input class="line" style="max-width: 50px" name="wing" maxlength="10" placeholder="A / B" value="{{ prefilled_data.wing|default:'' }}" />
+                    <span>Flat No.:</span><input class="line" style="max-width: 60px" name="flat_number" value="{{ prefilled_data.flat_number|default:'' }}" required />
                     <span>Floor:</span><input class="line" style="max-width: 60px" name="floor" value="{{ prefilled_data.floor|default:'' }}" required />
                     <span>RERA Carpet Area:</span>
                     <input class="line" style="max-width: 60px" name="rera_carpet_area" step="0.01" value="{{ prefilled_data.rera_carpet_area|default:'' }}" required /><span class="muted">Sq.ft</span>

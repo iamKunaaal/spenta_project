@@ -22,14 +22,6 @@ class UserProfile(models.Model):
         ('digital_form', 'Digital Form'),
     ]
 
-    # Roles that can be held in addition to the primary role
-    EXTRA_ROLE_CHOICES = [
-        ('gre', 'GRE'),
-        ('sourcing_manager', 'Sourcing Manager'),
-        ('closing_manager', 'Closing Manager'),
-        ('site_head', 'Site Head'),
-    ]
-
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     whatsapp_number = models.CharField(
         max_length=10,
@@ -43,9 +35,8 @@ class UserProfile(models.Model):
         default='admin',
         help_text="User role determines dashboard access and permissions"
     )
-    # A person can hold more than one role (e.g. Closing + Sourcing Manager). `role` stays the primary
-    # role (login landing page, existing data); the others live here as ",closing_manager,gre," so
-    # nothing existing is touched when a user gets an extra role.
+    # KEPT ON PURPOSE after the PR #9 rollback: the database column exists and is NOT NULL without a DB
+    # default, so the model must keep this field or inserting a new UserProfile would fail. Currently unused.
     extra_roles = models.CharField(
         max_length=120,
         blank=True,
@@ -88,36 +79,9 @@ class UserProfile(models.Model):
     def is_digital_form(self):
         return self.role == 'digital_form'
 
-    def extra_role_list(self):
-        return [r for r in (self.extra_roles or '').split(',') if r]
-
-    def all_roles(self):
-        """Primary role first, then any extra roles (no duplicates)."""
-        roles = [self.role]
-        for r in self.extra_role_list():
-            if r not in roles:
-                roles.append(r)
-        return roles
-
-    def has_role(self, *roles):
-        return any(r in roles for r in self.all_roles())
-
-    def set_extra_roles(self, roles):
-        """Store extra roles normalised; the primary role and unknown roles are ignored."""
-        allowed = [v for v, _ in self.EXTRA_ROLE_CHOICES]
-        clean = []
-        for r in roles:
-            if r in allowed and r != self.role and r not in clean:
-                clean.append(r)
-        self.extra_roles = (',' + ','.join(clean) + ',') if clean else ''
-
-    def roles_display(self):
-        labels = dict(self.ROLE_CHOICES)
-        return ' + '.join(labels.get(r, r) for r in self.all_roles())
-
     def is_gre_like(self):
-        """True when ALL of the user's roles are GRE-level (GRE / Digital Form): no assessment access."""
-        return all(r in ('gre', 'digital_form') for r in self.all_roles())
+        """Roles that get GRE-level (restricted) access: GRE and Digital Form."""
+        return self.role in ('gre', 'digital_form')
 
 
 class Customer(models.Model):
@@ -656,6 +620,7 @@ class BookingApplication(models.Model):
     
     # Flat details section
     flat_number = models.CharField(max_length=50, blank=True)
+    # KEPT ON PURPOSE after the PR #9 rollback (column exists, NOT NULL, no DB default): do not remove.
     wing = models.CharField(max_length=10, blank=True, help_text="Wing of the building, e.g. A or B")
     floor = models.CharField(max_length=50, blank=True)
     rera_carpet_area = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

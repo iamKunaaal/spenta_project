@@ -73,13 +73,7 @@
         .role-digital_form { background: #6f42c1; color: #fff; }
         .role-system       { background: #adb5bd; color: #fff; }
 
-        table.chg { border-collapse: collapse; width: 100%; min-width: 320px; font-size: 12px; background: #fff; }
-        table.chg th { background: #eef1f5; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #555; padding: 4px 8px; border: 1px solid #dfe3e8; text-align: left; }
-        table.chg td { padding: 4px 8px; border: 1px solid #dfe3e8; vertical-align: top; word-break: break-word; }
-        table.chg td.chg-f { font-weight: 600; color: #333; white-space: nowrap; }
-        table.chg td.chg-o { color: #b02a37; background: #fff5f5; }
-        table.chg td.chg-n { color: #146c43; background: #f0fff4; }
-        .changes-cell { max-width: none; min-width: 340px; word-break: break-word; color: #555; font-size: 11px; }
+        .changes-cell { max-width: 220px; word-break: break-word; color: #555; font-size: 11px; }
         .changes-pretty { background: #f8f9fa; border-radius: 4px; padding: 6px 8px; font-family: monospace; font-size: 11px; white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
         .no-results { text-align: center; padding: 40px; color: #999; }
         .count-badge { background: #007bff; color: #fff; border-radius: 12px; padding: 2px 9px; font-size: 12px; font-weight: 700; margin-left: 8px; }
@@ -139,7 +133,6 @@
     <div style="margin-bottom:14px;font-size:14px;color:#555;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <span>Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of <strong>{{ total_count }}</strong> records</span>
         <span class="count-badge">max 5000</span>
-        <a href="{% url 'customer_enquiry:audit_trail_export' %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-primary" style="text-decoration:none;">📊 Export to Excel</a>
     </div>
 
     <div style="overflow-x:auto;">
@@ -169,7 +162,6 @@
                             {% with role=log.user.profile.role %}
                                 <span class="role-badge role-{{ role }}">{{ role|default:"—" }}</span>
                             {% endwith %}
-                            {% for x in log.user.profile.extra_role_list %}<span class="role-badge role-{{ x }}" style="margin-left:3px;">+{{ x }}</span>{% endfor %}
                         {% else %}
                             <span class="role-badge role-system">system</span>
                         {% endif %}
@@ -180,15 +172,8 @@
                     <td style="color:#666;">{{ log.model_name|default:"—" }}</td>
                     <td style="max-width:160px;word-break:break-word;color:#444;">{{ log.object_repr|default:"—" }}</td>
                     <td class="changes-cell">
-                        {% if log.change_rows %}
-                            <table class="chg">
-                                <thead><tr><th>Field</th><th>Old value</th><th>New value</th></tr></thead>
-                                <tbody>
-                                {% for c in log.change_rows %}
-                                    <tr><td class="chg-f">{{ c.field }}</td><td class="chg-o">{{ c.old|default:"(blank)" }}</td><td class="chg-n">{{ c.new|default:"(blank)" }}</td></tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
+                        {% if log.changes %}
+                            <div class="changes-pretty" id="ch_{{ log.id }}">{{ log.changes }}</div>
                         {% else %}
                             <span style="color:#ccc;">—</span>
                         {% endif %}

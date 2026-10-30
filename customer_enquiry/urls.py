@@ -66,7 +66,6 @@ urlpatterns = [
 
     # Audit trail
     path('audit-trail/', views.audit_trail, name='audit_trail'),
-    path('audit-trail/export/', views.audit_trail_export, name='audit_trail_export'),
 
     # Revisit
     path('customer/<int:customer_id>/revisit/', views.add_revisit, name='add_revisit'),

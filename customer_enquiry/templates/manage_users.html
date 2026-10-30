@@ -90,14 +90,6 @@
                 <input type="password" name="password" required placeholder="Set password" minlength="8">
             </div>
         </div>
-        <div class="form-group" id="extraRolesGroup" style="margin-top:14px;">
-            <label>Also has role(s) <span style="font-weight:400;color:#888;">(optional: for example a Closing Manager who is also a Sourcing Manager)</span></label>
-            <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;">
-                {% for val, label in extra_role_choices %}
-                <label style="font-weight:400;display:inline-flex;align-items:center;gap:6px;"><input type="checkbox" name="extra_roles" value="{{ val }}" onchange="toggleProjects()"> {{ label }}</label>
-                {% endfor %}
-            </div>
-        </div>
         <div class="form-group" id="projectsGroup" style="display:none;margin-top:14px;">
             <label>Projects * <span style="font-weight:400;color:#888;">(Site Head / GRE: the projects they can see. Sourcing / Closing Manager: the projects they work on.)</span></label>
             <select name="projects" multiple size="5" style="width:100%;">
@@ -118,12 +110,8 @@
         var role = document.getElementById('roleSelect').value;
         var group = document.getElementById('projectsGroup');
         var sel = group.querySelector('select[name="projects"]');
-        var extras = Array.prototype.map.call(document.querySelectorAll('#extraRolesGroup input:checked'), function (c) { return c.value; });
-        var noExtras = (role === 'admin' || role === 'super_admin' || role === 'digital_form');
-        document.getElementById('extraRolesGroup').style.display = noExtras ? 'none' : 'flex';
-        var all = noExtras ? [role] : [role].concat(extras);
-        var scoped = all.indexOf('site_head') > -1 || all.indexOf('gre') > -1;
-        var assignable = scoped || all.indexOf('sourcing_manager') > -1 || all.indexOf('closing_manager') > -1;
+        var scoped = (role === 'site_head' || role === 'gre');
+        var assignable = scoped || role === 'sourcing_manager' || role === 'closing_manager';
         if (assignable) {
             group.style.display = 'block';
             sel.required = scoped;
@@ -145,8 +133,7 @@
                     <th>Name</th>
                     <th>Username</th>
                     <th>Email</th>
-                    <th>Role(s) &amp; projects</th>
-                    <th>Leads</th>
+                    <th>Role</th>
                     <th>WhatsApp</th>
                     <th>Active</th>
                     <th>Actions</th>
@@ -160,74 +147,42 @@
                     <td>{{ profile.user.email }}</td>
                     <td>
                         <span class="role-badge role-{{ profile.role }}">{{ profile.get_role_display }}</span>
-                        {% for x, lbl in profile.extra_labeled %}<span class="role-badge role-{{ x }}" style="margin-left:4px;">+ {{ lbl }}</span>{% endfor %}
+                        {% if profile.role == 'site_head' or profile.role == 'gre' or profile.role == 'sourcing_manager' or profile.role == 'closing_manager' %}
                         <details style="margin-top:6px;">
                             <summary style="cursor:pointer;font-size:11px;color:#007bff;">
-                                {% for p in profile.projects.all %}{{ p.project_name }}{% if not forloop.last %}, {% endif %}{% empty %}{% if profile.role == 'site_head' or profile.role == 'gre' or 'gre' in profile.extra or 'site_head' in profile.extra %}<span style="color:#dc3545;">⚠ No projects: sees no leads</span>{% else %}<span style="color:#888;">No projects</span>{% endif %}{% endfor %} ✎ edit role / projects
+                                {% for p in profile.projects.all %}{{ p.project_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span style="color:#dc3545;">⚠ No projects{% if profile.role == 'site_head' or profile.role == 'gre' %} — sees no leads{% endif %}</span>{% endfor %} ✎
                             </summary>
-                            <form method="POST" style="margin-top:8px;padding:10px;background:#f8f9fa;border:1px solid #e3e6ea;border-radius:6px;min-width:260px;">
+                            <form method="POST" style="margin-top:6px;">
                                 {% csrf_token %}
-                                <input type="hidden" name="action" value="update_user">
+                                <input type="hidden" name="action" value="update_projects">
                                 <input type="hidden" name="user_id" value="{{ profile.user.id }}">
-                                {% if profile.is_self %}<div style="font-size:11px;color:#856404;margin-bottom:6px;">You cannot change your own role here (projects only).</div>{% endif %}
-                                <label style="font-size:11px;font-weight:600;">Primary role</label>
-                                <select name="role" style="width:100%;font-size:12px;margin-bottom:6px;" {% if profile.is_self %}disabled{% endif %}>
-                                    {% for val, label in assignable_roles %}<option value="{{ val }}" {% if val == profile.role %}selected{% endif %}>{{ label }}</option>{% endfor %}
-                                    {% if profile.role == 'super_admin' %}<option value="super_admin" selected>Super Admin</option>{% endif %}
-                                </select>
-                                {% if profile.is_self %}<input type="hidden" name="role" value="{{ profile.role }}">{% endif %}
-                                <div style="font-size:11px;font-weight:600;">Also has role(s)</div>
-                                <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:6px;">
-                                    {% for val, label in extra_role_choices %}
-                                    <label style="font-weight:400;"><input type="checkbox" name="extra_roles" value="{{ val }}" {% if val in profile.extra %}checked{% endif %} {% if profile.is_self %}disabled{% endif %}> {{ label }}</label>
-                                    {% endfor %}
-                                </div>
-                                {% if profile.is_self %}{% for x in profile.extra %}<input type="hidden" name="extra_roles" value="{{ x }}">{% endfor %}{% endif %}
-                                <div style="font-size:11px;font-weight:600;">Projects</div>
                                 <select name="projects" multiple size="5" style="width:100%;font-size:12px;">
                                     {% for project in active_projects %}
-                                    <option value="{{ project.id }}" {% if project.id in profile.project_ids %}selected{% endif %}>{{ project.project_name }}</option>
+                                    <option value="{{ project.id }}" {% if project in profile.projects.all %}selected{% endif %}>{{ project.project_name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if profile.sm_leads or profile.cm_leads %}
-                                <label style="display:block;font-size:11px;color:#856404;margin-top:6px;font-weight:400;"><input type="checkbox" name="confirm_roles" value="1"> I understand: if a role is removed, its {{ profile.sm_leads|add:profile.cm_leads }} assigned lead(s) stay with this person but they can no longer open them.</label>
-                                {% endif %}
-                                <button type="submit" class="btn btn-primary" style="padding:5px 12px;font-size:12px;margin-top:8px;">Save</button>
+                                <button type="submit" class="btn btn-primary" style="padding:4px 10px;font-size:11px;margin-top:4px;">Save projects</button>
                             </form>
                         </details>
-                    </td>
-                    <td style="font-size:12px;line-height:1.5;">
-                        {% if profile.sm_leads %}<div>Sourcing: <strong>{{ profile.sm_leads }}</strong></div>{% endif %}
-                        {% if profile.cm_leads %}<div>Closing: <strong>{{ profile.cm_leads }}</strong></div>{% endif %}
-                        {% if not profile.sm_leads and not profile.cm_leads %}<span style="color:#aaa;">0</span>{% endif %}
+                        {% endif %}
                     </td>
                     <td>{{ profile.whatsapp_number|default:"—" }}</td>
                     <td>{% if profile.user.is_active %}✅{% else %}❌{% endif %}</td>
                     <td>
-                        {% if not profile.is_self %}
-                        <form method="POST" style="display:inline;" onsubmit="return confirm('{% if profile.user.is_active %}Deactivate this user? They cannot log in, but all their leads and history stay.{% else %}Activate this user again?{% endif %}')">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="toggle_active">
-                            <input type="hidden" name="user_id" value="{{ profile.user.id }}">
-                            <button type="submit" class="btn btn-secondary" style="padding:5px 12px;font-size:12px;">{% if profile.user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
-                        </form>
-                        {% if profile.can_delete %}
-                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user permanently? (They have no leads or history.)')">
+                        {% if profile.user != request.user %}
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user?')">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="delete_user">
                             <input type="hidden" name="user_id" value="{{ profile.user.id }}">
                             <button type="submit" class="btn btn-danger" style="padding:5px 12px;font-size:12px;">Delete</button>
                         </form>
                         {% else %}
-                        <div style="font-size:10px;color:#999;margin-top:3px;">Has history: deactivate, not delete</div>
-                        {% endif %}
-                        {% else %}
                         <span style="color:#aaa;font-size:12px;">Current user</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" style="text-align:center;color:#999;padding:30px;">No users found.</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">No users found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
