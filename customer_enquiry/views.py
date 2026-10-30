@@ -43,17 +43,21 @@ logger = logging.getLogger(__name__)
 
 # ─── Role helpers ────────────────────────────────────────────────────────────
 
-from .roles import (  # noqa: E402  (role helpers live in roles.py so templates / bulk_upload share them)
-    GRE_LIKE_ROLES, ALL_ACCESS_ROLES, PROJECT_SCOPED_ROLES, ASSIGNMENT_ROLES,
-    EDIT_ROLES, ASSESSMENT_EDIT_ROLES, SOURCE_EDIT_ROLES,
-    get_user_roles, get_user_role, has_role, users_with_role,
-    role_grants_access, can_access_customer, can_act_as, scope_customers,
-)
+# Roles with GRE-level access (Step-1-only assessment, no booking/revisit buttons)
+GRE_LIKE_ROLES = ('gre', 'digital_form')
 
 
 def norm_rera_status(value):
     """Channel Partner RERA status: 'registered' (default) or 'applied'."""
     return value if value in ('registered', 'applied') else 'registered'
+
+
+def get_user_role(user):
+    """Return role string for a user, defaults to 'admin' if no profile."""
+    try:
+        return user.profile.role
+    except Exception:
+        return 'admin'
 
 
 def role_redirect(user):
@@ -76,7 +80,8 @@ def require_role(*roles):
     def decorator(view_func):
         @login_required
         def wrapper(request, *args, **kwargs):
-            if not has_role(request.user, *roles):
+            role = get_user_role(request.user)
+            if role not in roles:
                 from django.http import HttpResponseForbidden
                 return HttpResponseForbidden("You do not have permission to access this page.")
             return view_func(request, *args, **kwargs)
@@ -106,8 +111,14 @@ def log_action(user, action, model_name='', object_id=None, object_repr='', chan
 
 # ─── Project scoping helpers ───────────────────────────────────────────────────
 
+# Roles that only see / act on customers of the projects assigned to them (UserProfile.projects).
+# Admin, Super Admin and Digital Form see every project; Sourcing / Closing managers are
+# assignment-based (own dashboards).
+PROJECT_SCOPED_ROLES = ('site_head', 'gre')
 # Roles for which an Admin can assign projects (scope for Site Head / GRE, project team for managers)
 PROJECT_ASSIGNABLE_ROLES = ('site_head', 'gre', 'sourcing_manager', 'closing_manager')
+# Roles allowed to edit Assessment Steps 2-5 and the Closing Manager's remarks
+ASSESSMENT_EDIT_ROLES = ('closing_manager', 'admin', 'super_admin', 'site_head')
 
 
 def site_head_projects(user):
@@ -116,6 +127,33 @@ def site_head_projects(user):
         return user.profile.projects.all()
     except Exception:
         return Project.objects.none()
+
+
+def scope_customers(user, qs):
+    """Restrict a Customer queryset to what the user may see:
+    Site Head / GRE -> their projects; Sourcing Manager / Closing Manager -> leads assigned to them."""
+    role = get_user_role(user)
+    if role in PROJECT_SCOPED_ROLES:
+        return qs.filter(project__in=site_head_projects(user))
+    if role == 'sourcing_manager':
+        return qs.filter(assignment__sourcing_manager=user)
+    if role == 'closing_manager':
+        return qs.filter(assignment__closing_manager=user)
+    return qs
+
+
+def can_access_customer(user, customer):
+    """True if user may act on this customer: Site Head / GRE -> must be one of their projects;
+    Sourcing / Closing Manager -> the lead must be assigned to them. Admin / Super Admin / Digital Form: all."""
+    role = get_user_role(user)
+    if role in PROJECT_SCOPED_ROLES:
+        return customer.project_id is not None and \
+            site_head_projects(user).filter(id=customer.project_id).exists()
+    if role == 'sourcing_manager':
+        return CustomerAssignment.objects.filter(customer=customer, sourcing_manager=user).exists()
+    if role == 'closing_manager':
+        return CustomerAssignment.objects.filter(customer=customer, closing_manager=user).exists()
+    return True
 
 
 def resolve_project(code):
@@ -146,10 +184,10 @@ def project_team_for_project(project):
     if not project_id:
         return User.objects.none(), User.objects.none()
     proj_customers = Customer.objects.filter(project_id=project_id)
-    sourcing = users_with_role('sourcing_manager').filter(
+    sourcing = User.objects.filter(is_active=True, profile__role='sourcing_manager').filter(
         Q(profile__projects=project_id) | Q(sourcing_assignments__customer__in=proj_customers)
     ).distinct()
-    closing = users_with_role('closing_manager').filter(
+    closing = User.objects.filter(is_active=True, profile__role='closing_manager').filter(
         Q(profile__projects=project_id) | Q(closing_assignments__customer__in=proj_customers)
     ).distinct()
     return sourcing, closing
@@ -234,13 +272,9 @@ def sourcing_managers_api(request):
 
 def diff_and_log(user, action, instance, before, after, request=None):
     """Log only changed fields as {field: {old, new}} JSON to AuditLog.changes."""
-    def _norm(v):
-        # compare as text so a date object and the same date typed as a string are NOT reported as a change
-        return '' if v is None else str(v)
-
     changed = {
         k: {'old': before.get(k), 'new': after.get(k)}
-        for k in after if _norm(before.get(k)) != _norm(after.get(k))
+        for k in after if before.get(k) != after.get(k)
     }
     if changed:
         log_action(
@@ -784,7 +818,7 @@ def dashboard(request):
     """Enhanced dashboard with filtering capabilities"""
     # "All Leads" is for Admin / Super Admin / GRE / Digital Form. Everyone else is sent to their own
     # (assignment- or project-scoped) dashboard instead of seeing every project.
-    if not has_role(request.user, 'admin', 'super_admin', 'gre', 'digital_form'):
+    if get_user_role(request.user) in ('sourcing_manager', 'closing_manager', 'site_head'):
         return redirect(role_redirect(request.user))
 
     # Get all customers with related data
@@ -833,7 +867,7 @@ def dashboard(request):
         customers = customers.filter(booking_applications__isnull=True)
     
     # Get all active projects for JavaScript property mapping
-    if has_role(request.user, *PROJECT_SCOPED_ROLES) and not has_role(request.user, *ALL_ACCESS_ROLES):
+    if get_user_role(request.user) in PROJECT_SCOPED_ROLES:
         projects = site_head_projects(request.user).filter(is_active=True)
     else:
         projects = Project.objects.active_projects()
@@ -899,7 +933,7 @@ def site_head_dashboard(request):
         customers = customers.filter(booking_applications__isnull=True)
 
     # Projects this Site Head manages (for JS property mapping); admins see all active
-    if has_role(request.user, 'site_head') and not has_role(request.user, 'admin', 'super_admin'):
+    if get_user_role(request.user) == 'site_head':
         projects = site_head_projects(request.user).filter(is_active=True)
     else:
         projects = Project.objects.active_projects()
@@ -916,7 +950,7 @@ def site_head_dashboard(request):
         'customers': customers,
         'projects_data_json': projects_data_json,
         'active_projects': projects,
-        'is_site_head': has_role(request.user, 'site_head') and not has_role(request.user, 'admin', 'super_admin'),
+        'is_site_head': get_user_role(request.user) == 'site_head',
     })
 
 
@@ -979,18 +1013,9 @@ def export_leads(request):
         elif booking_filter == 'pending':
             customers = customers.filter(booking_applications__isnull=True)
         
-        # Sourcing / Closing Manager and "last edited" info for every exported lead
-        customers = customers.select_related('assignment__sourcing_manager', 'assignment__closing_manager')
-        _edits = last_edit_info(customers.values_list('id', flat=True))
-
         # Prepare data for Excel
         data = []
         for customer in customers:
-            try:
-                _assignment = customer.assignment
-            except CustomerAssignment.DoesNotExist:
-                _assignment = None
-            _edit = _edits.get(customer.id)
             # Get property name using database lookup
             property_name = get_project_name_from_form_number(customer.form_number)
             if not property_name:
@@ -1041,11 +1066,6 @@ def export_leads(request):
                 'Assessment Status': assessment_status,
                 'Booking Status': booking_status,
                 'Created Date': customer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'Sourcing Manager': _person_label(_assignment.sourcing_manager) if _assignment and _assignment.sourcing_manager else '',
-                'Closing Manager': _person_label(_assignment.closing_manager) if _assignment and _assignment.closing_manager else '',
-                'Last Edited On': _edit[0].strftime('%Y-%m-%d %H:%M:%S') if _edit else '',
-                'Last Edited By': _edit[1] if _edit else '',
-                'Fields Changed (last edit)': _edit[2] if _edit else '',
             })
         
         # Create DataFrame
@@ -1094,62 +1114,8 @@ def export_leads(request):
     return HttpResponse('Method not allowed', status=405)
 
 
-# Human labels for the audit trail / Excel (field key -> label)
-AUDIT_FIELD_LABELS = {
-    'first_name': 'First Name', 'middle_name': 'Middle Name', 'last_name': 'Last Name', 'email': 'Email',
-    'phone_number': 'Phone Number', 'sex': 'Sex', 'marital_status': 'Marital Status',
-    'date_of_birth': 'Date of Birth', 'residential_address': 'Residential Address', 'city': 'City',
-    'locality': 'Locality', 'pincode': 'Pincode', 'nationality': 'Nationality',
-    'employment_type': 'Employment Type', 'company_name': 'Company Name', 'designation': 'Designation',
-    'industry': 'Industry', 'configuration': 'Configuration', 'budget': 'Budget',
-    'construction_status': 'Construction Status', 'purpose_of_buying': 'Purpose of Buying',
-    'source_details': 'Source Details', 'sources': 'Source of Visit',
-    'cp_company_name': 'Channel Partner Company', 'cp_partner_name': 'Channel Partner Name',
-    'cp_mobile_number': 'Channel Partner Mobile', 'cp_rera_number': 'Channel Partner RERA No.',
-    'cp_rera_status': 'Channel Partner RERA Status',
-    'referral_name': 'Referral Name', 'referral_project': 'Referral Project',
-    'additional_channel_partners': 'Additional Channel Partners',
-    'sourcing_manager': 'Sourcing Manager', 'closing_manager': 'Closing Manager',
-    'lead_classification': 'Lead Classification', 'sales_manager_remarks': "Closing Manager's Remarks",
-    'role': 'Role', 'extra_roles': 'Additional Roles', 'projects': 'Projects', 'is_active': 'Active',
-}
-
-
-def audit_field_label(key):
-    return AUDIT_FIELD_LABELS.get(key) or str(key).replace('_', ' ').strip().title()
-
-
-def _person_label(user):
-    return f"{user.get_full_name()} ({user.username})" if user and user.get_full_name() else (user.username if user else '')
-
-
-def last_edit_info(customer_ids):
-    """{customer_id: (timestamp, edited_by, 'Field A, Field B')} from the latest 'edit' audit entry of each lead."""
-    info = {}
-    logs = AuditLog.objects.filter(action='edit', model_name='Customer', object_id__in=list(customer_ids)) \
-        .select_related('user').order_by('-timestamp')
-    for log in logs:
-        if log.object_id in info:
-            continue
-        fields = ''
-        try:
-            parsed = json.loads(log.changes) if log.changes else {}
-            fields = ', '.join(audit_field_label(k) for k in parsed) if isinstance(parsed, dict) else ''
-        except ValueError:
-            fields = ''
-        info[log.object_id] = (log.timestamp, _person_label(log.user), fields)
-    return info
-
-
-def _additional_cp_text(customer):
-    return '; '.join(
-        f"{cp.company_name} / {cp.partner_name} / {cp.mobile_number}"
-        for cp in AdditionalChannelPartner.objects.filter(customer=customer).order_by('id')
-    )
-
-
 def _customer_snapshot(customer):
-    """Editable Customer fields + source, Channel Partner and referral, for audit diffing."""
+    """Return a dict of the editable Customer fields for audit diffing."""
     fields = [
         'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'sex',
         'marital_status', 'date_of_birth', 'residential_address', 'city', 'locality',
@@ -1157,30 +1123,20 @@ def _customer_snapshot(customer):
         'industry', 'configuration', 'budget', 'construction_status',
         'purpose_of_buying', 'source_details',
     ]
-    snap = {f: getattr(customer, f) for f in fields}
-    snap['sources'] = ', '.join(sorted(CustomerSource.objects.filter(customer=customer).values_list('source_type', flat=True)))
-    cp = ChannelPartner.objects.filter(customer=customer).first()
-    snap.update({
-        'cp_company_name': cp.company_name if cp else '', 'cp_partner_name': cp.partner_name if cp else '',
-        'cp_mobile_number': cp.mobile_number if cp else '', 'cp_rera_number': cp.rera_number if cp else '',
-        'cp_rera_status': cp.rera_status if cp else '',
-    })
-    ref = Referral.objects.filter(customer=customer).first()
-    snap.update({'referral_name': ref.referral_name if ref else '', 'referral_project': ref.project_name if ref else ''})
-    return snap
+    return {f: getattr(customer, f) for f in fields}
 
 
 @login_required
 def edit_customer(request, pk):
     """Edit or view customer information based on user role"""
     customer = get_object_or_404(Customer, pk=pk)
-    # Access and edit rights are per lead and per role (a person with two roles gets the combined rights)
+    user_role = get_user_role(request.user)
+    can_edit = user_role in ('admin', 'super_admin', 'closing_manager', 'site_head')
+
+    # Project-scoped roles (Site Head, GRE) may only touch customers of their own project(s)
     if not can_access_customer(request.user, customer):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
-    can_edit = can_act_as(request.user, customer, EDIT_ROLES)
-    # Source of the lead (source of visit, Channel Partner, referral, details): Admin / Super Admin / Site Head only
-    can_edit_source = can_act_as(request.user, customer, SOURCE_EDIT_ROLES)
 
     if request.method == 'POST' and can_edit:
         before = _customer_snapshot(customer)
@@ -1229,51 +1185,48 @@ def edit_customer(request, pk):
                 customer.budget = request.POST.get('budget', customer.budget)
                 customer.construction_status = request.POST.get('construction_status', customer.construction_status)
                 customer.purpose_of_buying = request.POST.get('purpose_of_buying', customer.purpose_of_buying)
-                if can_edit_source:
-                    customer.source_details = request.POST.get('source_details', customer.source_details)
+                customer.source_details = request.POST.get('source_details', customer.source_details)
                 customer.save()
 
-                # Source of the lead is only touched by roles allowed to edit it
-                if can_edit_source:
-                    # Update sources
-                    customer.sources.all().delete()
-                    for source in request.POST.getlist('sources'):
-                        CustomerSource.objects.create(customer=customer, source_type=source)
+                # Update sources
+                customer.sources.all().delete()
+                for source in request.POST.getlist('sources'):
+                    CustomerSource.objects.create(customer=customer, source_type=source)
 
-                    # Update channel partner
-                    try:
-                        customer.channel_partner.delete()
-                    except ChannelPartner.DoesNotExist:
-                        pass
-                    if 'channel_partner' in request.POST.getlist('sources'):
-                        cp_company = request.POST.get('partner_company_name', '')
-                        cp_name = request.POST.get('partner_name', '')
-                        cp_mobile = request.POST.get('partner_mobile', '')
-                        cp_rera = request.POST.get('partner_rera', '')
-                        if cp_name or cp_company:
-                            ChannelPartner.objects.create(
-                                customer=customer,
-                                company_name=cp_company,
-                                partner_name=cp_name,
-                                mobile_number=cp_mobile,
-                                rera_number=cp_rera,
-                                rera_status=norm_rera_status(request.POST.get('partner_rera_status'))
-                            )
+                # Update channel partner
+                try:
+                    customer.channel_partner.delete()
+                except ChannelPartner.DoesNotExist:
+                    pass
+                if 'channel_partner' in request.POST.getlist('sources'):
+                    cp_company = request.POST.get('partner_company_name', '')
+                    cp_name = request.POST.get('partner_name', '')
+                    cp_mobile = request.POST.get('partner_mobile', '')
+                    cp_rera = request.POST.get('partner_rera', '')
+                    if cp_name or cp_company:
+                        ChannelPartner.objects.create(
+                            customer=customer,
+                            company_name=cp_company,
+                            partner_name=cp_name,
+                            mobile_number=cp_mobile,
+                            rera_number=cp_rera,
+                            rera_status=norm_rera_status(request.POST.get('partner_rera_status'))
+                        )
 
-                    # Update referral
-                    try:
-                        customer.referral.delete()
-                    except Referral.DoesNotExist:
-                        pass
-                    if 'referral' in request.POST.getlist('sources'):
-                        ref_name = request.POST.get('referral_name', '')
-                        ref_project = request.POST.get('referral_project', '')
-                        if ref_name:
-                            Referral.objects.create(
-                                customer=customer,
-                                referral_name=ref_name,
-                                project_name=ref_project
-                            )
+                # Update referral
+                try:
+                    customer.referral.delete()
+                except Referral.DoesNotExist:
+                    pass
+                if 'referral' in request.POST.getlist('sources'):
+                    ref_name = request.POST.get('referral_name', '')
+                    ref_project = request.POST.get('referral_project', '')
+                    if ref_name:
+                        Referral.objects.create(
+                            customer=customer,
+                            referral_name=ref_name,
+                            project_name=ref_project
+                        )
 
                 after = _customer_snapshot(customer)
                 diff_and_log(request.user, 'edit', customer, before, after, request=request)
@@ -1333,7 +1286,6 @@ def edit_customer(request, pk):
         'additional_channel_partners': additional_channel_partners,
         'referral': referral,
         'view_only': not can_edit,
-        'source_view_only': not can_edit_source,
         'selected_property': project_data,
         'cp_master_json': cp_master_json,
     }
@@ -1413,42 +1365,39 @@ def cif_download_log(request, customer_id):
 
 @login_required
 def remove_additional_cp(request, cp_id):
-    """Remove an additional channel partner (the source of the lead: Admin / Super Admin / Site Head only)."""
+    """Remove an additional channel partner (admin/super_admin/closing_manager/site_head)."""
     from django.http import JsonResponse
-    if not has_role(request.user, *SOURCE_EDIT_ROLES):
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin', 'closing_manager', 'site_head'):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
 
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
 
     cp = get_object_or_404(AdditionalChannelPartner, pk=cp_id)
-    if not can_act_as(request.user, cp.customer, SOURCE_EDIT_ROLES):
+    if not can_access_customer(request.user, cp.customer):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
-    _cp_before = _additional_cp_text(cp.customer)
     customer_pk = cp.customer_id
     cp_repr = f"{cp.company_name} — {cp.partner_name}" if cp.company_name else f"CP #{cp_id}"
-    _customer = cp.customer
     cp.delete()
     log_action(request.user, 'cp_remove', 'AdditionalChannelPartner', cp_id,
                f'Additional CP removed for customer #{customer_pk}: {cp_repr}', request=request)
-    diff_and_log(request.user, 'edit', _customer, {'additional_channel_partners': _cp_before},
-                 {'additional_channel_partners': _additional_cp_text(_customer)}, request=request)
     return JsonResponse({'success': True, 'customer_pk': customer_pk})
 
 
 @login_required
 def add_additional_cp(request, customer_id):
-    """Add an additional channel partner (the source of the lead: Admin / Super Admin / Site Head only)."""
+    """Add a new additional channel partner to a customer (admin/super_admin/closing_manager/site_head)."""
     from django.http import JsonResponse
-    if not has_role(request.user, *SOURCE_EDIT_ROLES):
+    role = get_user_role(request.user)
+    if role not in ('admin', 'super_admin', 'closing_manager', 'site_head'):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required.'}, status=405)
 
     customer = get_object_or_404(Customer, pk=customer_id)
-    if not can_act_as(request.user, customer, SOURCE_EDIT_ROLES):
+    if not can_access_customer(request.user, customer):
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
-    _cp_before = _additional_cp_text(customer)
     company_name = request.POST.get('company_name', '').strip()
     partner_name = request.POST.get('partner_name', '').strip()
     mobile_number = request.POST.get('mobile_number', '').strip()
@@ -1470,8 +1419,6 @@ def add_additional_cp(request, customer_id):
     )
     log_action(request.user, 'cp_add', 'AdditionalChannelPartner', acp.id,
                f'{company_name} — {partner_name} added to {customer.form_number}', request=request)
-    diff_and_log(request.user, 'edit', customer, {'additional_channel_partners': _cp_before},
-                 {'additional_channel_partners': _additional_cp_text(customer)}, request=request)
     return JsonResponse({
         'success': True,
         'acp_id': acp.pk,
@@ -1645,13 +1592,14 @@ def internal_sales_assessment(request, customer_id):
     """Create or edit internal sales assessment for a customer"""
     customer = get_object_or_404(Customer, pk=customer_id)
 
-    # GRE / Digital Form have no access to the assessment (they only enter the CIF and assign managers).
-    # A person with another role (e.g. Sourcing / Closing Manager) gets in through THAT role, for the leads it covers.
-    _roles = get_user_roles(request.user)
-    if not any(r not in GRE_LIKE_ROLES and role_grants_access(request.user, r, customer) for r in _roles):
+    # GRE / Digital Form have no access to the assessment (they only enter the CIF and assign managers)
+    if get_user_role(request.user) in GRE_LIKE_ROLES:
         from django.http import HttpResponseForbidden
-        if all(r in GRE_LIKE_ROLES for r in _roles):
-            return HttpResponseForbidden("The assessment is filled by the Closing Manager.")
+        return HttpResponseForbidden("The assessment is filled by the Closing Manager.")
+
+    # Project-scoped roles (Site Head, GRE) may only work on inquiries of their own project(s)
+    if not can_access_customer(request.user, customer):
+        from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
     # Try to get existing assessment or create new one
@@ -1699,7 +1647,7 @@ def internal_sales_assessment(request, customer_id):
             
         # 4. Set default ethnicity based on nationality
         if customer.nationality == 'indian':
-            assessment.ethnicity = ''  # no assumption: the Closing Manager picks it ("Hindu" is no longer an option)
+            assessment.ethnicity = 'hindu'  # Default assumption, can be changed by user
         else:
             assessment.ethnicity = 'other'
         print(f"Mapped ethnicity based on nationality {customer.nationality}: {assessment.ethnicity}")
@@ -1717,16 +1665,12 @@ def internal_sales_assessment(request, customer_id):
 
     user_role = get_user_role(request.user)
 
-    can_edit_assessment = can_act_as(request.user, customer, ASSESSMENT_EDIT_ROLES)
+    can_edit_assessment = user_role in ASSESSMENT_EDIT_ROLES
 
     if request.method == 'POST':
         if not can_edit_assessment:
             from django.http import HttpResponseForbidden
             return HttpResponseForbidden("Only the Closing Manager, Admin or Site Head can edit the assessment.")
-        # The Closing Manager's remarks are mandatory (the form blocks it too; this is the server-side guard)
-        if not (request.POST.get('sales_manager_remarks') or '').strip():
-            messages.error(request, "Closing Manager's remarks are mandatory.")
-            return redirect('customer_enquiry:internal_sales_assessment', customer_id=customer_id)
         assessment_existed = assessment is not None and assessment.pk is not None
         before = _assessment_snapshot(assessment if assessment_existed else None)
         try:
@@ -1867,9 +1811,9 @@ def internal_sales_assessment(request, customer_id):
                 project_data = None
 
     # Get managers for dropdown (non-admin roles see only the customer's project team)
-    if has_role(request.user, 'admin', 'super_admin'):
-        sourcing_managers = users_with_role('sourcing_manager').order_by('first_name')
-        closing_managers = users_with_role('closing_manager').order_by('first_name')
+    if user_role in ('admin', 'super_admin'):
+        sourcing_managers = User.objects.filter(profile__role='sourcing_manager').order_by('first_name')
+        closing_managers = User.objects.filter(profile__role='closing_manager').order_by('first_name')
     else:
         sourcing_managers, closing_managers = project_team(customer)
         sourcing_managers = sourcing_managers.order_by('first_name')
@@ -2090,7 +2034,6 @@ def prepare_prefilled_data_from_booking(customer, booking):
     prefilled_data.update({
         'project_name': booking.project_name,
         'flat_number': booking.flat_number,
-        'wing': booking.wing,
         'floor': booking.floor,
         'rera_carpet_area': booking.rera_carpet_area,
         'exclusive_deck_balcony': booking.exclusive_deck_balcony,
@@ -2271,8 +2214,7 @@ def handle_booking_submission(request, customer):
                 'application_date': request.POST.get('application_date'),
                 
                 # Flat details
-                'flat_number': request.POST.get('flat_number', '').strip(),
-                'wing': request.POST.get('wing', '').strip().upper()[:10],
+                'flat_number': request.POST.get('flat_number', ''),
                 'floor': request.POST.get('floor', ''),
                 'rera_carpet_area': request.POST.get('rera_carpet_area') or None,
                 'exclusive_deck_balcony': request.POST.get('exclusive_deck_balcony') or None,
@@ -3016,11 +2958,11 @@ def password_reset_complete(request):
 def sourcing_manager_dashboard(request):
     """Dashboard for Sourcing Manager — view only, shows assigned leads."""
     role = get_user_role(request.user)
-    if not has_role(request.user, 'sourcing_manager', 'admin', 'super_admin'):
+    if role not in ('sourcing_manager', 'admin', 'super_admin'):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
-    if not has_role(request.user, 'admin', 'super_admin'):
+    if role == 'sourcing_manager':
         customers = Customer.objects.filter(
             assignment__sourcing_manager=request.user
         ).select_related('sales_assessment').prefetch_related(
@@ -3057,11 +2999,11 @@ def sourcing_manager_dashboard(request):
 def closing_manager_dashboard(request):
     """Dashboard for Closing Manager — view + edit, shows assigned leads."""
     role = get_user_role(request.user)
-    if not has_role(request.user, 'closing_manager', 'admin', 'super_admin'):
+    if role not in ('closing_manager', 'admin', 'super_admin'):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
-    if not has_role(request.user, 'admin', 'super_admin'):
+    if role == 'closing_manager':
         customers = Customer.objects.filter(
             assignment__closing_manager=request.user
         ).select_related('sales_assessment').prefetch_related(
@@ -3112,16 +3054,12 @@ def manage_users(request):
             whatsapp = request.POST.get('whatsapp_number', '').strip()
             new_role = request.POST.get('role', 'gre')
             password = request.POST.get('password', '').strip()
-            _is_super = role == 'super_admin' or request.user.is_superuser
 
-            if new_role not in dict(UserProfile.ROLE_CHOICES) or (new_role == 'super_admin' and not _is_super):
-                messages.error(request, "Invalid role.")
-            elif not first_name or not email or not password:
+            if not first_name or not email or not password:
                 messages.error(request, "First name, email, and password are required.")
             elif User.objects.filter(email=email).exists():
                 messages.error(request, "A user with this email already exists.")
-            elif (set([new_role] + request.POST.getlist('extra_roles')) & set(PROJECT_SCOPED_ROLES)) \
-                    and new_role not in ('admin', 'super_admin', 'digital_form') and not request.POST.getlist('projects'):
+            elif new_role in PROJECT_SCOPED_ROLES and not request.POST.getlist('projects'):
                 messages.error(request, "Select at least one project for a GRE / Site Head.")
             else:
                 username = email.split('@')[0]
@@ -3143,12 +3081,8 @@ def manage_users(request):
                     whatsapp_number=whatsapp,
                     role=new_role,
                 )
-                # Optional extra roles (e.g. Closing Manager who is also a Sourcing Manager)
-                if new_role not in ('admin', 'super_admin', 'digital_form'):
-                    new_profile.set_extra_roles(request.POST.getlist('extra_roles'))
-                    new_profile.save()
                 # Site Head / GRE are scoped to their projects; managers belong to project teams
-                if set(new_profile.all_roles()) & set(PROJECT_ASSIGNABLE_ROLES):
+                if new_role in PROJECT_ASSIGNABLE_ROLES:
                     project_ids = request.POST.getlist('projects')
                     if project_ids:
                         new_profile.projects.set(
@@ -3186,86 +3120,6 @@ def manage_users(request):
                 messages.error(request, "User not found.")
             return redirect('customer_enquiry:manage_users')
 
-        elif action == 'update_user':
-            # Change primary role / extra roles / projects. NOTHING is deleted: leads stay assigned to the person.
-            try:
-                target = UserProfile.objects.select_related('user').get(user_id=request.POST.get('user_id'))
-            except UserProfile.DoesNotExist:
-                messages.error(request, "User not found.")
-                return redirect('customer_enquiry:manage_users')
-            is_super = role == 'super_admin' or request.user.is_superuser
-            new_primary = request.POST.get('role', target.role)
-            ids = request.POST.getlist('projects')
-            confirm = request.POST.get('confirm_roles') == '1'
-            probe = UserProfile(role=new_primary)
-            if new_primary not in ('admin', 'super_admin', 'digital_form'):
-                probe.set_extra_roles(request.POST.getlist('extra_roles'))
-            new_roles, old_roles = set(probe.all_roles()), set(target.all_roles())
-            error = None
-            if new_primary not in dict(UserProfile.ROLE_CHOICES):
-                error = "Invalid role."
-            elif target.user_id == request.user.id and new_roles != old_roles:
-                error = "You cannot change your own role."
-            elif ('super_admin' in (old_roles | new_roles)) and not is_super:
-                error = "Only a Super Admin can change the Super Admin role."
-            elif (new_roles & set(PROJECT_SCOPED_ROLES)) and not (ids or target.projects.exists()):
-                error = "A GRE / Site Head needs at least one project."
-            else:
-                lost = old_roles - new_roles
-                warns = []
-                sm_n = CustomerAssignment.objects.filter(sourcing_manager=target.user).count()
-                cm_n = CustomerAssignment.objects.filter(closing_manager=target.user).count()
-                if 'sourcing_manager' in lost and sm_n:
-                    warns.append(f"{sm_n} lead(s) as Sourcing Manager")
-                if 'closing_manager' in lost and cm_n:
-                    warns.append(f"{cm_n} lead(s) as Closing Manager")
-                if warns and not confirm:
-                    error = (f"{target.user.get_full_name() or target.user.username} has " + " and ".join(warns) +
-                             ". They stay assigned to this person, but without that role they can no longer open them. "
-                             "Tick 'I understand' to continue (or keep it as an additional role).")
-            if error:
-                messages.error(request, error)
-                return redirect('customer_enquiry:manage_users')
-            labels = dict(UserProfile.ROLE_CHOICES)
-            before = {'role': labels.get(target.role), 'extra_roles': target.roles_display(),
-                      'projects': ', '.join(sorted(target.projects.values_list('project_name', flat=True)))}
-            target.role = new_primary
-            target.set_extra_roles(probe.extra_role_list())
-            target.save()
-            if new_roles & set(PROJECT_ASSIGNABLE_ROLES):
-                target.projects.set(Project.objects.filter(id__in=ids))
-            after = {'role': labels.get(target.role), 'extra_roles': target.roles_display(),
-                     'projects': ', '.join(sorted(target.projects.values_list('project_name', flat=True)))}
-            before.pop('extra_roles'); after.pop('extra_roles')
-            before['roles'] = ' + '.join(labels.get(r, r) for r in sorted(old_roles))
-            after['roles'] = ' + '.join(labels.get(r, r) for r in sorted(new_roles))
-            if not diff_and_log(request.user, 'update', target, before, after, request=request):
-                messages.info(request, "No changes.")
-            else:
-                messages.success(request, f"Updated {target.user.username}: {target.roles_display()}.")
-            return redirect('customer_enquiry:manage_users')
-
-        elif action == 'toggle_active':
-            # Deactivate (login blocked, ALL data kept) instead of deleting
-            try:
-                target = User.objects.select_related('profile').get(id=request.POST.get('user_id'))
-            except User.DoesNotExist:
-                messages.error(request, "User not found.")
-                return redirect('customer_enquiry:manage_users')
-            is_super = role == 'super_admin' or request.user.is_superuser
-            if target == request.user:
-                messages.error(request, "You cannot deactivate your own account.")
-            elif get_user_role(target) == 'super_admin' and not is_super:
-                messages.error(request, "Only a Super Admin can deactivate a Super Admin.")
-            else:
-                old = target.is_active
-                target.is_active = not old
-                target.save(update_fields=['is_active'])
-                log_action(request.user, 'update', 'User', target.id, f"{target.username} — {'activated' if target.is_active else 'deactivated'}",
-                           changes=json.dumps({'is_active': {'old': old, 'new': target.is_active}}), request=request)
-                messages.success(request, f"{target.username} {'activated' if target.is_active else 'deactivated'}. Their leads and history are unchanged.")
-            return redirect('customer_enquiry:manage_users')
-
         elif action == 'delete_user':
             user_id = request.POST.get('user_id')
             try:
@@ -3273,45 +3127,18 @@ def manage_users(request):
                 if target_user == request.user:
                     messages.error(request, "You cannot delete your own account.")
                 else:
-                    sm_n = CustomerAssignment.objects.filter(sourcing_manager=target_user).count()
-                    cm_n = CustomerAssignment.objects.filter(closing_manager=target_user).count()
-                    rv_n = CustomerRevisit.objects.filter(created_by=target_user).count()
-                    au_n = AuditLog.objects.filter(user=target_user).count()
-                    if sm_n or cm_n or rv_n or au_n:
-                        messages.error(
-                            request,
-                            f"{target_user.username} cannot be deleted: they have {sm_n + cm_n} assigned lead(s), "
-                            f"{rv_n} revisit(s) and {au_n} audit entries that would lose their owner. Use Deactivate instead."
-                        )
-                    else:
-                        log_action(request.user, 'delete', 'User', target_user.id, str(target_user), request=request)
-                        target_user.delete()
-                        messages.success(request, "User deleted.")
+                    log_action(request.user, 'delete', 'User', target_user.id, str(target_user), request=request)
+                    target_user.delete()
+                    messages.success(request, "User deleted successfully.")
             except User.DoesNotExist:
                 messages.error(request, "User not found.")
             return redirect('customer_enquiry:manage_users')
 
-    # List all staff users with profiles (+ how many leads each person holds, so nobody is changed blindly)
-    from django.db.models import Count
-    sm_map = dict(CustomerAssignment.objects.exclude(sourcing_manager=None).values_list('sourcing_manager').annotate(n=Count('id')))
-    cm_map = dict(CustomerAssignment.objects.exclude(closing_manager=None).values_list('closing_manager').annotate(n=Count('id')))
-    rv_map = dict(CustomerRevisit.objects.exclude(created_by=None).values_list('created_by').annotate(n=Count('id')))
-    au_map = dict(AuditLog.objects.exclude(user=None).values_list('user').annotate(n=Count('id')))
-    profiles = list(UserProfile.objects.select_related('user').prefetch_related('projects').order_by('role', 'user__first_name'))
-    for p in profiles:
-        uid = p.user_id
-        p.sm_leads, p.cm_leads = sm_map.get(uid, 0), cm_map.get(uid, 0)
-        p.can_delete = not (p.sm_leads or p.cm_leads or rv_map.get(uid) or au_map.get(uid))
-        p.is_self = uid == request.user.id
-        p.extra = p.extra_role_list()
-        p.extra_labeled = [(r, dict(UserProfile.ROLE_CHOICES).get(r, r)) for r in p.extra]
-        p.project_ids = [pr.id for pr in p.projects.all()]
-    is_super = role == 'super_admin' or request.user.is_superuser
+    # List all staff users with profiles
+    profiles = UserProfile.objects.select_related('user').prefetch_related('projects').order_by('role', 'user__first_name')
     return render(request, 'manage_users.html', {
         'profiles': profiles,
         'role_choices': UserProfile.ROLE_CHOICES,
-        'assignable_roles': [(v, l) for v, l in UserProfile.ROLE_CHOICES if v != 'super_admin' or is_super],
-        'extra_role_choices': UserProfile.EXTRA_ROLE_CHOICES,
         'user_role': role,
         'active_projects': Project.objects.filter(is_active=True).order_by('project_name'),
     })
@@ -3327,7 +3154,7 @@ def assign_customer(request, customer_id):
     within a project they can access, and only among that project's team.
     """
     role = get_user_role(request.user)
-    if not has_role(request.user, 'admin', 'super_admin', 'site_head', 'gre', 'digital_form'):
+    if role not in ('admin', 'super_admin', 'site_head', 'gre', 'digital_form'):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
@@ -3337,9 +3164,9 @@ def assign_customer(request, customer_id):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
-    if has_role(request.user, 'admin', 'super_admin'):
-        sourcing_managers = users_with_role('sourcing_manager')
-        closing_managers = users_with_role('closing_manager')
+    if role in ('admin', 'super_admin'):
+        sourcing_managers = User.objects.filter(profile__role='sourcing_manager')
+        closing_managers = User.objects.filter(profile__role='closing_manager')
     else:
         # Site Head / GRE / Digital Form: only this project's team
         sourcing_managers, closing_managers = project_team(customer)
@@ -3357,7 +3184,7 @@ def assign_customer(request, customer_id):
         closing_user = User.objects.get(id=closing_id) if closing_id else None
 
         # Non-admin roles may only pick from the project's team (guard against tampering)
-        if not has_role(request.user, 'admin', 'super_admin'):
+        if role not in ('admin', 'super_admin'):
             allowed_ids = set(sourcing_managers.values_list('id', flat=True)) | \
                 set(closing_managers.values_list('id', flat=True))
             if (sourcing_user and sourcing_user.id not in allowed_ids) or \
@@ -3572,76 +3399,6 @@ def channel_partners_api(request):
 
 # ─── Audit Trail ─────────────────────────────────────────────────────────────
 
-_CHOICE_LABELS = None
-
-
-def _choice_labels():
-    """{field key: {code: label}} for every choice field of Customer / assessment / source / RERA status."""
-    global _CHOICE_LABELS
-    if _CHOICE_LABELS is None:
-        m = {}
-        for model in (Customer, InternalSalesAssessment):
-            for f in model._meta.get_fields():
-                if getattr(f, 'choices', None):
-                    m.setdefault(f.name, dict(f.choices))
-        m['sources'] = dict(CustomerSource._meta.get_field('source_type').choices)
-        m['cp_rera_status'] = {'registered': 'Registered', 'applied': 'Applied'}
-        _CHOICE_LABELS = m
-    return _CHOICE_LABELS
-
-
-def _fmt_change_value(key, value):
-    if value is None or value == '':
-        return ''
-    if isinstance(value, bool):
-        return 'Yes' if value else 'No'
-    if isinstance(value, (list, tuple)):
-        return ', '.join(str(v) for v in value)
-    if isinstance(value, dict):
-        return json.dumps(value, ensure_ascii=False)
-    labels = _choice_labels().get(key)
-    if labels:
-        parts = [p.strip() for p in str(value).split(',') if p.strip()]
-        return ', '.join(labels.get(p, p) for p in parts)
-    return str(value)
-
-
-def parse_change_rows(raw):
-    """AuditLog.changes (JSON text) -> [{'field', 'old', 'new'}] for display / Excel. Never raises."""
-    if not raw:
-        return []
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        return [{'field': 'Details', 'old': '', 'new': str(raw)}]
-    if not isinstance(data, dict):
-        return [{'field': 'Details', 'old': '', 'new': _fmt_change_value('', data)}]
-    rows = []
-    for key, val in data.items():
-        if isinstance(val, dict) and 'old' in val and 'new' in val:
-            rows.append({'field': audit_field_label(key), 'old': _fmt_change_value(key, val['old']),
-                         'new': _fmt_change_value(key, val['new'])})
-        else:
-            rows.append({'field': audit_field_label(key), 'old': '', 'new': _fmt_change_value(key, val)})
-    return rows
-
-
-def _audit_filters(request):
-    f = {k: request.GET.get(k, '') for k in ('user', 'action', 'date_from', 'date_to', 'model')}
-    logs = AuditLog.objects.select_related('user', 'user__profile').order_by('-timestamp')
-    if f['user']:
-        logs = logs.filter(user__username__icontains=f['user'])
-    if f['action']:
-        logs = logs.filter(action=f['action'])
-    if f['date_from']:
-        logs = logs.filter(timestamp__date__gte=f['date_from'])
-    if f['date_to']:
-        logs = logs.filter(timestamp__date__lte=f['date_to'])
-    if f['model']:
-        logs = logs.filter(model_name__icontains=f['model'])
-    return logs, f
-
-
 @login_required
 def audit_trail(request):
     """View audit logs. Only admin and super admin can access."""
@@ -3650,7 +3407,26 @@ def audit_trail(request):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Access denied.")
 
-    logs, f = _audit_filters(request)
+    logs = AuditLog.objects.select_related('user', 'user__profile').order_by('-timestamp')
+
+    # Filters
+    filter_user = request.GET.get('user', '')
+    filter_action = request.GET.get('action', '')
+    filter_date_from = request.GET.get('date_from', '')
+    filter_date_to = request.GET.get('date_to', '')
+    filter_model = request.GET.get('model', '')
+
+    if filter_user:
+        logs = logs.filter(user__username__icontains=filter_user)
+    if filter_action:
+        logs = logs.filter(action=filter_action)
+    if filter_date_from:
+        logs = logs.filter(timestamp__date__gte=filter_date_from)
+    if filter_date_to:
+        logs = logs.filter(timestamp__date__lte=filter_date_to)
+    if filter_model:
+        logs = logs.filter(model_name__icontains=filter_model)
+
     model_choices = AuditLog.objects.values_list('model_name', flat=True).distinct().exclude(model_name='').order_by('model_name')
 
     from django.core.paginator import Paginator
@@ -3658,66 +3434,19 @@ def audit_trail(request):
     paginator = Paginator(logs_limited, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-    for log in page_obj:
-        log.change_rows = parse_change_rows(log.changes)
 
     return render(request, 'audit_trail.html', {
         'page_obj': page_obj,
         'total_count': paginator.count,
         'action_choices': AuditLog.ACTION_CHOICES,
         'model_choices': model_choices,
-        'filter_user': f['user'],
-        'filter_action': f['action'],
-        'filter_date_from': f['date_from'],
-        'filter_date_to': f['date_to'],
-        'filter_model': f['model'],
+        'filter_user': filter_user,
+        'filter_action': filter_action,
+        'filter_date_from': filter_date_from,
+        'filter_date_to': filter_date_to,
+        'filter_model': filter_model,
         'user_role': role,
-        'export_query': request.GET.urlencode(),
     })
-
-
-@login_required
-def audit_trail_export(request):
-    """Audit Trail as Excel: one row per changed field (date, user, record, field, old value, new value)."""
-    if get_user_role(request.user) not in ('admin', 'super_admin'):
-        from django.http import HttpResponseForbidden
-        return HttpResponseForbidden("Access denied.")
-    logs, f = _audit_filters(request)
-    rows = []
-    for log in logs[:20000]:
-        u = log.user
-        try:
-            roles = u.profile.roles_display() if u else 'System'
-        except Exception:
-            roles = 'Admin' if u else 'System'
-        base = {
-            'Date / Time (UTC)': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'User ID': u.username if u else 'System',
-            'User Name': (u.get_full_name() if u else '') or '',
-            'Role(s)': roles,
-            'Action': log.get_action_display(),
-            'Section': log.model_name,
-            'Record': log.object_repr,
-        }
-        changes = parse_change_rows(log.changes)
-        if not changes:
-            rows.append({**base, 'Field': '', 'Old Value': '', 'New Value': '', 'IP Address': log.ip_address or ''})
-        for c in changes:
-            rows.append({**base, 'Field': c['field'], 'Old Value': c['old'], 'New Value': c['new'],
-                         'IP Address': log.ip_address or ''})
-    df = pd.DataFrame(rows, columns=['Date / Time (UTC)', 'User ID', 'User Name', 'Role(s)', 'Action', 'Section', 'Record',
-                                     'Field', 'Old Value', 'New Value', 'IP Address'])
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Audit Trail')
-        ws = writer.sheets['Audit Trail']
-        for col, width in zip('ABCDEFGHIJK', (20, 18, 22, 24, 16, 20, 34, 28, 34, 34, 16)):
-            ws.column_dimensions[col].width = width
-    output.seek(0)
-    log_action(request.user, 'export', 'AuditLog', None, f'Audit Trail exported ({len(rows)} rows)', request=request)
-    resp = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    resp['Content-Disposition'] = f'attachment; filename="audit_trail_{timezone.now():%Y%m%d_%H%M}.xlsx"'
-    return resp
 
 
 # ─── Revisit ─────────────────────────────────────────────────────────────────
