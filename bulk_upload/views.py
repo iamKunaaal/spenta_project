@@ -11,6 +11,8 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from customer_enquiry.roles import has_role
+
 MOBILE_RE = re.compile(r'^\d{10}$')
 REQUIRED_COLS = ('company_name', 'partner_name', 'mobile_number')
 OPTIONAL_COLS = ('rera_number', 'rera_status', 'is_active')
@@ -29,7 +31,7 @@ def require_role(*roles):
         @login_required
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
-            if _get_role(request.user) not in roles:
+            if not has_role(request.user, *roles):
                 return HttpResponseForbidden("You do not have permission to access this page.")
             return view_func(request, *args, **kwargs)
         return wrapper

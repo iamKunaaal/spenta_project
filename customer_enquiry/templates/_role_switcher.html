@@ -1,0 +1,6 @@
+{% load role_tags %}{% role_nav request.user as nav %}{% if nav|length > 1 %}
+<div style="background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);padding:10px 16px;margin:0 0 14px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;">
+    <strong style="color:#333;">Switch view:</strong>
+    {% for n in nav %}<a href="{{ n.url }}" style="padding:6px 14px;border-radius:6px;background:#eef3ff;color:#1a4fbf;text-decoration:none;font-weight:600;">{{ n.label }}</a>{% endfor %}
+</div>
+{% endif %}
