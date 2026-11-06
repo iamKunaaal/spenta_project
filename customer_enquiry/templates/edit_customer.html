@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% if view_only %}View{% else %}Edit{% endif %} Customer — Spenta</title>
+    <title>{% if view_only and source_view_only %}View{% else %}Edit{% endif %} Customer — Spenta</title>
     <style>
         :root { --bg:#f5f5f5; --text:#1b1f24; --muted:#6b7280; --border:#e6e7ea; --brand:#f6d55c; --brand-d:#e4be34; }
         * { box-sizing:border-box }
@@ -85,8 +85,8 @@
                 {% endif %}
             </div>
             <div class="header-text">
-                <div class="title">{% if view_only %}View{% else %}Edit{% endif %} Customer Information</div>
-                <div class="subtitle">{% if view_only %}Customer details (read-only){% else %}Update customer details{% endif %}</div>
+                <div class="title">{% if view_only and source_view_only %}View{% else %}Edit{% endif %} Customer Information</div>
+                <div class="subtitle">{% if view_only and source_view_only %}Customer details (read-only){% elif view_only %}You can edit only the Source of Visit{% else %}Update customer details{% endif %}</div>
             </div>
         </div>
         <div class="dec">
@@ -136,8 +136,10 @@
             <a href="{% url 'customer_enquiry:dashboard' %}" class="back-btn">← Back to Dashboard</a>
             {% endif %}
 
-            {% if view_only %}
+            {% if view_only and source_view_only %}
             <div class="view-notice">ℹ️ <strong>View Only:</strong> You can view this customer's information but cannot make changes.</div>
+            {% elif view_only %}
+            <div class="view-notice">ℹ️ <strong>Limited edit:</strong> Customer details are view only for you. You can edit only the <strong>Source of Visit</strong> (last step) and save it there.</div>
             {% endif %}
 
             <form method="POST" id="editForm">
@@ -321,24 +323,24 @@
                 <div class="section" data-step="4">
                     <h3>Source of Visit</h3>
                     {% if source_view_only and not view_only %}
-                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#856404;">🔒 The source of the lead can be changed only by Admin, Super Admin or Site Head.</div>
+                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#856404;">🔒 The source of the lead can be changed only by Admin, Super Admin, Site Head or GRE.</div>
                     {% endif %}
                     <label>How did the customer hear about us?</label>
                     <div class="checkbox-group">
-                        <label><input type="checkbox" name="sources" value="channel_partner" {% if 'channel_partner' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %} id="chkCP"> Channel Partner</label>
-                        <label><input type="checkbox" name="sources" value="referral" {% if 'referral' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %} id="chkRef"> Referral</label>
-                        <label><input type="checkbox" name="sources" value="whatsapp" {% if 'whatsapp' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> WhatsApp</label>
-                        <label><input type="checkbox" name="sources" value="social_media" {% if 'social_media' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Social Media</label>
-                        <label><input type="checkbox" name="sources" value="website" {% if 'website' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Website</label>
-                        <label><input type="checkbox" name="sources" value="passing_by" {% if 'passing_by' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Passing by</label>
-                        <label><input type="checkbox" name="sources" value="property_portal" {% if 'property_portal' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Property Portal</label>
-                        <label><input type="checkbox" name="sources" value="hoarding" {% if 'hoarding' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Hoarding</label>
-                        <label><input type="checkbox" name="sources" value="newspaper_ad" {% if 'newspaper_ad' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Newspaper Ad</label>
-                        <label><input type="checkbox" name="sources" value="exhibition" {% if 'exhibition' in current_sources %}checked{% endif %} {% if view_only or source_view_only %}disabled{% endif %}> Exhibition</label>
+                        <label><input type="checkbox" name="sources" value="channel_partner" {% if 'channel_partner' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %} id="chkCP"> Channel Partner</label>
+                        <label><input type="checkbox" name="sources" value="referral" {% if 'referral' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %} id="chkRef"> Referral</label>
+                        <label><input type="checkbox" name="sources" value="whatsapp" {% if 'whatsapp' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> WhatsApp</label>
+                        <label><input type="checkbox" name="sources" value="social_media" {% if 'social_media' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Social Media</label>
+                        <label><input type="checkbox" name="sources" value="website" {% if 'website' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Website</label>
+                        <label><input type="checkbox" name="sources" value="passing_by" {% if 'passing_by' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Passing by</label>
+                        <label><input type="checkbox" name="sources" value="property_portal" {% if 'property_portal' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Property Portal</label>
+                        <label><input type="checkbox" name="sources" value="hoarding" {% if 'hoarding' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Hoarding</label>
+                        <label><input type="checkbox" name="sources" value="newspaper_ad" {% if 'newspaper_ad' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Newspaper Ad</label>
+                        <label><input type="checkbox" name="sources" value="exhibition" {% if 'exhibition' in current_sources %}checked{% endif %} {% if source_view_only %}disabled{% endif %}> Exhibition</label>
                     </div>
 
-                    <label style="margin-top:16px">Additional Details</label>
-                    <textarea name="source_details" class="field" rows="2" {% if view_only or source_view_only %}readonly{% endif %}>{{ customer.source_details|default:'' }}</textarea>
+                    <label style="margin-top:16px">Additional Details{% if details_required %} <span style="color:#dc3545;">*</span>{% endif %}</label>
+                    <textarea name="source_details" class="field" rows="2" {% if source_view_only %}readonly{% endif %}{% if details_required and not source_view_only %} required{% endif %}>{{ customer.source_details|default:'' }}</textarea>
 
                     <!-- Channel Partner Section -->
                     <div class="conditional-section" id="cpSection" {% if 'channel_partner' in current_sources %}style="display:block"{% endif %}>
@@ -350,22 +352,22 @@
                             <div class="grid cols-2">
                                 <div>
                                     <label>Company Name</label>
-                                    <input type="text" name="partner_company_name" class="field" value="{{ channel_partner.company_name|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
+                                    <input type="text" name="partner_company_name" class="field" value="{{ channel_partner.company_name|default:'' }}" {% if source_view_only %}readonly{% endif %}>
                                 </div>
                                 <div>
                                     <label>Partner Name</label>
-                                    <input type="text" name="partner_name" class="field" value="{{ channel_partner.partner_name|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
+                                    <input type="text" name="partner_name" class="field" value="{{ channel_partner.partner_name|default:'' }}" {% if source_view_only %}readonly{% endif %}>
                                 </div>
                             </div>
                             <div class="grid cols-2" style="margin-top:12px">
                                 <div>
                                     <label>Mobile No.</label>
-                                    <input type="text" name="partner_mobile" class="field" value="{{ channel_partner.mobile_number|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
+                                    <input type="text" name="partner_mobile" class="field" value="{{ channel_partner.mobile_number|default:'' }}" {% if source_view_only %}readonly{% endif %}>
                                 </div>
                                 <div>
                                     <label>RERA No.</label>
-                                    <input type="text" name="partner_rera" class="field" value="{{ channel_partner.rera_number|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
-                                    <select name="partner_rera_status" class="field" style="margin-top:6px;" {% if view_only or source_view_only %}disabled{% endif %}>
+                                    <input type="text" name="partner_rera" class="field" value="{{ channel_partner.rera_number|default:'' }}" {% if source_view_only %}readonly{% endif %}>
+                                    <select name="partner_rera_status" class="field" style="margin-top:6px;" {% if source_view_only %}disabled{% endif %}>
                                         <option value="registered" {% if channel_partner.rera_status != 'applied' %}selected{% endif %}>RERA Registered</option>
                                         <option value="applied" {% if channel_partner.rera_status == 'applied' %}selected{% endif %}>RERA Applied</option>
                                     </select>
@@ -380,7 +382,7 @@
                                 <span style="font-size:12px;font-weight:700;color:#856404;text-transform:uppercase;letter-spacing:0.5px;">
                                     CP #{{ forloop.counter|add:1 }} — ⚠ Under Review
                                 </span>
-                                {% if not view_only and not source_view_only %}
+                                {% if not source_view_only %}
                                 <button type="button"
                                     onclick="removeAdditionalCP({{ acp.pk }})"
                                     style="background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">
@@ -411,7 +413,7 @@
                         </div>
                         {% endfor %}
 
-                        {% if not view_only and not source_view_only %}
+                        {% if not source_view_only %}
                         <!-- Add Additional CP Button & Inline Form -->
                         <div id="addCpSection" style="margin-top:14px;">
                             <button type="button" id="showAddCpFormBtn" onclick="showAddCpForm()"
@@ -470,11 +472,11 @@
                         <div class="grid cols-2" style="margin-top:12px">
                             <div>
                                 <label>Referral Name</label>
-                                <input type="text" name="referral_name" class="field" value="{{ referral.referral_name|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
+                                <input type="text" name="referral_name" class="field" value="{{ referral.referral_name|default:'' }}" {% if source_view_only %}readonly{% endif %}>
                             </div>
                             <div>
                                 <label>Project Name</label>
-                                <input type="text" name="referral_project" class="field" value="{{ referral.project_name|default:'' }}" {% if view_only or source_view_only %}readonly{% endif %}>
+                                <input type="text" name="referral_project" class="field" value="{{ referral.project_name|default:'' }}" {% if source_view_only %}readonly{% endif %}>
                             </div>
                         </div>
                     </div>
@@ -484,7 +486,7 @@
                 <div class="actions">
                     <button type="button" class="btn btn-secondary" id="prevBtn" style="display:none">← Previous</button>
                     <button type="button" class="btn" id="nextBtn">Next →</button>
-                    {% if not view_only and not source_view_only %}
+                    {% if can_save %}
                     <button type="submit" class="btn" id="saveBtn" style="display:none; background:#28a745; color:#fff;">💾 Save Changes</button>
                     {% endif %}
                 </div>

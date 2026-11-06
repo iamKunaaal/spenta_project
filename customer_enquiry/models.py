@@ -616,8 +616,27 @@ class InternalSalesAssessment(models.Model):
     source_of_funding = models.CharField(max_length=25, choices=FUNDING_SOURCE_CHOICES, blank=True)
     
     ETHNICITY_CHOICES = [
-        ('hindu', 'Hindu'),
+        ('assamese', 'Assamese'),
+        ('bengali', 'Bengali'),
+        ('bihari', 'Bihari'),
+        ('gujarati', 'Gujarati'),
+        ('haryanvi', 'Haryanvi'),
+        ('himachali', 'Himachali'),
+        ('jharkhandi', 'Jharkhandi'),
+        ('kannadiga', 'Kannadiga'),
+        ('kashmiri', 'Kashmiri'),
+        ('keralite', 'Keralite (Malayali)'),
+        ('konkani_goan', 'Konkani / Goan'),
         ('maharashtrian', 'Maharashtrian'),
+        ('marwari', 'Marwari / Rajasthani'),
+        ('odia', 'Odia'),
+        ('punjabi', 'Punjabi'),
+        ('sindhi', 'Sindhi'),
+        ('tamil', 'Tamil'),
+        ('telugu', 'Telugu'),
+        ('uttar_pradeshi', 'Uttar Pradeshi'),
+        ('uttarakhandi', 'Uttarakhandi'),
+        ('north_eastern', 'North-Eastern (other states)'),
         ('other', 'Other'),
     ]
     ethnicity = models.CharField(max_length=15, choices=ETHNICITY_CHOICES, blank=True)
@@ -1047,6 +1066,13 @@ class CustomerAssignment(models.Model):
         blank=True,
         related_name='closing_assignments'
     )
+    gre = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gre_assignments'
+    )
     assigned_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -1092,6 +1118,22 @@ class CustomerRevisit(models.Model):
 
     def __str__(self):
         return f"Revisit — {self.customer} on {self.visit_date}"
+
+
+class OtpRequestLog(models.Model):
+    """One row per OTP successfully sent. The daily limit, the 30-minute cooldown and the retry batches
+    are computed from these rows, so the limit is per phone number (not per browser session) and survives
+    a cache clear or a server restart."""
+    phone_number = models.CharField(max_length=10, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'otp_request_logs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.phone_number} @ {self.created_at:%d %b %Y %H:%M}"
 
 
 class AuditLog(models.Model):

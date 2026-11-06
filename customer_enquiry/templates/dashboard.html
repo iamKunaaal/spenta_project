@@ -724,7 +724,7 @@
                     <td>{{ customer.created_at|date:"Y-m-d H:i" }}</td>
                     <td class="action-buttons">
                         <!-- Edit/View Customer Button (role-based) -->
-                        {% if request.user|has_role:'admin,super_admin,closing_manager,site_head' or request.user.is_superuser %}
+                        {% if request.user|has_role:'admin,super_admin,closing_manager,site_head,gre' or request.user.is_superuser %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-primary">Edit</a>
                         {% else %}
                         <a href="{% url 'customer_enquiry:edit_customer' customer.pk %}" class="btn btn-info" style="background:#17a2b8;color:#fff;">View</a>

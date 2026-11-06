@@ -40,6 +40,18 @@
         }
 
         /* Title */
+        .doc-project-name {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #222;
+            margin: 0 0 6px 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .doc-project-name:empty { display: none; }
         .title {
             text-align: center;
             font-family: Arial, Helvetica, sans-serif;
@@ -710,6 +722,13 @@
 
     <div class="page">
         <div class="frame">
+            {% if messages %}
+            <div class="hide-from-pdf" style="margin:0 0 12px 0;">
+                {% for message in messages %}<div style="padding:10px 14px;border-radius:6px;font-size:14px;margin-bottom:6px;{% if message.tags == 'error' %}background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;{% else %}background:#d4edda;color:#155724;border:1px solid #c3e6cb;{% endif %}">{{ message }}</div>{% endfor %}
+            </div>
+            {% endif %}
+            <!-- Project name in the document header (shows in the PDF download and in print) -->
+            <div class="doc-project-name">{{ prefilled_data.project_name }}</div>
             <h2 class="title">BOOKING APPLICATION FORM</h2>
             <!-- Project row -->
             <div class="row cols-2" style="align-items: center">

@@ -512,6 +512,38 @@
     <script>
         let otpSent = false;
         let countdown = 0;
+        let otpExpiryTimer = null;
+        let limitTimer = null;
+
+        function fmtWait(sec) {
+            const m = Math.floor(sec / 60), s = sec % 60;
+            return m > 0 ? `${m} min ${String(s).padStart(2, '0')} sec` : `${s} sec`;
+        }
+
+        // OTP limit reached: keep the button locked and show a live "try again in ..." countdown
+        function startLimitCountdown(seconds, text) {
+            const sendBtn = document.getElementById("sendOtpBtn");
+            const otpMessage = document.getElementById("otpMessage");
+            clearInterval(limitTimer);
+            let left = seconds;
+            sendBtn.disabled = true;
+            const tick = () => {
+                if (left <= 0) {
+                    clearInterval(limitTimer);
+                    otpMessage.className = "user-otp-message";
+                    otpMessage.textContent = "You can request a new OTP now.";
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = "Send OTP";
+                    return;
+                }
+                otpMessage.className = "user-otp-message error";
+                otpMessage.textContent = `${text} You can request a new OTP in ${fmtWait(left)}.`;
+                sendBtn.textContent = `Wait ${fmtWait(left)}`;
+                left--;
+            };
+            tick();
+            limitTimer = setInterval(tick, 1000);
+        }
 
         function getCookie(name) {
             let cookieValue = null;
@@ -553,11 +585,32 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    const mins = Math.round((data.expires_in || 180) / 60);
+                    let note = `OTP sent to your WhatsApp number. It is valid for ${mins} minutes.`;
+                    if (data.next_wait_seconds > 0) {
+                        note += " This was your last OTP for now; the next one is available after a wait.";
+                    } else if (data.requests_left === 1) {
+                        note += " You can request 1 more OTP before a 30-minute wait.";
+                    }
                     otpMessage.className = "user-otp-message success";
-                    otpMessage.textContent = "OTP sent to your WhatsApp number.";
+                    otpMessage.textContent = note;
                     otpSent = true;
-                    countdown = 60;
-                    updateCountdown();
+                    // The OTP stays usable for its whole validity (server decides); only then do we ask for a new one
+                    clearTimeout(otpExpiryTimer);
+                    otpExpiryTimer = setTimeout(() => {
+                        otpSent = false;
+                        otpMessage.className = "user-otp-message error";
+                        otpMessage.textContent = "This OTP has expired. Please request a new OTP.";
+                    }, (data.expires_in || 180) * 1000);
+                    if (data.next_wait_seconds > 0) {
+                        // all requests of this round are used: lock the button until the cooldown is over
+                        setTimeout(() => startLimitCountdown(data.next_wait_seconds, "OTP limit reached."), 3000);
+                    } else {
+                        countdown = 60;
+                        updateCountdown();
+                    }
+                } else if (data.retry_after_seconds > 0) {
+                    startLimitCountdown(data.retry_after_seconds, "OTP limit reached.");
                 } else {
                     otpMessage.className = "user-otp-message error";
                     otpMessage.textContent = data.message || "Failed to send OTP. Please try again.";
@@ -582,7 +635,7 @@
             } else {
                 sendBtn.textContent = "Resend OTP";
                 sendBtn.disabled = false;
-                otpSent = false;
+                // otpSent stays true: a Resend button must not make a still-valid OTP unusable
             }
         }
 
@@ -597,7 +650,7 @@
             const submitBtn = document.getElementById('submitBtn');
 
             if (!otpSent) {
-                alert("Please send OTP first.");
+                alert("Please request an OTP first (or request a new one if it has expired).");
                 return;
             }
             if (!enteredOTP || enteredOTP.length !== 6) {

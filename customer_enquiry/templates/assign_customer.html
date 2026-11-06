@@ -28,7 +28,7 @@
 <header class="header">
     <a href="{% url 'customer_enquiry:dashboard' %}" class="logout-btn">← Back</a>
     <div class="title">Assign Customer</div>
-    <div class="subtitle">Assign leads to Sourcing / Closing Managers</div>
+    <div class="subtitle">Assign a lead to a Closing Manager, Sourcing Manager or GRE</div>
     <div class="dec"><img src="{% static 'media/spenta_white.png' %}" alt="" onerror="this.style.display='none'"></div>
 </header>
 
@@ -40,38 +40,70 @@
         <span><strong>City:</strong> {{ customer.city }}</span>
     </div>
 
-    <form method="POST">
+    {% if messages %}
+    {% for message in messages %}
+    <div style="padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:14px;{% if message.tags == 'error' %}background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;{% else %}background:#d4edda;color:#155724;border:1px solid #c3e6cb;{% endif %}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="POST" id="assignForm">
         {% csrf_token %}
+        <h3 style="margin:0 0 10px 0;font-size:15px;color:#333;">Assign To</h3>
 
         <div class="form-group">
-            <label>Sourcing Manager</label>
-            <select name="sourcing_manager">
-                <option value="">— Not Assigned —</option>
-                {% for mgr in sourcing_managers %}
-                    <option value="{{ mgr.id }}" {% if assignment and assignment.sourcing_manager_id == mgr.id %}selected{% endif %}>
-                        {{ mgr.get_full_name|default:mgr.username }} ({{ mgr.username }})
-                    </option>
+            <label for="teamSelect">1. Select Team</label>
+            <select name="team" id="teamSelect" required>
+                <option value="">Select team</option>
+                {% for key, label in teams %}
+                <option value="{{ key }}">{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
 
         <div class="form-group">
-            <label>Closing Manager</label>
-            <select name="closing_manager">
-                <option value="">— Not Assigned —</option>
-                {% for mgr in closing_managers %}
-                    <option value="{{ mgr.id }}" {% if assignment and assignment.closing_manager_id == mgr.id %}selected{% endif %}>
-                        {{ mgr.get_full_name|default:mgr.username }} ({{ mgr.username }})
-                    </option>
-                {% endfor %}
+            <label for="memberSelect">2. Select Team Member</label>
+            <select name="member" id="memberSelect" required disabled>
+                <option value="">Select a team first</option>
             </select>
+            <div id="noMembers" style="display:none;margin-top:6px;font-size:12px;color:#856404;">No one is available in this team for this project. Ask the Admin to add people to the project (Manage Users).</div>
         </div>
 
         <div style="display:flex;gap:12px;">
-            <button type="submit" class="btn btn-primary">Save Assignment</button>
-            <a href="{% url 'customer_enquiry:dashboard' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" id="assignBtn" disabled>Assign</button>
+            <a href="{% url 'customer_enquiry:dashboard' %}" class="btn btn-secondary">Back</a>
         </div>
     </form>
+    {{ members|json_script:"membersData" }}
+    {{ current|json_script:"currentData" }}
+    <script>
+    (function () {
+        var members = JSON.parse(document.getElementById('membersData').textContent);
+        var current = JSON.parse(document.getElementById('currentData').textContent);
+        var team = document.getElementById('teamSelect'), member = document.getElementById('memberSelect');
+        var btn = document.getElementById('assignBtn'), none = document.getElementById('noMembers');
+        function fill() {
+            var list = members[team.value] || [];
+            member.innerHTML = '';
+            none.style.display = 'none';
+            if (!team.value) {
+                member.innerHTML = '<option value="">Select a team first</option>';
+                member.disabled = true; btn.disabled = true; return;
+            }
+            member.disabled = false; btn.disabled = false;
+            var ph = document.createElement('option'); ph.value = ''; ph.textContent = 'Select team member'; member.appendChild(ph);
+            list.forEach(function (m) {
+                var o = document.createElement('option');
+                o.value = m.id; o.textContent = m.name + ' (' + m.username + ')';
+                if (current[team.value] === m.id) { o.selected = true; }
+                member.appendChild(o);
+            });
+            var rm = document.createElement('option'); rm.value = 'none'; rm.textContent = '— Not assigned (remove) —'; member.appendChild(rm);
+            if (!list.length) { none.style.display = 'block'; }
+        }
+        team.addEventListener('change', fill);
+        fill();
+    })();
+    </script>
 </div>
 
 {% if assignment %}
@@ -84,6 +116,10 @@
     <p style="font-size:14px;margin:6px 0;">
         <strong>Closing Manager:</strong>
         {% if assignment.closing_manager %}{{ assignment.closing_manager.get_full_name|default:assignment.closing_manager.username }}{% else %}Not Assigned{% endif %}
+    </p>
+    <p style="font-size:14px;margin:6px 0;">
+        <strong>GRE:</strong>
+        {% if assignment.gre %}{{ assignment.gre.get_full_name|default:assignment.gre.username }}{% else %}Not Assigned{% endif %}
     </p>
     <p style="font-size:12px;color:#aaa;margin-top:10px;">Assigned on {{ assignment.assigned_at|date:"d M Y, H:i" }}</p>
 </div>

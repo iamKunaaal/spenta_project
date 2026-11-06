@@ -18,7 +18,7 @@ ASSIGNMENT_ROLES = ('sourcing_manager', 'closing_manager')
 # Who may edit a lead's details / its assessment / its source (CP, referral, source details)
 EDIT_ROLES = ('admin', 'super_admin', 'closing_manager', 'site_head')
 ASSESSMENT_EDIT_ROLES = ('closing_manager', 'admin', 'super_admin', 'site_head')
-SOURCE_EDIT_ROLES = ('admin', 'super_admin', 'site_head')
+SOURCE_EDIT_ROLES = ('admin', 'super_admin', 'site_head', 'gre')   # site_head = HOD; GRE edits ONLY the Source of Visit
 
 
 def get_user_roles(user):
@@ -62,7 +62,10 @@ def role_grants_access(user, role, customer):
     if role in ALL_ACCESS_ROLES:
         return True
     if role in PROJECT_SCOPED_ROLES:
-        return customer.project_id is not None and user_projects(user).filter(id=customer.project_id).exists()
+        if customer.project_id is not None and user_projects(user).filter(id=customer.project_id).exists():
+            return True
+        # a GRE who was assigned this lead can always open it
+        return role == 'gre' and CustomerAssignment.objects.filter(customer=customer, gre=user).exists()
     if role == 'sourcing_manager':
         return CustomerAssignment.objects.filter(customer=customer, sourcing_manager=user).exists()
     if role == 'closing_manager':
@@ -87,6 +90,8 @@ def scope_customers(user, qs):
     q = Q(pk__in=[])
     if any(r in PROJECT_SCOPED_ROLES for r in roles):
         q |= Q(project__in=user_projects(user))
+    if 'gre' in roles:
+        q |= Q(assignment__gre=user)
     if 'sourcing_manager' in roles:
         q |= Q(assignment__sourcing_manager=user)
     if 'closing_manager' in roles:
