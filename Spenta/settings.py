@@ -212,8 +212,15 @@ CACHES = {
 }
 
 # OTP Rate Limiting
-OTP_MAX_PER_PHONE = 3   # Max OTP requests per phone number per hour
-OTP_MAX_PER_IP = 5      # Max OTP requests per IP per hour
+OTP_MAX_PER_PHONE = 3   # used ONLY by the staff password-reset OTP (unchanged); customer OTP uses the rules below
+# OTP rules (all enforced server-side)
+OTP_EXPIRY_SECONDS = 180         # an OTP works for 3 minutes, then it can never be used again
+OTP_DAILY_LIMIT = 5              # OTP requests per phone number per day (India time)
+OTP_COOLDOWN_SECONDS = 1800      # wait 30 minutes after the daily limit is used up ...
+OTP_RETRY_BATCH = 2              # ... then 2 more requests; the 30-minute wait repeats after every 2
+OTP_MAX_WRONG_ATTEMPTS = 5       # wrong entries allowed for one OTP before it is cancelled
+OTP_MAX_PER_IP = 30     # Max OTP requests per IP per hour: only a broad abuse guard. It was 5, which blocked a whole
+                        # site office (one shared IP) and cut the 30-minute cooldown rule short.
 OTP_BLOCK_DURATION = 3600  # Block duration in seconds (1 hour)
 
 # Interakt WhatsApp API

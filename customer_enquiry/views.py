@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile, AdditionalChannelPartner, CustomerAssignment, CustomerRevisit, AuditLog, ChannelPartnerMaster
+from .models import Customer, CustomerSource, ChannelPartner, Referral, InternalSalesAssessment, BookingApplication, BookingApplicant, BookingChannelPartner, Project, UserProfile, AdditionalChannelPartner, CustomerAssignment, CustomerRevisit, AuditLog, ChannelPartnerMaster, OtpRequestLog
 from django.shortcuts import get_object_or_404
 import json
 import logging
@@ -153,6 +153,16 @@ def project_team_for_project(project):
         Q(profile__projects=project_id) | Q(closing_assignments__customer__in=proj_customers)
     ).distinct()
     return sourcing, closing
+
+
+def project_gre_team(project_id):
+    """Active GREs of a project: GRE (primary or extra role) with that project, or already assigned on it."""
+    if not project_id:
+        return User.objects.none()
+    proj_customers = Customer.objects.filter(project_id=project_id)
+    return users_with_role('gre').filter(
+        Q(profile__projects=project_id) | Q(gre_assignments__customer__in=proj_customers)
+    ).distinct()
 
 
 def project_team(customer):
@@ -506,7 +516,9 @@ def customer_submit_view(request):
                 'sex', 'marital_status', 'source'
             ]
             
-            missing_fields = [field for field in required_fields if not data.get(field)]
+            # "Additional Details" (how the customer came to know about the project) is mandatory
+            required_fields.append('source_details')
+            missing_fields = [field for field in required_fields if not (data.get(field) or '').strip()]
             if missing_fields:
                 error_msg = f'Required fields missing: {", ".join(missing_fields)}'
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1110,6 +1122,7 @@ AUDIT_FIELD_LABELS = {
     'referral_name': 'Referral Name', 'referral_project': 'Referral Project',
     'additional_channel_partners': 'Additional Channel Partners',
     'sourcing_manager': 'Sourcing Manager', 'closing_manager': 'Closing Manager',
+    'gre': 'GRE',
     'lead_classification': 'Lead Classification', 'sales_manager_remarks': "Closing Manager's Remarks",
     'role': 'Role', 'extra_roles': 'Additional Roles', 'projects': 'Projects', 'is_active': 'Active',
 }
@@ -1179,56 +1192,63 @@ def edit_customer(request, pk):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
     can_edit = can_act_as(request.user, customer, EDIT_ROLES)
-    # Source of the lead (source of visit, Channel Partner, referral, details): Admin / Super Admin / Site Head only
+    # 4th form = Source of Visit (source, Channel Partner, referral, details): Admin / Super Admin / Site Head (HOD) /
+    # GRE can edit it. A GRE can edit ONLY this part; Closing / Sourcing Managers never can.
     can_edit_source = can_act_as(request.user, customer, SOURCE_EDIT_ROLES)
+    # GRE must always fill "Additional Details" when saving the source
+    details_required = has_role(request.user, 'gre') and not has_role(request.user, 'admin', 'super_admin', 'site_head')
 
-    if request.method == 'POST' and can_edit:
+    if request.method == 'POST' and (can_edit or can_edit_source):
+        if can_edit_source and details_required and not (request.POST.get('source_details') or '').strip():
+            messages.error(request, 'Additional Details is mandatory for the Source of Visit.')
+            return redirect('customer_enquiry:edit_customer', pk=pk)
         before = _customer_snapshot(customer)
         try:
             with transaction.atomic():
-                customer.first_name = request.POST.get('first_name', customer.first_name)
-                customer.middle_name = request.POST.get('middle_name', '')
-                customer.last_name = request.POST.get('last_name', customer.last_name)
-                customer.email = request.POST.get('email', customer.email)
+                if can_edit:   # personal / employment / requirement fields: not for a GRE (view only)
+                    customer.first_name = request.POST.get('first_name', customer.first_name)
+                    customer.middle_name = request.POST.get('middle_name', '')
+                    customer.last_name = request.POST.get('last_name', customer.last_name)
+                    customer.email = request.POST.get('email', customer.email)
 
-                phone_number = request.POST.get('phone_number', '').strip()
-                if phone_number and (len(phone_number) != 10 or not phone_number.isdigit()):
-                    messages.error(request, 'Please enter a valid 10-digit phone number')
-                    return redirect('customer_enquiry:edit_customer', pk=pk)
-                customer.phone_number = phone_number if phone_number else customer.phone_number
-
-                sex = request.POST.get('sex', '')
-                if sex in ('male', 'female', 'other'):
-                    customer.sex = sex
-
-                marital_status = request.POST.get('marital_status', '')
-                if marital_status in ('single', 'married', 'divorced', 'widowed', 'other'):
-                    customer.marital_status = marital_status
-
-                dob = request.POST.get('date_of_birth', '').strip()
-                if dob:
-                    customer.date_of_birth = dob
-
-                customer.residential_address = request.POST.get('residential_address', customer.residential_address)
-                customer.city = request.POST.get('city', customer.city)
-                customer.locality = request.POST.get('locality', customer.locality)
-
-                pincode = request.POST.get('pincode', '').strip()
-                if pincode:
-                    if len(pincode) != 6 or not pincode.isdigit():
-                        messages.error(request, 'Please enter a valid 6-digit pincode')
+                    phone_number = request.POST.get('phone_number', '').strip()
+                    if phone_number and (len(phone_number) != 10 or not phone_number.isdigit()):
+                        messages.error(request, 'Please enter a valid 10-digit phone number')
                         return redirect('customer_enquiry:edit_customer', pk=pk)
-                    customer.pincode = pincode
+                    customer.phone_number = phone_number if phone_number else customer.phone_number
 
-                customer.nationality = request.POST.get('nationality', customer.nationality)
-                customer.employment_type = request.POST.get('employment_type', customer.employment_type)
-                customer.company_name = request.POST.get('company_name', customer.company_name)
-                customer.designation = request.POST.get('designation', customer.designation)
-                customer.industry = request.POST.get('industry', customer.industry)
-                customer.configuration = request.POST.get('configuration', customer.configuration)
-                customer.budget = request.POST.get('budget', customer.budget)
-                customer.construction_status = request.POST.get('construction_status', customer.construction_status)
-                customer.purpose_of_buying = request.POST.get('purpose_of_buying', customer.purpose_of_buying)
+                    sex = request.POST.get('sex', '')
+                    if sex in ('male', 'female', 'other'):
+                        customer.sex = sex
+
+                    marital_status = request.POST.get('marital_status', '')
+                    if marital_status in ('single', 'married', 'divorced', 'widowed', 'other'):
+                        customer.marital_status = marital_status
+
+                    dob = request.POST.get('date_of_birth', '').strip()
+                    if dob:
+                        customer.date_of_birth = dob
+
+                    customer.residential_address = request.POST.get('residential_address', customer.residential_address)
+                    customer.city = request.POST.get('city', customer.city)
+                    customer.locality = request.POST.get('locality', customer.locality)
+
+                    pincode = request.POST.get('pincode', '').strip()
+                    if pincode:
+                        if len(pincode) != 6 or not pincode.isdigit():
+                            messages.error(request, 'Please enter a valid 6-digit pincode')
+                            return redirect('customer_enquiry:edit_customer', pk=pk)
+                        customer.pincode = pincode
+
+                    customer.nationality = request.POST.get('nationality', customer.nationality)
+                    customer.employment_type = request.POST.get('employment_type', customer.employment_type)
+                    customer.company_name = request.POST.get('company_name', customer.company_name)
+                    customer.designation = request.POST.get('designation', customer.designation)
+                    customer.industry = request.POST.get('industry', customer.industry)
+                    customer.configuration = request.POST.get('configuration', customer.configuration)
+                    customer.budget = request.POST.get('budget', customer.budget)
+                    customer.construction_status = request.POST.get('construction_status', customer.construction_status)
+                    customer.purpose_of_buying = request.POST.get('purpose_of_buying', customer.purpose_of_buying)
                 if can_edit_source:
                     customer.source_details = request.POST.get('source_details', customer.source_details)
                 customer.save()
@@ -1334,6 +1354,8 @@ def edit_customer(request, pk):
         'referral': referral,
         'view_only': not can_edit,
         'source_view_only': not can_edit_source,
+        'can_save': can_edit or can_edit_source,
+        'details_required': details_required,
         'selected_property': project_data,
         'cp_master_json': cp_master_json,
     }
@@ -1626,6 +1648,28 @@ def add_additional_cp(request, customer_id):
         
 #         return render(request, 'edit_customer.html', context)
 
+# Fields that are `required` on the assessment page: the server enforces the same, so an incomplete
+# assessment can never be saved (the page check alone can be bypassed).
+ASSESSMENT_REQUIRED_FIELDS = [
+    ('facilitated_by_pre_sales', 'Facilitated by Pre-Sales'),
+    ('lead_classification', 'Lead Classification'),
+    ('current_residence_config', 'Current Residence Configuration'),
+    ('current_residence_ownership', 'Current Residence Ownership'),
+    ('family_size', 'Family Size'),
+    ('source_of_funding', 'Source of Funding'),
+    ('ethnicity', 'Ethnicity'),
+    ('sales_manager_remarks', "Closing Manager's Remarks"),
+]
+
+
+def missing_assessment_fields(post):
+    """Labels of the required assessment fields that are empty in this POST."""
+    missing = [label for name, label in ASSESSMENT_REQUIRED_FIELDS if not (post.get(name) or '').strip()]
+    if (post.get('lead_classification') or '') == 'lost' and not (post.get('reason_for_lost') or '').strip():
+        missing.append('Reason for Lost')
+    return missing
+
+
 def _assessment_snapshot(assessment):
     """Return a dict of lead-status / remarks fields for audit diffing."""
     fields = [
@@ -1727,6 +1771,11 @@ def internal_sales_assessment(request, customer_id):
         if not (request.POST.get('sales_manager_remarks') or '').strip():
             messages.error(request, "Closing Manager's remarks are mandatory.")
             return redirect('customer_enquiry:internal_sales_assessment', customer_id=customer_id)
+        # The whole assessment must be completed before it can be saved
+        _missing = missing_assessment_fields(request.POST)
+        if _missing:
+            messages.error(request, 'Please complete the assessment before saving. Missing: ' + ', '.join(_missing) + '.')
+            return redirect('customer_enquiry:internal_sales_assessment', customer_id=customer_id)
         assessment_existed = assessment is not None and assessment.pk is not None
         before = _assessment_snapshot(assessment if assessment_existed else None)
         try:
@@ -1776,14 +1825,12 @@ def internal_sales_assessment(request, customer_id):
                 if can_edit_assessment:
                     assessment_obj.lead_classification = request.POST.get('lead_classification', '')
                     assessment_obj.reason_for_lost = request.POST.get('reason_for_lost', '')
-                    assessment_obj.customer_classification = request.POST.get('customer_classification', '')
-                    assessment_obj.reason_for_closed = request.POST.get('reason_for_closed', '')
+                    # customer_classification, reason_for_closed, plot, desired_flat_area and area_looking have NO
+                    # input on the form any more: they are deliberately not written here, so old values are kept
+                    # (before, every save blanked them).
                     assessment_obj.current_residence_config = request.POST.get('current_residence_config', '')
                     assessment_obj.current_residence_ownership = request.POST.get('current_residence_ownership', '')
-                    assessment_obj.plot = request.POST.get('plot', '')
                     assessment_obj.family_size = request.POST.get('family_size', '')
-                    assessment_obj.area_looking = request.POST.get('area_looking', '')
-                    assessment_obj.desired_flat_area = request.POST.get('desired_flat_area', '')
                     assessment_obj.source_of_funding = request.POST.get('source_of_funding', '')
                     assessment_obj.ethnicity = request.POST.get('ethnicity', '')
                     assessment_obj.other_projects_considered = request.POST.get('other_projects_considered', '')
@@ -2254,10 +2301,42 @@ def get_state_from_city(city):
     
     return city_state_mapping.get(city.lower(), 'Maharashtra')  # Default
 
+# Fields that are `required` on the booking form page: the server enforces the same, so an incomplete
+# booking application can never be submitted (the page check alone can be bypassed).
+BOOKING_REQUIRED_FIELDS = [
+    ('application_date', 'Application Date'), ('flat_number', 'Flat No.'), ('floor', 'Floor'),
+    ('rera_carpet_area', 'RERA Carpet Area'), ('car_parking_count', 'No. of Car Parking'),
+    ('total_purchase_price', 'Total Purchase Price'), ('total_purchase_price_words', 'Total Purchase Price (in words)'),
+    ('applicant_1_title', 'Applicant 1 Title'), ('applicant_1_first_name', 'Applicant 1 First Name'),
+    ('applicant_1_last_name', 'Applicant 1 Last Name'),
+    ('applicant_1_residential_address', 'Applicant 1 Address'), ('applicant_1_city', 'Applicant 1 City'),
+    ('applicant_1_pin', 'Applicant 1 PIN'), ('applicant_1_state', 'Applicant 1 State'),
+    ('applicant_1_country', 'Applicant 1 Country'), ('applicant_1_mobile', 'Applicant 1 Mobile'),
+    ('applicant_1_email', 'Applicant 1 Email'),
+]
+BOOKING_DOB_BOXES = ['applicant_1_dob_d1', 'applicant_1_dob_d2', 'applicant_1_dob_m1', 'applicant_1_dob_m2',
+                     'applicant_1_dob_y1', 'applicant_1_dob_y2', 'applicant_1_dob_y3', 'applicant_1_dob_y4']
+BOOKING_PAN_BOXES = [f'applicant_1_pan_{i}' for i in range(1, 11)]
+
+
+def missing_booking_fields(post):
+    """Labels of the required booking-form fields that are empty in this POST."""
+    missing = [label for name, label in BOOKING_REQUIRED_FIELDS if not (post.get(name) or '').strip()]
+    if not all((post.get(n) or '').strip() for n in BOOKING_DOB_BOXES):
+        missing.append('Applicant 1 Date of Birth')
+    if not all((post.get(n) or '').strip() for n in BOOKING_PAN_BOXES):
+        missing.append('Applicant 1 PAN')
+    return missing
+
+
 def handle_booking_submission(request, customer):
     """
     Form submission handle karo aur database mein save karo (create or update)
     """
+    _missing = missing_booking_fields(request.POST)
+    if _missing:
+        messages.error(request, 'Please complete the booking form before submitting. Missing: ' + ', '.join(_missing) + '.')
+        return redirect('customer_enquiry:booking_form', customer_id=customer.id)
     try:
         logger.debug(f"Form data received: {request.POST}")
         
@@ -2613,6 +2692,34 @@ def get_client_ip(request):
     return request.META.get('REMOTE_ADDR')
 
 
+def otp_quota(phone_number, now=None):
+    """Where a phone number stands with OTP requests today (India time).
+
+    First OTP_DAILY_LIMIT requests of the day are free. After that the person waits OTP_COOLDOWN_SECONDS, then
+    gets OTP_RETRY_BATCH more requests, waits again, and so on (never a permanent lock-out).
+    Returns {'allowed', 'retry_after' (seconds, 0 if allowed), 'sent_today', 'left' (requests before the next wait)}."""
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+    now = now or timezone.now()
+    day_start = now.astimezone(ZoneInfo('Asia/Kolkata')).replace(hour=0, minute=0, second=0, microsecond=0)
+    logs = list(OtpRequestLog.objects.filter(phone_number=phone_number, created_at__gte=day_start).order_by('created_at'))
+    n = len(logs)
+    limit, batch = settings.OTP_DAILY_LIMIT, settings.OTP_RETRY_BATCH
+    if n < limit:
+        return {'allowed': True, 'retry_after': 0, 'sent_today': n, 'left': limit - n}
+    if (n - limit) % batch == 0:                      # a batch is used up -> wait 30 minutes from the last request
+        wait = (logs[-1].created_at + timedelta(seconds=settings.OTP_COOLDOWN_SECONDS) - now).total_seconds()
+        if wait > 0:
+            return {'allowed': False, 'retry_after': int(wait) + 1, 'sent_today': n, 'left': 0}
+        return {'allowed': True, 'retry_after': 0, 'sent_today': n, 'left': batch}
+    return {'allowed': True, 'retry_after': 0, 'sent_today': n, 'left': batch - ((n - limit) % batch)}
+
+
+def _format_wait(seconds):
+    minutes, secs = divmod(int(seconds), 60)
+    return f"{minutes} min {secs:02d} sec" if minutes else f"{secs} sec"
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_otp_view(request):
@@ -2628,15 +2735,15 @@ def send_otp_view(request):
 
         client_ip = get_client_ip(request)
 
-        # --- Rate limit by phone number ---
-        phone_cache_key = f'otp_count_phone_{phone_number}'
-        phone_count = cache.get(phone_cache_key, 0)
-
-        if phone_count >= settings.OTP_MAX_PER_PHONE:
+        # --- Limit per phone number: daily limit, 30-minute cooldown, then extra retry batches ---
+        quota = otp_quota(phone_number)
+        if not quota['allowed']:
             logger.warning(f"OTP rate limit hit for phone {phone_number}")
             return JsonResponse({
                 'success': False,
-                'message': f'Too many OTP requests for this number. Please try again after 1 hour.'
+                'message': f"OTP limit reached for this number. You can request a new OTP in "
+                           f"{_format_wait(quota['retry_after'])}.",
+                'retry_after_seconds': quota['retry_after'],
             })
 
         # --- Rate limit by IP address ---
@@ -2676,15 +2783,23 @@ def send_otp_view(request):
         )
 
         if response.status_code in (200, 201):
-            # Increment counters only on successful send
-            cache.set(phone_cache_key, phone_count + 1, settings.OTP_BLOCK_DURATION)
+            # Count only OTPs that were really sent (a failed send does not use up the person's requests)
+            OtpRequestLog.objects.create(phone_number=phone_number, ip_address=client_ip or None)
             cache.set(ip_cache_key, ip_count + 1, settings.OTP_BLOCK_DURATION)
 
             request.session['otp'] = otp
             request.session['otp_phone'] = phone_number
             request.session['otp_timestamp'] = int(timezone.now().timestamp())
-            logger.info(f"OTP sent via WhatsApp for phone {phone_number} (attempt {phone_count + 1})")
-            return JsonResponse({'success': True, 'message': 'OTP sent to your WhatsApp number'})
+            request.session['otp_attempts'] = 0
+            after = otp_quota(phone_number)
+            logger.info(f"OTP sent via WhatsApp for phone {phone_number} (sent today: {after['sent_today']})")
+            return JsonResponse({
+                'success': True,
+                'message': 'OTP sent to your WhatsApp number',
+                'expires_in': settings.OTP_EXPIRY_SECONDS,
+                'requests_left': after['left'] if after['allowed'] else 0,
+                'next_wait_seconds': 0 if after['allowed'] else after['retry_after'],
+            })
         else:
             logger.error(f"Interakt API error: {response.status_code} - {response.text}")
             return JsonResponse({'success': False, 'message': 'Failed to send OTP. Please try again.'})
@@ -2716,19 +2831,27 @@ def verify_otp_view(request):
         if not stored_otp or stored_phone != phone_number:
             return JsonResponse({'success': False, 'message': 'Please send OTP first.'})
 
-        # Check OTP expiry (10 minutes)
-        if otp_timestamp:
-            elapsed = int(timezone.now().timestamp()) - otp_timestamp
-            if elapsed > 600:
-                return JsonResponse({'success': False, 'message': 'OTP has expired. Please request a new one.'})
+        # OTP expiry: an expired OTP is removed, so it can never be used again
+        elapsed = int(timezone.now().timestamp()) - (otp_timestamp or 0)
+        if elapsed > settings.OTP_EXPIRY_SECONDS:
+            for k in ('otp', 'otp_phone', 'otp_timestamp', 'otp_attempts'):
+                request.session.pop(k, None)
+            return JsonResponse({'success': False, 'message': 'OTP has expired. Please request a new one.'})
 
         if entered_otp != stored_otp:
+            attempts = request.session.get('otp_attempts', 0) + 1
+            if attempts >= settings.OTP_MAX_WRONG_ATTEMPTS:
+                for k in ('otp', 'otp_phone', 'otp_timestamp', 'otp_attempts'):
+                    request.session.pop(k, None)
+                return JsonResponse({'success': False, 'message': 'Too many wrong attempts. Please request a new OTP.'})
+            request.session['otp_attempts'] = attempts
             return JsonResponse({'success': False, 'message': 'Invalid OTP. Please try again.'})
 
         # Clear OTP from session
         request.session.pop('otp', None)
         request.session.pop('otp_phone', None)
         request.session.pop('otp_timestamp', None)
+        request.session.pop('otp_attempts', None)
 
         # Mark user as authenticated
         request.session['user_authenticated'] = True
@@ -3319,12 +3442,20 @@ def manage_users(request):
 
 # ─── Admin: Assign Customer to Managers ──────────────────────────────────────
 
+ASSIGN_TEAMS = [
+    ('closing_manager', 'Closing Manager'),
+    ('sourcing_manager', 'Sourcing Manager'),
+    ('gre', 'GRE'),
+]
+
+
 @login_required
 def assign_customer(request, customer_id):
-    """Assign/reassign a customer to sourcing/closing manager.
+    """Assign a lead to ONE team member: pick the team (Closing Manager / Sourcing Manager / GRE), then the member.
 
-    Admins may assign among all managers. Site Head / GRE / Digital Form may assign only
-    within a project they can access, and only among that project's team.
+    Admin / Super Admin can pick anyone of a team. Site Head, GRE and Digital Form can assign only inside a project
+    they can access, and only to members of that project's team. Only the chosen slot changes; the other
+    assignments stay as they are.
     """
     role = get_user_role(request.user)
     if not has_role(request.user, 'admin', 'super_admin', 'site_head', 'gre', 'digital_form'):
@@ -3338,64 +3469,66 @@ def assign_customer(request, customer_id):
         return HttpResponseForbidden("You do not have permission to access this inquiry.")
 
     if has_role(request.user, 'admin', 'super_admin'):
-        sourcing_managers = users_with_role('sourcing_manager')
-        closing_managers = users_with_role('closing_manager')
+        team_users = {
+            'closing_manager': users_with_role('closing_manager'),
+            'sourcing_manager': users_with_role('sourcing_manager'),
+            'gre': users_with_role('gre'),
+        }
     else:
         # Site Head / GRE / Digital Form: only this project's team
-        sourcing_managers, closing_managers = project_team(customer)
+        sourcing_team, closing_team = project_team(customer)
+        team_users = {
+            'closing_manager': closing_team,
+            'sourcing_manager': sourcing_team,
+            'gre': project_gre_team(customer.project_id),
+        }
 
     try:
         assignment = customer.assignment
     except CustomerAssignment.DoesNotExist:
         assignment = None
 
+    def _name(u):
+        return (u.get_full_name() or u.username) if u else None
+
     if request.method == 'POST':
-        sourcing_id = request.POST.get('sourcing_manager') or None
-        closing_id = request.POST.get('closing_manager') or None
-
-        sourcing_user = User.objects.get(id=sourcing_id) if sourcing_id else None
-        closing_user = User.objects.get(id=closing_id) if closing_id else None
-
-        # Non-admin roles may only pick from the project's team (guard against tampering)
-        if not has_role(request.user, 'admin', 'super_admin'):
-            allowed_ids = set(sourcing_managers.values_list('id', flat=True)) | \
-                set(closing_managers.values_list('id', flat=True))
-            if (sourcing_user and sourcing_user.id not in allowed_ids) or \
-               (closing_user and closing_user.id not in allowed_ids):
+        team = request.POST.get('team', '')
+        member = request.POST.get('member', '')
+        if team not in dict(ASSIGN_TEAMS):
+            messages.error(request, 'Please select a team.')
+            return redirect('customer_enquiry:assign_customer', customer_id=customer.id)
+        if member == '':
+            messages.error(request, 'Please select a team member (or "Not assigned").')
+            return redirect('customer_enquiry:assign_customer', customer_id=customer.id)
+        user = None
+        if member != 'none':
+            user = team_users[team].filter(id=member).first() if member.isdigit() else None
+            if user is None:
                 from django.http import HttpResponseForbidden
-                return HttpResponseForbidden("Selected manager is not part of this project's team.")
+                return HttpResponseForbidden("Selected person is not part of this team for this project.")
 
-        before = {
-            'sourcing_manager': assignment.sourcing_manager.get_full_name() if assignment and assignment.sourcing_manager else None,
-            'closing_manager': assignment.closing_manager.get_full_name() if assignment and assignment.closing_manager else None,
-        }
-
-        if assignment:
-            assignment.sourcing_manager = sourcing_user
-            assignment.closing_manager = closing_user
-            assignment.assigned_by = request.user
-            assignment.save()
-        else:
-            assignment = CustomerAssignment.objects.create(
-                customer=customer,
-                sourcing_manager=sourcing_user,
-                closing_manager=closing_user,
-                assigned_by=request.user,
-            )
-
-        after = {
-            'sourcing_manager': sourcing_user.get_full_name() if sourcing_user else None,
-            'closing_manager': closing_user.get_full_name() if closing_user else None,
-        }
+        before = {team: _name(getattr(assignment, team, None)) if assignment else None}
+        if assignment is None:
+            assignment = CustomerAssignment(customer=customer)
+        setattr(assignment, team, user)
+        assignment.assigned_by = request.user
+        assignment.save()
+        after = {team: _name(user)}
         diff_and_log(request.user, 'reassign', customer, before, after, request=request)
-        messages.success(request, f"Assignment updated for {customer.get_full_name()}.")
-        return redirect(role_redirect(request.user))
+        messages.success(request, f"{dict(ASSIGN_TEAMS)[team]} updated for {customer.get_full_name()}.")
+        return redirect('customer_enquiry:assign_customer', customer_id=customer.id)
 
+    members = {
+        key: [{'id': u.id, 'name': _name(u), 'username': u.username} for u in qs.order_by('first_name', 'username')]
+        for key, qs in team_users.items()
+    }
+    current = {key: (getattr(assignment, key + '_id', None) if assignment else None) for key, _ in ASSIGN_TEAMS}
     return render(request, 'assign_customer.html', {
         'customer': customer,
         'assignment': assignment,
-        'sourcing_managers': sourcing_managers,
-        'closing_managers': closing_managers,
+        'teams': ASSIGN_TEAMS,
+        'members': members,
+        'current': current,
         'user_role': role,
     })
 

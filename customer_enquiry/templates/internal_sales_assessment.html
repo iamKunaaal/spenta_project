@@ -1296,13 +1296,6 @@
                     <div class="section" data-step="4">
                         <h3>Customer's Desired Requirements</h3>
 
-                        <div>
-                            <label for="areaLooking" class="required">Type/Area of Flat Customer is looking for</label>
-                            <textarea class="field" id="areaLooking" name="area_looking" rows="3" 
-                                      placeholder="Describe the area and specifications..." required>{{ assessment.area_looking|default:'' }}</textarea>
-                            <div class="error-message">Please enter area requirements</div>
-                        </div>
-
                         <div class="grid cols-2" style="margin-top: 16px;">
                             <div>
                                 <label class="required">Source of Funding</label>
@@ -1318,7 +1311,27 @@
                                 <select class="field" id="ethnicity" name="ethnicity" required>
                                     <option value="">Select Ethnicity</option>
                                     {% if assessment.ethnicity == 'hindu' %}<option value="hindu" selected>Hindu (old value: please update)</option>{% endif %}
+                                    <option value="assamese" {% if assessment.ethnicity == 'assamese' %}selected{% endif %}>Assamese</option>
+                                    <option value="bengali" {% if assessment.ethnicity == 'bengali' %}selected{% endif %}>Bengali</option>
+                                    <option value="bihari" {% if assessment.ethnicity == 'bihari' %}selected{% endif %}>Bihari</option>
+                                    <option value="gujarati" {% if assessment.ethnicity == 'gujarati' %}selected{% endif %}>Gujarati</option>
+                                    <option value="haryanvi" {% if assessment.ethnicity == 'haryanvi' %}selected{% endif %}>Haryanvi</option>
+                                    <option value="himachali" {% if assessment.ethnicity == 'himachali' %}selected{% endif %}>Himachali</option>
+                                    <option value="jharkhandi" {% if assessment.ethnicity == 'jharkhandi' %}selected{% endif %}>Jharkhandi</option>
+                                    <option value="kannadiga" {% if assessment.ethnicity == 'kannadiga' %}selected{% endif %}>Kannadiga</option>
+                                    <option value="kashmiri" {% if assessment.ethnicity == 'kashmiri' %}selected{% endif %}>Kashmiri</option>
+                                    <option value="keralite" {% if assessment.ethnicity == 'keralite' %}selected{% endif %}>Keralite (Malayali)</option>
+                                    <option value="konkani_goan" {% if assessment.ethnicity == 'konkani_goan' %}selected{% endif %}>Konkani / Goan</option>
                                     <option value="maharashtrian" {% if assessment.ethnicity == 'maharashtrian' %}selected{% endif %}>Maharashtrian</option>
+                                    <option value="marwari" {% if assessment.ethnicity == 'marwari' %}selected{% endif %}>Marwari / Rajasthani</option>
+                                    <option value="odia" {% if assessment.ethnicity == 'odia' %}selected{% endif %}>Odia</option>
+                                    <option value="punjabi" {% if assessment.ethnicity == 'punjabi' %}selected{% endif %}>Punjabi</option>
+                                    <option value="sindhi" {% if assessment.ethnicity == 'sindhi' %}selected{% endif %}>Sindhi</option>
+                                    <option value="tamil" {% if assessment.ethnicity == 'tamil' %}selected{% endif %}>Tamil</option>
+                                    <option value="telugu" {% if assessment.ethnicity == 'telugu' %}selected{% endif %}>Telugu</option>
+                                    <option value="uttar_pradeshi" {% if assessment.ethnicity == 'uttar_pradeshi' %}selected{% endif %}>Uttar Pradeshi</option>
+                                    <option value="uttarakhandi" {% if assessment.ethnicity == 'uttarakhandi' %}selected{% endif %}>Uttarakhandi</option>
+                                    <option value="north_eastern" {% if assessment.ethnicity == 'north_eastern' %}selected{% endif %}>North-Eastern (other states)</option>
                                     <option value="other" {% if assessment.ethnicity == 'other' %}selected{% endif %}>Other</option>
                                 </select>
                                 <div class="error-message">Please select ethnicity</div>

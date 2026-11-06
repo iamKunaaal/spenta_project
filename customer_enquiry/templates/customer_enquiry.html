@@ -1331,26 +1331,32 @@
                     <div class="section" data-step="4">
                         <h3>Source of Visit</h3>
 
-                        <label class="required">How did you hear about us?</label>
-                        <div class="radio-group cols-2">
-                            <label><input type="radio" id="channelPartner" name="source" value="channel_partner" required /> Channel Partner</label>
-                            <label><input type="radio" id="referral" name="source" value="referral" /> Referral</label>
-                            <label><input type="radio" name="source" value="whatsapp" /> WhatsApp</label>
-                            <label><input type="radio" name="source" value="social_media" /> Social Media (Facebook, Google, etc.)</label>
-                            <label><input type="radio" name="source" value="website" /> Website</label>
-                            <label><input type="radio" name="source" value="passing_by" /> Passing by</label>
-                            <label><input type="radio" name="source" value="property_portal" /> Property Search Portal</label>
-                            <label><input type="radio" name="source" value="hoarding" /> Hoarding</label>
-                            <label><input type="radio" name="source" value="newspaper_ad" /> Newspaper Ad</label>
-                            <label><input type="radio" name="source" value="exhibition" /> Exhibition</label>
+                        <div>
+                            <label for="sourceSelect" class="required">How did you hear about us?</label>
+                            <select class="field" id="sourceSelect" name="source" required>
+                                <option value="">Select an option</option>
+                                <option value="channel_partner">Channel Partner</option>
+                                <option value="referral">Referral</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="social_media">Social Media (Facebook, Google, etc.)</option>
+                                <option value="website">Website</option>
+                                <option value="passing_by">Passing by</option>
+                                <option value="property_portal">Property Search Portal</option>
+                                <option value="hoarding">Hoarding</option>
+                                <option value="newspaper_ad">Newspaper Ad</option>
+                                <option value="exhibition">Exhibition</option>
+                            </select>
+                            <div class="error-message">Please select how you heard about us</div>
                         </div>
-                        <div class="error-message">Please select how you heard about us</div>
 
-                        <label for="sourceDetails" style="margin-top:16px">If Newspaper Ad/ Social Media/ Exhibition/ Property Search Portal, Please Specify Details:</label>
-                        <textarea class="field" id="sourceDetails" name="source_details" rows="4"
-                            placeholder="Please provide additional details if applicable..."
-                            maxlength="1000"></textarea>
-                        <div class="char-counter" id="additionalCounter">0/1000 characters</div>
+                        <div style="margin-top:16px;">
+                            <label for="sourceDetails" class="required">Additional Details</label>
+                            <textarea class="field" id="sourceDetails" name="source_details" rows="4" required
+                                placeholder="Please specify how you came to know about the project (for example the newspaper, page, exhibition or portal name)..."
+                                maxlength="1000"></textarea>
+                            <div class="error-message">Additional Details is required</div>
+                            <div class="char-counter" id="additionalCounter">0/1000 characters</div>
+                        </div>
 
                         <!-- Channel Partner Section (conditional) -->
                         <div class="conditional-section" id="channelPartnerSection">
@@ -2179,7 +2185,7 @@
             const requiredFields = [
                 'first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source', 'source_details'
             ];
 
             allFields.forEach(field => {
@@ -2348,7 +2354,7 @@
             const currentSection = sections[current - 1];
             const requiredFields = ['first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'];
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source', 'source_details'];
             
             let isValid = true;
             
@@ -2404,7 +2410,7 @@
         }
 
         // Show/hide conditional sections for radio buttons
-        document.querySelectorAll('input[name="source"]').forEach(radio => {
+        document.querySelectorAll('[name="source"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 // Hide all conditional sections first
                 document.getElementById('channelPartnerSection').style.display = 'none';
