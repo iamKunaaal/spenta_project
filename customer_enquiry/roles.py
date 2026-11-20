@@ -109,6 +109,10 @@ def dashboard_links(user):
         links.append(('My Closing Leads', 'customer_enquiry:closing_manager_dashboard'))
     if 'site_head' in roles:
         links.append(('Site Head Dashboard', 'customer_enquiry:site_head_dashboard'))
-    if any(r in roles for r in ('admin', 'super_admin', 'gre', 'digital_form')):
+    if any(r in roles for r in ('admin', 'super_admin')):
         links.append(('All Leads', 'customer_enquiry:dashboard'))
+    elif 'gre' in roles:
+        links.append(('GRE Dashboard', 'customer_enquiry:dashboard'))
+    elif 'digital_form' in roles:
+        links.append(('CRM Dashboard', 'customer_enquiry:dashboard'))
     return links

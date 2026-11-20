@@ -19,7 +19,7 @@ class UserProfile(models.Model):
         ('sourcing_manager', 'Sourcing Manager'),
         ('closing_manager', 'Closing Manager'),
         ('site_head', 'Site Head'),
-        ('digital_form', 'Digital Form'),
+        ('digital_form', 'CRM'),
     ]
 
     # Roles that can be held in addition to the primary role
