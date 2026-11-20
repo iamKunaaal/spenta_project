@@ -1105,6 +1105,7 @@
                     <input type="hidden" name="pincode" id="pincodeHidden">
                     <input type="hidden" name="property_code" id="hiddenPropertyCode">
                     <input type="hidden" name="user_phone" id="hiddenUserPhone">
+                    <input type="hidden" name="submit_token" id="submitToken">
                     
                     <!-- Step 1: Customer Details -->
                     <div class="section active" data-step="1">
@@ -1350,11 +1351,10 @@
                         </div>
 
                         <div style="margin-top:16px;">
-                            <label for="sourceDetails" class="required">Additional Details</label>
-                            <textarea class="field" id="sourceDetails" name="source_details" rows="4" required
+                            <label for="sourceDetails">Additional Details (optional)</label>
+                            <textarea class="field" id="sourceDetails" name="source_details" rows="4"
                                 placeholder="Please specify how you came to know about the project (for example the newspaper, page, exhibition or portal name)..."
                                 maxlength="1000"></textarea>
-                            <div class="error-message">Additional Details is required</div>
                             <div class="char-counter" id="additionalCounter">0/1000 characters</div>
                         </div>
 
@@ -1857,8 +1857,9 @@
                 }
                 
                 if (userPhone) {
+                    // Kept only for the thank-you page. The Phone Number field is NOT prefilled any more:
+                    // staff verify with their own number, which used to end up on every client's lead.
                     document.getElementById('hiddenUserPhone').value = userPhone;
-                    document.getElementById('phoneNumber').value = userPhone;
                 }
                 
                 // Show property banner
@@ -2185,7 +2186,7 @@
             const requiredFields = [
                 'first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source', 'source_details'
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'
             ];
 
             allFields.forEach(field => {
@@ -2354,7 +2355,7 @@
             const currentSection = sections[current - 1];
             const requiredFields = ['first_name', 'last_name', 'email', 'phone_number', 'city', 'locality', 'pincode_combined',
                 'nationality', 'employment_type', 'configuration', 'budget', 
-                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source', 'source_details'];
+                'construction_status', 'purpose_of_buying', 'sex', 'marital_status', 'source'];
             
             let isValid = true;
             
@@ -2474,7 +2475,11 @@
         }
 
         // Handle form submission
+        let isSubmitting = false;
+        document.getElementById('submitToken').value = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
         function submitForm() {
+            if (isSubmitting) return;   // ignore double clicks / Enter while a submit is running
+            isSubmitting = true;
             nextBtn.disabled = true;
             nextBtn.textContent = 'Submitting...';
             
@@ -2513,16 +2518,20 @@
                         }
                     }, 1500);
                 } else {
+                    isSubmitting = false;
                     showMessage('Error: ' + (data.error || 'Something went wrong'), 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                isSubmitting = false;
                 showMessage('Network error. Please check your connection and try again.', 'error');
             })
             .finally(() => {
-                nextBtn.disabled = false;
-                nextBtn.textContent = 'Submit Form';
+                if (!isSubmitting) {   // after a successful submit the button stays locked until the redirect
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Submit Form';
+                }
             });
         }
 

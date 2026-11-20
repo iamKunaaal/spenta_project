@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
 from django.db import transaction
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -56,9 +56,12 @@ def norm_rera_status(value):
     return value if value in ('registered', 'applied') else 'registered'
 
 
-def role_redirect(user):
-    """Return the correct dashboard URL name based on user role."""
+def role_redirect(user, chosen=None):
+    """Return the correct dashboard URL name based on user role.
+    `chosen` = the role picked on the login page: used only if the user really has that role."""
     role = get_user_role(user)
+    if chosen and has_role(user, chosen):
+        role = chosen
     mapping = {
         'super_admin':      'customer_enquiry:super_admin_dashboard',
         'admin':            'customer_enquiry:admin_dashboard',
@@ -482,6 +485,20 @@ def save_step_view(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+def _duplicate_submit_response(request, customer, property_name, property_code, user_phone):
+    """Same enquiry submitted again (double click / retry): answer as if it succeeded, create nothing."""
+    request.session['customer_data'] = {
+        'form_number': customer.form_number, 'customer_name': customer.get_full_name(),
+        'email': customer.email, 'customer_id': customer.id, 'property_name': property_name,
+        'property_code': property_code, 'phone_number': customer.phone_number or user_phone,
+    }
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'duplicate': True, 'message': 'Customer enquiry submitted successfully!',
+                             'form_number': customer.form_number, 'customer_id': customer.id,
+                             'property_name': property_name, 'redirect_url': '/thank-you/'})
+    return HttpResponseRedirect('/thank-you/')
+
+
 def customer_submit_view(request):
     """Handle customer form submission with property support, phone number, sex, and marital status"""
     try:
@@ -516,8 +533,7 @@ def customer_submit_view(request):
                 'sex', 'marital_status', 'source'
             ]
             
-            # "Additional Details" (how the customer came to know about the project) is mandatory
-            required_fields.append('source_details')
+            # "Additional Details" is optional (GRE / CRM staff fill this form at the desk)
             missing_fields = [field for field in required_fields if not (data.get(field) or '').strip()]
             if missing_fields:
                 error_msg = f'Required fields missing: {", ".join(missing_fields)}'
@@ -613,6 +629,31 @@ def customer_submit_view(request):
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'error': sm_error})
                 return HttpResponse(sm_error, status=400)
+
+            # --- Duplicate-submission guard (double clicks / retries) ---
+            token = (data.get('submit_token') or '').strip()[:64]
+            token_key = f'submit_token:{token}' if token else None
+            if token_key:
+                if not cache.add(token_key, 'pending', 600):
+                    existing = cache.get(token_key)
+                    if isinstance(existing, int):
+                        dup = Customer.objects.filter(pk=existing).first()
+                        if dup:
+                            return _duplicate_submit_response(request, dup, property_name, property_code, user_phone)
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': True, 'duplicate': True, 'message': 'Your enquiry is already being submitted.', 'redirect_url': '/thank-you/'})
+                    return HttpResponseRedirect('/thank-you/')
+            if phone_number:
+                dup = Customer.objects.filter(
+                    project=project, phone_number=phone_number,
+                    first_name__iexact=(data.get('first_name') or '').strip(),
+                    last_name__iexact=(data.get('last_name') or '').strip(),
+                    created_at__gte=timezone.now() - timedelta(minutes=10),
+                ).order_by('id').first()
+                if dup:
+                    if token_key:
+                        cache.set(token_key, dup.id, 600)
+                    return _duplicate_submit_response(request, dup, property_name, property_code, user_phone)
 
             # Generate unique customer form number using full project prefix
             while True:
@@ -725,6 +766,8 @@ def customer_submit_view(request):
             customer.save()
 
             log_action(None, 'submit', 'Customer', customer.id, str(customer), request=request)
+            if token_key:
+                cache.set(token_key, customer.id, 600)
 
             # Store customer data in session for thank you page
             request.session['customer_data'] = {
@@ -780,7 +823,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             log_action(user, 'login', request=request)
-            return redirect(role_redirect(user))
+            return redirect(role_redirect(user, (request.POST.get("role") or "").strip() or None))
         else:
             messages.error(request, "Invalid username or password")
     return render(request, 'login.html')
@@ -1195,13 +1238,10 @@ def edit_customer(request, pk):
     # 4th form = Source of Visit (source, Channel Partner, referral, details): Admin / Super Admin / Site Head (HOD) /
     # GRE can edit it. A GRE can edit ONLY this part; Closing / Sourcing Managers never can.
     can_edit_source = can_act_as(request.user, customer, SOURCE_EDIT_ROLES)
-    # GRE must always fill "Additional Details" when saving the source
-    details_required = has_role(request.user, 'gre') and not has_role(request.user, 'admin', 'super_admin', 'site_head')
+    # "Additional Details" is optional for everyone (GRE / CRM included)
+    details_required = False
 
     if request.method == 'POST' and (can_edit or can_edit_source):
-        if can_edit_source and details_required and not (request.POST.get('source_details') or '').strip():
-            messages.error(request, 'Additional Details is mandatory for the Source of Visit.')
-            return redirect('customer_enquiry:edit_customer', pk=pk)
         before = _customer_snapshot(customer)
         try:
             with transaction.atomic():
